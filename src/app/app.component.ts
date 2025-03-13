@@ -1,12 +1,14 @@
 import { Component } from '@angular/core';
-import { RouterOutlet } from '@angular/router';
+import { NavbarComponent } from './components/navbar/navbar.component';
+import { RouterModule, RouterOutlet } from '@angular/router';
 
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet],
+  standalone: true,
   templateUrl: './app.component.html',
-  styleUrl: './app.component.css'
+  styleUrls: ['./app.component.css'],
+  imports: [NavbarComponent, RouterOutlet, RouterModule]   // ✅ Added RouterOutlet and RouterModule
 })
 export class AppComponent {
-  title = 'vidiocv';
+  title = 'vidiocv';   // ✅ Keep this line for the title
 }

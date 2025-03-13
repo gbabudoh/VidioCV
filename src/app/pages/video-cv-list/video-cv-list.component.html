@@ -1,0 +1,43 @@
+<section class="max-w-4xl mx-auto bg-white shadow-lg rounded-lg p-6 my-10">
+  <h2 class="text-2xl font-bold mb-6 text-center text-blue-600">Video CV Listings</h2>
+
+  <!-- Filters Section -->
+  <div class="flex flex-col md:flex-row gap-4 mb-6">
+    <input [(ngModel)]="filterSkill" placeholder="Filter by Skillset (e.g., Fullstack)" class="border p-2 rounded focus:outline-none focus:border-blue-500 flex-1">
+    <input [(ngModel)]="filterCountry" placeholder="Filter by Country (e.g., USA)" class="border p-2 rounded focus:outline-none focus:border-blue-500 flex-1">
+  </div>
+
+  <!-- Video CV Cards -->
+  <div *ngIf="filteredVideoCVs.length > 0" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+    <div *ngFor="let cv of filteredVideoCVs" class="bg-gray-50 p-4 rounded-lg shadow-md">
+      
+      <!-- Profile Image and Basic Info -->
+      <div class="flex items-center mb-4">
+        <img [src]="cv.profileImage || 'https://via.placeholder.com/50'" alt="Profile Image" class="w-12 h-12 rounded-full mr-4">
+        <div>
+          <h3 class="text-xl font-bold mb-1">{{ cv.name }}</h3>
+          <p class="text-gray-600"><strong>Skillset:</strong> {{ cv.skillset }}</p>
+        </div>
+      </div>
+
+      <!-- Video Embed -->
+      <div class="mb-4">
+        <iframe [src]="cv.youtubeLink | safeUrl" frameborder="0" allowfullscreen class="w-full h-48 mb-4 rounded"></iframe>
+        <a href="{{ cv.youtubeLink }}" target="_blank" class="text-blue-600 hover:underline">Watch on YouTube</a>
+      </div>
+
+      <!-- Contact Info -->
+      <p class="text-gray-600 mb-1"><strong>Email:</strong> <a href="mailto:{{ cv.email }}" class="text-blue-600 hover:underline">{{ cv.email }}</a></p>
+      <p class="text-gray-600 mb-1"><strong>Phone Contact:</strong> <a href="tel:{{ cv.contact }}" class="text-blue-600 hover:underline">{{ cv.contact }}</a></p>
+      <p class="text-gray-600 mb-1"><strong>Location:</strong> {{ cv.location }}</p>
+
+    </div>
+  </div>
+
+  <!-- No Results Found Message -->
+  <div *ngIf="filteredVideoCVs.length === 0" class="text-center text-gray-600 mt-6">
+    No results found. Try different filters.
+  </div>
+</section>
+
+  

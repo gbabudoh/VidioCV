@@ -1,0 +1,15 @@
+<section class="max-w-md mx-auto bg-white shadow-lg rounded-lg p-6 my-10">
+  <h2 class="text-2xl font-bold mb-6 text-center text-blue-600">Employer Login</h2>
+  <form (submit)="login(); $event.preventDefault()">
+    <input [(ngModel)]="email" type="email" placeholder="Email" class="border p-2 w-full mb-4 rounded" required>
+    <input [(ngModel)]="password" type="password" placeholder="Password" class="border p-2 w-full mb-4 rounded" required>
+    <button type="submit" class="bg-blue-600 text-white py-2 px-4 rounded w-full mb-4">Login</button>
+    <p *ngIf="loginError" class="text-red-600 mb-4 text-center">{{ loginError }}</p>
+    <p class="text-center text-gray-600">
+      Don't have an account? 
+      <a (click)="redirectToRegister()" class="text-blue-600 hover:underline cursor-pointer">Register Now</a>
+    </p>
+  </form>
+</section>
+
+

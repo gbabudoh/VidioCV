@@ -1,0 +1,10 @@
+/* Center the content */
+section {
+    text-align: center;
+  }
+  
+  /* Add some margin to buttons */
+  a {
+    margin-bottom: 10px;
+  }
+  

@@ -1,0 +1,16 @@
+section {
+    padding: 40px 0;
+  }
+  
+  section h2 {
+    color: #1e3a8a;
+  }
+  
+  .bg-gradient-to-r {
+    background-image: linear-gradient(to right, #3b82f6, #6366f1);
+  }
+  
+  footer {
+    background-color: #1e3a8a;
+  }
+  

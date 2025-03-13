@@ -1,0 +1,26 @@
+form input, form button {
+    margin-bottom: 10px;
+    transition: border-color 0.3s ease;
+  }
+  
+  form input:focus {
+    border-color: #3b82f6;
+  }
+  
+  button[disabled] {
+    background-color: #999;
+    cursor: not-allowed;
+  }
+  
+  .animate-spin {
+    border: 2px solid transparent;
+    border-top-color: #fff;
+    border-right-color: #fff;
+    animation: spin 0.6s linear infinite;
+  }
+  
+  @keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+  

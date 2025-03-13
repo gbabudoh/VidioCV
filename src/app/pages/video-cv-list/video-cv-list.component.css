@@ -1,0 +1,25 @@
+iframe {
+    border-radius: 8px;
+    transition: transform 0.3s ease;
+  }
+  
+  iframe:hover {
+    transform: scale(1.02);
+  }
+  
+  input {
+    transition: border-color 0.3s ease;
+  }
+  
+  input:focus {
+    border-color: #3b82f6;
+  }
+  
+  a {
+    transition: color 0.3s ease;
+  }
+  
+  a:hover {
+    color: #2563eb;
+  }
+  

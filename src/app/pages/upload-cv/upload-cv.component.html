@@ -1,0 +1,38 @@
+<section class="max-w-xl mx-auto bg-white shadow-lg rounded-lg p-6 my-10">
+    <h2 class="text-2xl font-bold mb-6 text-center text-blue-600">Upload Your CV</h2>
+    <form (submit)="uploadCV(); $event.preventDefault()">
+      <div class="mb-4">
+        <label class="block text-gray-700 mb-2">YouTube Video Link *</label>
+        <input [(ngModel)]="youtubeLink" name="youtubeLink" type="url" placeholder="https://youtube.com/your-video" class="border p-2 w-full rounded focus:outline-none focus:border-blue-500" required>
+      </div>
+      <div class="mb-4">
+        <label class="block text-gray-700 mb-2">User Name *</label>
+        <input [(ngModel)]="name" name="name" type="text" placeholder="Your Name" class="border p-2 w-full rounded focus:outline-none focus:border-blue-500" required>
+      </div>
+      <div class="mb-4">
+        <label class="block text-gray-700 mb-2">Email Address *</label>
+        <input [(ngModel)]="email" name="email" type="email" placeholder="yourname@example.com" class="border p-2 w-full rounded focus:outline-none focus:border-blue-500" required>
+      </div>
+      <div class="mb-4">
+        <label class="block text-gray-700 mb-2">Contact Telephone (with Country Code) *</label>
+        <input [(ngModel)]="phone" name="phone" type="text" placeholder="+1234567890" class="border p-2 w-full rounded focus:outline-none focus:border-blue-500" required>
+      </div>
+      <div class="mb-4">
+        <label class="block text-gray-700 mb-2">Country Location *</label>
+        <input [(ngModel)]="country" name="country" type="text" placeholder="Your Country" class="border p-2 w-full rounded focus:outline-none focus:border-blue-500" required>
+      </div>
+      <div class="mb-4">
+        <label class="block text-gray-700 mb-2">City (Optional)</label>
+        <input [(ngModel)]="city" name="city" type="text" placeholder="Your City" class="border p-2 w-full rounded focus:outline-none focus:border-blue-500">
+      </div>
+      <div class="mb-6">
+        <label class="block text-gray-700 mb-2">Portfolio Link (Optional)</label>
+        <input [(ngModel)]="portfolio" name="portfolio" type="url" placeholder="https://your-portfolio.com" class="border p-2 w-full rounded focus:outline-none focus:border-blue-500">
+      </div>
+      <button type="submit" class="bg-blue-600 text-white py-2 px-4 rounded hover:bg-blue-700 transition w-full flex items-center justify-center">
+        <span *ngIf="!isSubmitting">Submit CV</span>
+        <span *ngIf="isSubmitting" class="animate-spin border-t-2 border-r-2 border-white rounded-full w-5 h-5"></span>
+      </button>
+    </form>
+  </section>
+  
