@@ -1,0 +1,302 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  email     String    @unique
+  password  String
+  role      String    @default("candidate")
+  name      String
+  country   String?
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz()
+  updatedAt DateTime  @default(now()) @map("updated_at") @db.Timestamptz()
+
+  profile   UserProfile?
+
+  @@map("users")
+}
+
+model UserProfile {
+  id          String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  userId      String   @unique @map("user_id") @db.Uuid
+  fullName    String   @map("full_name")
+  email       String
+  phone       String?
+  avatarUrl   String?  @map("avatar_url")
+  bio         String?
+  location    String?
+  website     String?
+  linkedinUrl String?  @map("linkedin_url")
+  githubUrl   String?  @map("github_url")
+  twitterUrl  String?  @map("twitter_url")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz()
+  updatedAt   DateTime @default(now()) @map("updated_at") @db.Timestamptz()
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_profiles")
+}
+
+model CvProfile {
+  id                  String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  userId              String   @map("user_id") @db.Uuid
+  slug                String   @unique
+
+  title               String
+  summary             String?
+
+  videoUrl            String?  @map("video_url")
+  videoThumbnailUrl   String?  @map("video_thumbnail_url")
+  videoDuration       Int?     @map("video_duration")
+  videoStatus         String?  @default("draft") @map("video_status")
+
+  yearsOfExperience   Int?     @map("years_of_experience")
+  currentCompany      String?  @map("current_company")
+  currentPosition     String?  @map("current_position")
+  hourlyRate          Decimal? @map("hourly_rate") @db.Decimal(10, 2)
+  currency            String?  @default("USD")
+  availability        String?
+  remotePreference    String?  @map("remote_preference")
+
+  openToOpportunities Boolean? @default(true) @map("open_to_opportunities")
+  preferredContactMethod String? @map("preferred_contact_method")
+
+  viewsCount          Int?     @default(0) @map("views_count")
+  sharesCount         Int?     @default(0) @map("shares_count")
+  likesCount          Int?     @default(0) @map("likes_count")
+
+  isPublished         Boolean? @default(false) @map("is_published")
+  isFeatured          Boolean? @default(false) @map("is_featured")
+
+  metaTitle           String?  @map("meta_title")
+  metaDescription     String?  @map("meta_description")
+
+  publishedAt         DateTime? @map("published_at") @db.Timestamptz()
+  createdAt           DateTime? @default(now()) @map("created_at") @db.Timestamptz()
+  updatedAt           DateTime? @default(now()) @map("updated_at") @db.Timestamptz()
+
+  skills              CvSkill[]
+  workExperiences     WorkExperience[]
+  education           Education[]
+  certifications      Certification[]
+  projects            Project[]
+  languages           Language[]
+  videoViews          VideoView[]
+  likes               CvLike[]
+  shares              CvShare[]
+  savedCvs            SavedCv[]
+  contactRequests     ContactRequest[]
+
+  @@index([userId], name: "idx_cv_profiles_user_id")
+  @@index([slug], name: "idx_cv_profiles_slug")
+  @@index([isPublished, publishedAt(sort: Desc)], name: "idx_cv_profiles_published")
+  @@index([isFeatured, viewsCount(sort: Desc)], name: "idx_cv_profiles_featured")
+  @@map("cv_profiles")
+}
+
+model Skill {
+  id          String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  name        String   @unique
+  slug        String   @unique
+  category    String?
+  iconUrl     String?  @map("icon_url")
+  createdAt   DateTime? @default(now()) @map("created_at") @db.Timestamptz()
+
+  cvSkills    CvSkill[]
+
+  @@index([name], name: "idx_skills_name")
+  @@index([category], name: "idx_skills_category")
+  @@map("skills")
+}
+
+model CvSkill {
+  id                String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  cvProfileId       String    @map("cv_profile_id") @db.Uuid
+  skillId           String    @map("skill_id") @db.Uuid
+  proficiencyLevel  String?   @map("proficiency_level")
+  yearsOfExperience Int?      @map("years_of_experience")
+  createdAt         DateTime? @default(now()) @map("created_at") @db.Timestamptz()
+
+  cvProfile         CvProfile @relation(fields: [cvProfileId], references: [id], onDelete: Cascade)
+  skill             Skill     @relation(fields: [skillId], references: [id], onDelete: Cascade)
+
+  @@unique([cvProfileId, skillId])
+  @@index([cvProfileId], name: "idx_cv_skills_profile")
+  @@index([skillId], name: "idx_cv_skills_skill")
+  @@map("cv_skills")
+}
+
+model WorkExperience {
+  id              String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  cvProfileId     String    @map("cv_profile_id") @db.Uuid
+  companyName     String    @map("company_name")
+  position        String
+  location        String?
+  employmentType  String?   @map("employment_type")
+  startDate       DateTime  @map("start_date") @db.Date
+  endDate         DateTime? @map("end_date") @db.Date
+  isCurrent       Boolean?  @default(false) @map("is_current")
+  description     String?
+  achievements    String[]
+  displayOrder    Int?      @default(0) @map("display_order")
+  createdAt       DateTime? @default(now()) @map("created_at") @db.Timestamptz()
+  updatedAt       DateTime? @default(now()) @map("updated_at") @db.Timestamptz()
+
+  cvProfile       CvProfile @relation(fields: [cvProfileId], references: [id], onDelete: Cascade)
+
+  @@index([cvProfileId], name: "idx_work_exp_profile")
+  @@index([startDate(sort: Desc), endDate(sort: Desc)], name: "idx_work_exp_dates")
+  @@map("work_experiences")
+}
+
+model Education {
+  id              String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  cvProfileId     String    @map("cv_profile_id") @db.Uuid
+  institutionName String    @map("institution_name")
+  degree          String
+  fieldOfStudy    String    @map("field_of_study")
+  location        String?
+  startDate       DateTime? @map("start_date") @db.Date
+  endDate         DateTime? @map("end_date") @db.Date
+  isCurrent       Boolean?  @default(false) @map("is_current")
+  grade           String?
+  description     String?
+  displayOrder    Int?      @default(0) @map("display_order")
+  createdAt       DateTime? @default(now()) @map("created_at") @db.Timestamptz()
+  updatedAt       DateTime? @default(now()) @map("updated_at") @db.Timestamptz()
+
+  cvProfile       CvProfile @relation(fields: [cvProfileId], references: [id], onDelete: Cascade)
+
+  @@index([cvProfileId], name: "idx_education_profile")
+  @@map("education")
+}
+
+model Certification {
+  id                  String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  cvProfileId         String    @map("cv_profile_id") @db.Uuid
+  name                String
+  issuingOrganization String    @map("issuing_organization")
+  issueDate           DateTime  @map("issue_date") @db.Date
+  expiryDate          DateTime? @map("expiry_date") @db.Date
+  credentialId        String?   @map("credential_id")
+  credentialUrl       String?   @map("credential_url")
+  displayOrder        Int?      @default(0) @map("display_order")
+  createdAt           DateTime? @default(now()) @map("created_at") @db.Timestamptz()
+
+  cvProfile           CvProfile @relation(fields: [cvProfileId], references: [id], onDelete: Cascade)
+
+  @@map("certifications")
+}
+
+model Project {
+  id            String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  cvProfileId   String    @map("cv_profile_id") @db.Uuid
+  title         String
+  description   String?
+  url           String?
+  githubUrl     String?   @map("github_url")
+  thumbnailUrl  String?   @map("thumbnail_url")
+  technologies  String[]
+  startDate     DateTime? @map("start_date") @db.Date
+  endDate       DateTime? @map("end_date") @db.Date
+  displayOrder  Int?      @default(0) @map("display_order")
+  createdAt     DateTime? @default(now()) @map("created_at") @db.Timestamptz()
+  updatedAt     DateTime? @default(now()) @map("updated_at") @db.Timestamptz()
+
+  cvProfile     CvProfile @relation(fields: [cvProfileId], references: [id], onDelete: Cascade)
+
+  @@map("projects")
+}
+
+model Language {
+  id            String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  cvProfileId   String    @map("cv_profile_id") @db.Uuid
+  language      String
+  proficiency   String
+  createdAt     DateTime? @default(now()) @map("created_at") @db.Timestamptz()
+
+  cvProfile     CvProfile @relation(fields: [cvProfileId], references: [id], onDelete: Cascade)
+
+  @@map("languages")
+}
+
+model VideoView {
+  id            String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  cvProfileId   String    @map("cv_profile_id") @db.Uuid
+  viewerId      String?   @map("viewer_id") @db.Uuid
+  ipAddress     String?   @map("ip_address")
+  userAgent     String?   @map("user_agent")
+  watchDuration Int?      @map("watch_duration")
+  completed     Boolean?  @default(false)
+  referrer      String?   
+  country       String?
+  city          String?
+  viewedAt      DateTime? @default(now()) @map("viewed_at") @db.Timestamptz()
+
+  cvProfile     CvProfile @relation(fields: [cvProfileId], references: [id], onDelete: Cascade)
+
+  @@index([cvProfileId], name: "idx_video_views_profile")
+  @@index([viewedAt(sort: Desc)], name: "idx_video_views_date")
+  @@map("video_views")
+}
+
+model CvLike {
+  id            String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  cvProfileId   String    @map("cv_profile_id") @db.Uuid
+  userId        String    @map("user_id") @db.Uuid
+  createdAt     DateTime? @default(now()) @map("created_at") @db.Timestamptz()
+
+  cvProfile     CvProfile @relation(fields: [cvProfileId], references: [id], onDelete: Cascade)
+
+  @@unique([cvProfileId, userId])
+  @@index([cvProfileId], name: "idx_cv_likes_profile")
+  @@index([userId], name: "idx_cv_likes_user")
+  @@map("cv_likes")
+}
+
+model CvShare {
+  id            String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  cvProfileId   String    @map("cv_profile_id") @db.Uuid
+  userId        String?   @map("user_id") @db.Uuid
+  platform      String?
+  sharedAt      DateTime? @default(now()) @map("shared_at") @db.Timestamptz()
+
+  cvProfile     CvProfile @relation(fields: [cvProfileId], references: [id], onDelete: Cascade)
+
+  @@map("cv_shares")
+}
+
+model SavedCv {
+  id            String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  cvProfileId   String    @map("cv_profile_id") @db.Uuid
+  userId        String    @map("user_id") @db.Uuid
+  notes         String?
+  createdAt     DateTime? @default(now()) @map("created_at") @db.Timestamptz()
+
+  cvProfile     CvProfile @relation(fields: [cvProfileId], references: [id], onDelete: Cascade)
+
+  @@unique([cvProfileId, userId])
+  @@map("saved_cvs")
+}
+
+model ContactRequest {
+  id                String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  cvProfileId       String    @map("cv_profile_id") @db.Uuid
+  requesterUserId   String?   @map("requester_user_id") @db.Uuid
+  requesterName     String    @map("requester_name")
+  requesterEmail    String    @map("requester_email")
+  requesterCompany  String?   @map("requester_company")
+  message           String
+  status            String?   @default("pending")
+  createdAt         DateTime? @default(now()) @map("created_at") @db.Timestamptz()
+
+  cvProfile         CvProfile @relation(fields: [cvProfileId], references: [id], onDelete: Cascade)
+
+  @@map("contact_requests")
+}
