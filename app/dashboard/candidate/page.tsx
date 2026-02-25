@@ -1,9 +1,12 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Settings, LogOut, Bell, Search, MapPin, Briefcase, Video, Building2, UserCircle, Link as LinkIcon, Shield, Trash2, Mail, Lock, Plus, X } from "lucide-react";
-import Link from "next/link";
+import { 
+  Settings, LogOut, Bell, Search, MapPin, Briefcase, Video, 
+  Building2, UserCircle, Link as LinkIcon, Shield, Trash2, 
+  Mail, Lock, Plus, X
+} from "lucide-react";
 import Select from "react-select";
 import ReactCountryFlag from "react-country-flag";
 import countryList from "country-list";
@@ -11,8 +14,10 @@ import Button from "@/app/components/common/Button";
 import VideoCreator from "@/app/components/video-tools/VideoCreator";
 import Modal from "@/app/components/common/Modal";
 import { useRouter } from "next/navigation";
+import { getPeerTubeEmbedUrl } from "@/app/lib/video";
+import { useSessionSync } from "@/app/lib/hooks/useSessionSync";
 
-type Tab = "profile" | "jobs" | "applications" | "interviews" | "notifications" | "settings";
+type Tab = "profile" | "jobs" | "applications" | "interviews" | "messages" | "notifications" | "settings";
 
 const countryOptions = countryList.getData().map((country) => ({
   value: country.code,
@@ -21,6 +26,7 @@ const countryOptions = countryList.getData().map((country) => ({
 
 export default function CandidateDashboard() {
   const router = useRouter();
+  useSessionSync();
   
   // Define Experience Interface
   interface Experience {
@@ -42,17 +48,121 @@ export default function CandidateDashboard() {
     description: string;
   }
 
+  // Define Message Interface
+  interface Message {
+    id: string;
+    company: string;
+    sender: string;
+    subject: string;
+    preview: string;
+    body: string;
+    time: string;
+    unread: boolean;
+  }
+
   const [activeTab, setActiveTab] = useState<Tab>("profile");
-  const [showVideoCreator, setShowVideoCreator] = useState(false);
   const [activeVideoUrl, setActiveVideoUrl] = useState<string | null>(null);
+  const [showVideoCreator, setShowVideoCreator] = useState(false);
+
+  // Modal State
+  const [modalConfig, setModalConfig] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    type: "info" | "success" | "warning" | "error" | "confirm";
+    onConfirm?: () => void;
+  }>({
+    isOpen: false,
+    title: "",
+    message: "",
+    type: "info",
+  });
   const [selectedCountry, setSelectedCountry] = useState<{ value: string; label: string } | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [successMessage, setSuccessMessage] = useState<{ title: string; message: string } | null>(null);
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
+  const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
+  const [selectedMessage, setSelectedMessage] = useState<Message | null>(null);
+  const [messages, setMessages] = useState<Message[]>([
+    {
+      id: "1",
+      company: "TechNova Solutions",
+      sender: "Sarah Jenkins (Senior Recruiter)",
+      subject: "Regarding your application for Senior React Developer",
+      preview: "Hello John, we were really impressed by your Video CV! We'd like to schedule a quick...",
+      body: `Hello John,\n\nWe were really impressed by your Video CV and your background in React and TypeScript! Your projects showcase a high level of expertise that aligns perfectly with what we're looking for at TechNova Solutions.\n\nWe would like to schedule a quick 15-minute introductory call to discuss the Senior React Developer role and learn more about your career goals.\n\nPlease let us know your availability for later this week.\n\nBest regards,\nSarah Jenkins\nSenior Recruiter @ TechNova`,
+      time: "2h ago",
+      unread: true
+    },
+    {
+      id: "2",
+      company: "Global Stream Inc.",
+      sender: "Mark Williams (Hiring Manager)",
+      subject: "Interview Invitation",
+      preview: "Hi John, we've reviewed your profile and would like to invite you for a first round interview...",
+      body: `Hi John,\n\nAfter reviewing your profile and Video CV, our team at Global Stream Inc. is excited to invite you for a first-round technical interview.\n\nThe interview will focus on your experience with system design and frontend performance optimization. It will be a 60-minute video call.\n\nAre you available on Monday next week at 10:00 AM PST?\n\nLooking forward to hearing from you,\nMark Williams\nHiring Manager`,
+      time: "Yesterday",
+      unread: false
+    },
+    {
+      id: "3",
+      company: "CreativeFlow",
+      sender: "Emily Chen (Lead Designer)",
+      subject: "Follow up on your recent inquiry",
+      preview: "Thanks for reaching out! Regarding the remote policy at CreativeFlow...",
+      body: `Hi John,\n\nThanks for reaching out and for your interest in CreativeFlow! \n\nRegarding the remote policy: Yes, we are a "Remote First" company. We have optional hub offices in London and New York, but there is no requirement for in-office presence. We also provide a stipend for your home office setup.\n\nLet me know if you have any other questions!\n\nCheers,\nEmily Chen\nLead Designer`,
+      time: "3 days ago",
+      unread: false
+    }
+  ]);
   
   // Skills State
   const [skills, setSkills] = useState<string[]>(["React", "TypeScript", "Node.js", "GraphQL", "AWS", "Python", "TailwindCSS"]);
   const [newSkill, setNewSkill] = useState("");
+  const [userName, setUserName] = useState("John Doe");
+  const [userRole, setUserRole] = useState("Senior Software Engineer");
+
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        if (!token) return;
+
+        const response = await fetch("/api/profile/get", {
+          headers: {
+            "Authorization": `Bearer ${token}`
+          }
+        });
+
+        const data = await response.json();
+        if (data.success) {
+          if (data.cvProfile?.videoUrl) {
+            setActiveVideoUrl(data.cvProfile.videoUrl);
+          }
+          if (data.user) {
+            setUserName(data.user.name);
+            if (data.user.profile?.fullName) setUserName(data.user.profile.fullName);
+          }
+          if (data.cvProfile?.title) {
+            setUserRole(data.cvProfile.title);
+          }
+          if (data.cvProfile?.skills) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const fetchedSkills = data.cvProfile.skills.map((s: any) => s.skill.name);
+            if (fetchedSkills.length > 0) setSkills(fetchedSkills);
+          }
+          if (data.cvProfile?.workExperiences) {
+            // Map work experiences if needed
+            // setExperiences(data.cvProfile.workExperiences);
+          }
+        }
+      } catch (error) {
+        console.error("Failed to fetch profile:", error);
+      }
+    };
+
+    fetchProfile();
+  }, []);
 
   const handleAddSkill = (e: React.KeyboardEvent<HTMLInputElement> | React.MouseEvent) => {
     if ((e.type === 'click' || (e as React.KeyboardEvent).key === 'Enter') && newSkill.trim() && !skills.includes(newSkill.trim())) {
@@ -141,6 +251,12 @@ export default function CandidateDashboard() {
     });
   };
 
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    localStorage.removeItem("userRole");
+    router.push("/");
+  };
+
   return (
     <div className="min-h-screen bg-secondary-50 dark:bg-secondary-950 font-sans relative overflow-hidden">
       {/* Premium Glassmorphic Background Elements */}
@@ -150,15 +266,20 @@ export default function CandidateDashboard() {
 
       {/* Header */}
       <nav className="sticky top-0 z-40 bg-white/60 dark:bg-secondary-900/60 backdrop-blur-xl border-b border-white/40 dark:border-white/10 shadow-sm shadow-secondary-200/20 dark:shadow-none">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center bg-transparent">
-          <Link href="/" className="flex items-center gap-2 cursor-pointer">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary-500 to-accent-500 flex items-center justify-center text-white shadow-lg shadow-primary-500/30">
+        <div className="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center relative bg-transparent">
+          <div className="flex items-center gap-2 cursor-pointer group">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary-500 to-accent-500 flex items-center justify-center text-white shadow-lg shadow-primary-500/30 group-hover:scale-105 transition-transform">
               <Video className="w-5 h-5 cursor-pointer" />
             </div>
-            <span className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-secondary-900 to-secondary-700 dark:from-white dark:to-secondary-300 tracking-tight cursor-pointer">
+            <span className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-secondary-900 to-secondary-700 dark:from-white dark:to-secondary-300 tracking-tight cursor-pointer flex items-center">
               VidioCV
             </span>
-          </Link>
+          </div>
+          <div className="hidden md:flex absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
+             <span className="px-4 py-1.5 text-xs font-bold uppercase tracking-widest text-primary-700 bg-primary-100 dark:text-primary-300 dark:bg-primary-900/50 rounded-xl border border-primary-200 dark:border-primary-800 shadow-sm shadow-primary-500/10 backdrop-blur-md">
+                 Candidate Dashboard
+             </span>
+          </div>
           <div className="flex items-center gap-4">
             <button onClick={() => setActiveTab("notifications")} className="p-2.5 bg-white/50 dark:bg-secondary-800/50 hover:bg-white dark:hover:bg-secondary-800 text-secondary-600 dark:text-secondary-300 rounded-xl backdrop-blur-sm border border-secondary-200 dark:border-secondary-700 shadow-sm transition-all cursor-pointer">
               <Bell className="w-5 h-5 cursor-pointer" />
@@ -166,8 +287,8 @@ export default function CandidateDashboard() {
             <button onClick={() => setActiveTab("settings")} className="p-2.5 bg-white/50 dark:bg-secondary-800/50 hover:bg-white dark:hover:bg-secondary-800 text-secondary-600 dark:text-secondary-300 rounded-xl backdrop-blur-sm border border-secondary-200 dark:border-secondary-700 shadow-sm transition-all cursor-pointer">
               <Settings className="w-5 h-5 cursor-pointer" />
             </button>
-            <button onClick={() => router.push("/auth/login")} className="p-2.5 bg-white/50 dark:bg-secondary-800/50 hover:bg-white dark:hover:bg-secondary-800 text-secondary-600 dark:text-secondary-300 rounded-xl backdrop-blur-sm border border-secondary-200 dark:border-secondary-700 shadow-sm transition-all cursor-pointer">
-              <LogOut className="w-5 h-5 cursor-pointer" />
+            <button onClick={() => setIsLogoutModalOpen(true)} className="flex items-center gap-2 p-2.5 px-4 bg-error-50 dark:bg-error-500/10 hover:bg-error-100 dark:hover:bg-error-500/20 text-error-600 dark:text-error-400 rounded-xl backdrop-blur-sm border border-error-200 dark:border-error-500/20 transition-all cursor-pointer font-semibold">
+              <LogOut className="w-4 h-4 cursor-pointer" /> <span className="hidden sm:inline cursor-pointer">Logout</span>
             </button>
           </div>
         </div>
@@ -188,8 +309,8 @@ export default function CandidateDashboard() {
                 </span>
               </div>
             </div>
-            <h2 className="text-2xl font-bold text-secondary-900 dark:text-white mb-1">John Doe</h2>
-            <p className="text-primary-600 dark:text-primary-400 font-medium mb-5">Senior Software Engineer</p>
+            <h2 className="text-2xl font-bold text-secondary-900 dark:text-white mb-1">{userName}</h2>
+            <p className="text-primary-600 dark:text-primary-400 font-medium mb-5">{userRole}</p>
             <div className="w-full space-y-3 text-sm text-left">
               <div className="flex items-center gap-3 text-secondary-600 dark:text-secondary-400">
                 <div className="p-2 rounded-lg bg-secondary-100 dark:bg-secondary-800">
@@ -231,12 +352,12 @@ export default function CandidateDashboard() {
         </div>
 
         {/* Dynamic Navigation Tabs */}
-        <div className="flex gap-2 mb-8 bg-white/50 dark:bg-secondary-900/50 p-1.5 rounded-2xl backdrop-blur-md border border-white/60 dark:border-secondary-800 shadow-sm max-w-fit">
-          {(["profile", "jobs", "applications", "interviews"] as Tab[]).map((tab) => (
+        <div className="flex gap-2 mb-8 bg-white/50 dark:bg-secondary-900/50 p-1.5 rounded-2xl backdrop-blur-md border border-white/60 dark:border-secondary-800 shadow-sm max-w-fit overflow-x-auto">
+          {(["profile", "jobs", "applications", "interviews", "messages"] as Tab[]).map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
-              className={`px-6 py-2.5 font-semibold text-sm rounded-xl transition-all duration-300 cursor-pointer ${
+              className={`px-6 py-2.5 font-semibold text-sm rounded-xl transition-all duration-300 cursor-pointer whitespace-nowrap ${
                 activeTab === tab
                   ? "bg-white dark:bg-secondary-800 text-secondary-900 dark:text-white shadow-sm"
                   : "text-secondary-500 dark:text-secondary-400 hover:text-secondary-900 dark:hover:text-white hover:bg-white/40 dark:hover:bg-secondary-800/40"
@@ -256,6 +377,70 @@ export default function CandidateDashboard() {
             exit={{ opacity: 0, y: -10 }}
             transition={{ duration: 0.3 }}
           >
+            {activeTab === "messages" && (
+              <div className="space-y-6">
+                <div className="bg-white/70 dark:bg-secondary-900/70 backdrop-blur-2xl border border-white/50 dark:border-secondary-800 rounded-3xl p-8 lg:p-10 shadow-xl shadow-secondary-200/30 dark:shadow-black/40">
+                  <div className="flex justify-between items-center mb-8 pb-6 border-b border-secondary-200 dark:border-secondary-800">
+                    <h3 className="text-2xl font-bold text-secondary-900 dark:text-white flex items-center gap-3">
+                      <Mail className="w-6 h-6 text-primary-500" /> Message Center
+                    </h3>
+                  </div>
+                  
+                  <div className="space-y-4">
+                    {messages.map((msg) => (
+                      <div 
+                        key={msg.id} 
+                        onClick={() => {
+                          setSelectedMessage(msg);
+                          // Mark as read locally
+                          setMessages(prev => prev.map(m => m.id === msg.id ? { ...m, unread: false } : m));
+                        }}
+                        className={`p-6 rounded-2xl border transition-all cursor-pointer group ${
+                          msg.unread 
+                            ? "bg-primary-50/50 dark:bg-primary-500/5 border-primary-200 dark:border-primary-500/30 ring-1 ring-primary-500/10" 
+                            : "bg-white/30 dark:bg-secondary-950/30 border-secondary-200 dark:border-secondary-800 hover:border-primary-300 dark:hover:border-primary-700"
+                        }`}
+                      >
+                        <div className="flex justify-between items-start mb-3">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-secondary-100 to-secondary-200 dark:from-secondary-800 dark:to-secondary-700 flex items-center justify-center font-bold text-secondary-700 dark:text-secondary-300">
+                              {msg.company.charAt(0)}
+                            </div>
+                            <div>
+                              <h4 className="font-bold text-secondary-900 dark:text-white group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors">
+                                {msg.company}
+                              </h4>
+                              <p className="text-xs text-secondary-500 dark:text-secondary-400 font-medium">
+                                {msg.sender}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                             <p className="text-xs text-secondary-400 dark:text-secondary-500 font-semibold uppercase tracking-wider">{msg.time}</p>
+                             {msg.unread && <span className="inline-block w-2.5 h-2.5 bg-primary-500 rounded-full mt-1.5 shadow-sm shadow-primary-500/50" />}
+                          </div>
+                        </div>
+                        <div>
+                          <p className={`text-sm font-bold mb-1 ${msg.unread ? "text-secondary-900 dark:text-white" : "text-secondary-700 dark:text-secondary-300"}`}>
+                            {msg.subject}
+                          </p>
+                          <p className="text-sm text-secondary-600 dark:text-secondary-400 line-clamp-1">
+                            {msg.preview}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="mt-8 pt-8 border-t border-secondary-200 dark:border-secondary-800 text-center">
+                    <button className="text-sm font-bold text-primary-600 dark:text-primary-400 hover:text-primary-700 transition-colors cursor-pointer">
+                      View All Archived Messages
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+            
             {activeTab === "profile" && (
               <div className="space-y-8">
                 {/* Video CV Section */}
@@ -294,31 +479,63 @@ export default function CandidateDashboard() {
                     </motion.div>
                   ) : activeVideoUrl ? (
                     <div className="w-full aspect-video md:aspect-[21/9] bg-black rounded-2xl border border-secondary-200 dark:border-secondary-800 overflow-hidden relative shadow-xl group">
-                       {activeVideoUrl.includes('/embed/') ? (
-                         <iframe 
-                           src={activeVideoUrl}
-                           allowFullScreen
-                           sandbox="allow-same-origin allow-scripts allow-popups allow-forms"
-                           className="w-full h-full border-0 absolute inset-0"
-                         />
-                       ) : (
-                         <video 
-                           src={activeVideoUrl}
-                           controls
-                           className="w-full h-full object-cover"
-                         />
-                       )}
-                       <button 
-                         onClick={() => {
-                           if(confirm("Are you sure you want to delete your active Video CV? This cannot be undone.")) {
-                             setActiveVideoUrl(null);
-                           }
-                         }}
-                         className="absolute top-4 right-4 bg-error-500/90 hover:bg-error-600 text-white p-2.5 rounded-xl backdrop-blur-md transition-colors cursor-pointer shadow-lg opacity-0 group-hover:opacity-100"
-                         title="Delete Video CV"
-                       >
-                         <Trash2 className="w-5 h-5 cursor-pointer" />
-                       </button>
+                        <iframe 
+                          src={getPeerTubeEmbedUrl(activeVideoUrl) || ""}
+                          allowFullScreen
+                          sandbox="allow-same-origin allow-scripts allow-popups allow-forms"
+                          className="w-full h-full border-0 absolute inset-0"
+                          title="Video CV"
+                        />
+                        <button 
+                          onClick={() => {
+                            setModalConfig({
+                              isOpen: true,
+                              title: "Delete Video CV?",
+                              message: "Are you sure you want to delete your active Video CV? This cannot be undone.",
+                              type: "confirm",
+                              onConfirm: async () => {
+                                try {
+                                  const response = await fetch("/api/profile/video/delete", { 
+                                    method: "DELETE",
+                                    headers: {
+                                      "Authorization": `Bearer ${localStorage.getItem("token")}`
+                                    }
+                                  });
+                                  
+                                  if (response.ok) {
+                                    setActiveVideoUrl(null);
+                                    setModalConfig({
+                                      isOpen: true,
+                                      title: "Success",
+                                      message: "Your Video CV has been permanently deleted.",
+                                      type: "success"
+                                    });
+                                  } else {
+                                    const data = await response.json();
+                                    setModalConfig({
+                                      isOpen: true,
+                                      title: "Deletion Failed",
+                                      message: data.error || data.details || "Failed to delete video. Please try again.",
+                                      type: "error"
+                                    });
+                                  }
+                                } catch (error) {
+                                  console.error("Deletion error:", error);
+                                  setModalConfig({
+                                    isOpen: true,
+                                    title: "Error",
+                                    message: "An error occurred while deleting your video. Please check your connection.",
+                                    type: "error"
+                                  });
+                                }
+                              }
+                            });
+                          }}
+                          className="absolute top-4 right-4 bg-error-500/90 hover:bg-error-600 text-white p-2.5 rounded-xl backdrop-blur-md transition-colors cursor-pointer shadow-lg opacity-0 group-hover:opacity-100"
+                          title="Delete Video CV"
+                        >
+                          <Trash2 className="w-5 h-5 cursor-pointer" />
+                        </button>
                     </div>
                   ) : (
                     <div className="w-full aspect-video md:aspect-[21/9] bg-secondary-100 dark:bg-secondary-950 rounded-2xl border border-secondary-200 dark:border-secondary-800 flex flex-col items-center justify-center text-center p-8 group overflow-hidden relative cursor-pointer" onClick={() => setShowVideoCreator(true)}>
@@ -477,7 +694,7 @@ export default function CandidateDashboard() {
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         placeholder="Search roles, companies..."
-                        className="w-full pl-12 pr-4 py-3.5 bg-white/50 dark:bg-secondary-950/50 border border-secondary-200 dark:border-secondary-700 rounded-xl text-secondary-900 dark:text-white placeholder-secondary-400 focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all outline-none"
+                        className="w-full pl-12 pr-4 py-2.5 bg-white/50 dark:bg-secondary-950/50 border border-secondary-200 dark:border-secondary-700 rounded-xl text-secondary-900 dark:text-white placeholder-secondary-400 focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all outline-none"
                       />
                     </div>
                     <div className="relative z-20">
@@ -495,7 +712,8 @@ export default function CandidateDashboard() {
                         styles={{
                           control: (base, state) => ({
                             ...base,
-                            height: "50px",
+                            height: "42px",
+                            minHeight: "42px",
                             backgroundColor: "rgba(255, 255, 255, 0.5)",
                             borderColor: state.isFocused ? "#8b5cf6" : "#e2e8f0",
                             borderRadius: "0.75rem",
@@ -533,15 +751,16 @@ export default function CandidateDashboard() {
                               </div>
                             </div>
                           </div>
-                          <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto mt-4 md:mt-0">
+                          <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto mt-4 md:mt-0">
                             <Button 
+                              size="sm"
                               onClick={() => setSelectedJob(job)} 
-                              className="flex-1 justify-center bg-primary-50 hover:bg-primary-100 dark:bg-primary-900/20 dark:hover:bg-primary-900/40 text-primary-600 dark:text-primary-400 font-bold transition-colors py-3 px-6 rounded-xl cursor-pointer"
+                              className="flex-1 justify-center bg-primary-50 hover:bg-primary-100 dark:bg-primary-900/20 dark:hover:bg-primary-900/40 text-primary-600 dark:text-primary-400 font-bold transition-colors rounded-lg cursor-pointer px-4 py-2 text-sm"
                             >
                               View Details
                             </Button>
-                            <Button onClick={() => handleApply(job.id)} className="flex-1 shrink-0 bg-primary-600 hover:bg-primary-500 text-white shadow-md flex items-center justify-center gap-2 py-3 px-6 rounded-xl cursor-pointer">
-                              <Video className="w-5 h-5 cursor-pointer" /> 
+                            <Button size="sm" onClick={() => handleApply(job.id)} className="flex-1 shrink-0 bg-primary-600 hover:bg-primary-500 text-white shadow-md flex items-center justify-center gap-2 rounded-lg cursor-pointer px-4 py-2 text-sm">
+                              <Video className="w-4 h-4 cursor-pointer" /> 
                               Submit Video CV
                             </Button>
                           </div>
@@ -751,16 +970,45 @@ export default function CandidateDashboard() {
         </p>
       </Modal>
 
+      {/* Generic Modal for Confirmations/Alerts */}
+      <Modal
+        isOpen={modalConfig.isOpen}
+        onClose={() => setModalConfig({ ...modalConfig, isOpen: false })}
+        title={modalConfig.title}
+        type={modalConfig.type === "confirm" ? "default" : modalConfig.type}
+        primaryAction={modalConfig.type === "confirm" ? {
+          label: "Delete Permanently",
+          onClick: () => {
+            modalConfig.onConfirm?.();
+            setModalConfig({ ...modalConfig, isOpen: false });
+          }
+        } : undefined}
+        closeActionLabel={modalConfig.type === "confirm" ? "Keep Video" : "Close"}
+      >
+        <div className="py-2">
+          {modalConfig.message}
+        </div>
+      </Modal>
+
       {/* Job Details Modal */}
       <Modal
         isOpen={!!selectedJob}
         onClose={() => setSelectedJob(null)}
         title={selectedJob?.title}
-        type="default"
+        type="info"
         primaryAction={{
-          label: "Submit Video CV",
-          onClick: () => selectedJob && handleApply(selectedJob.id)
+          label: "Quick Apply with Video CV",
+          onClick: () => {
+             setModalConfig({
+               isOpen: true,
+               title: "Application Sent!",
+               message: "Your application has been successfully submitted to " + selectedJob?.company,
+               type: "success"
+             });
+             setSelectedJob(null);
+          }
         }}
+        closeActionLabel="Close"
       >
         {selectedJob && (
           <div className="space-y-6">
@@ -798,6 +1046,54 @@ export default function CandidateDashboard() {
             <div className="text-sm text-secondary-500 italic mt-6 flex items-center gap-2">
               <Shield className="w-4 h-4" />
               Applying will securely send your active Video CV to the employer.
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      <Modal 
+        isOpen={isLogoutModalOpen} 
+        onClose={() => setIsLogoutModalOpen(false)} 
+        type="default" 
+        title="Confirm Logout"
+        primaryAction={{ label: "Logout", onClick: handleLogout }}
+      >
+        <p className="text-secondary-600 dark:text-secondary-300 font-medium">Are you sure you want to log out of your Candidate account?</p>
+      </Modal>
+
+      {/* Read Email Modal */}
+      <Modal
+        isOpen={!!selectedMessage}
+        onClose={() => setSelectedMessage(null)}
+        title={selectedMessage?.subject}
+        type="info"
+        closeActionLabel="Done"
+        maxWidth="max-w-4xl"
+        align="left"
+      >
+        {selectedMessage && (
+          <div className="space-y-4">
+            <div className="flex justify-between items-start border-b border-secondary-200 dark:border-secondary-800 pb-3">
+              <div>
+                <p className="font-bold text-secondary-900 dark:text-white text-base">{selectedMessage.company}</p>
+                <p className="text-xs text-secondary-500 dark:text-secondary-400 font-medium">{selectedMessage.sender}</p>
+              </div>
+              <p className="text-[10px] text-secondary-400 font-bold uppercase tracking-wider">{selectedMessage.time}</p>
+            </div>
+            
+            <div className="bg-secondary-50 dark:bg-secondary-950 p-4 rounded-2xl border border-secondary-100 dark:border-secondary-800">
+              <div className="text-secondary-700 dark:text-secondary-300 whitespace-pre-wrap leading-relaxed text-sm">
+                {selectedMessage.body}
+              </div>
+            </div>
+
+            <div className="flex gap-3">
+              <Button className="flex-1 bg-primary-600 hover:bg-primary-500 text-white font-bold py-2.5 rounded-xl transition cursor-pointer text-sm">
+                Reply to Employer
+              </Button>
+              <Button onClick={() => setSelectedMessage(null)} className="flex-1 bg-secondary-100 dark:bg-secondary-800 text-secondary-600 dark:text-secondary-300 font-bold py-2.5 rounded-xl transition cursor-pointer text-sm">
+                Archive
+              </Button>
             </div>
           </div>
         )}

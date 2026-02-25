@@ -2,9 +2,9 @@
 
 import React, { useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, CheckCircle2, AlertCircle, Info } from "lucide-react";
+import { X, CheckCircle2, AlertCircle, Info, HelpCircle } from "lucide-react";
 
-export type ModalType = "success" | "error" | "info" | "default";
+export type ModalType = "success" | "error" | "info" | "warning" | "default";
 
 interface ModalProps {
   isOpen: boolean;
@@ -17,6 +17,8 @@ interface ModalProps {
     onClick: () => void;
   };
   closeActionLabel?: string;
+  maxWidth?: string;
+  align?: "left" | "center";
 }
 
 export default function Modal({
@@ -27,6 +29,8 @@ export default function Modal({
   type = "default",
   primaryAction,
   closeActionLabel,
+  maxWidth = "max-w-lg",
+  align = "center",
 }: ModalProps) {
   
   // Close on Escape key
@@ -50,7 +54,7 @@ export default function Modal({
     };
   }, [isOpen]);
 
-  const typeConfig = {
+  const typeConfig: Record<ModalType, { icon: React.ReactNode; bg: string; border: string }> = {
     success: {
       icon: <CheckCircle2 className="w-8 h-8 text-success-500" />,
       bg: "bg-success-50 dark:bg-success-500/10",
@@ -65,6 +69,11 @@ export default function Modal({
       icon: <Info className="w-8 h-8 text-primary-500" />,
       bg: "bg-primary-50 dark:bg-primary-500/10",
       border: "border-primary-200 dark:border-primary-500/20",
+    },
+    warning: {
+      icon: <HelpCircle className="w-8 h-8 text-warning-500" />,
+      bg: "bg-warning-50 dark:bg-warning-500/10",
+      border: "border-warning-200 dark:border-warning-500/20",
     },
     default: {
       icon: null,
@@ -94,7 +103,7 @@ export default function Modal({
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
             transition={{ type: "spring", duration: 0.5, bounce: 0.3 }}
-            className={`relative w-full max-w-lg bg-white/90 dark:bg-secondary-900/90 backdrop-blur-2xl rounded-3xl shadow-2xl overflow-hidden border ${config.border} z-10 flex flex-col`}
+            className={`relative w-full ${maxWidth} bg-white/90 dark:bg-secondary-900/90 backdrop-blur-2xl rounded-3xl shadow-2xl overflow-hidden border ${config.border} z-10 flex flex-col`}
           >
             {/* Top decorative gradient based on type */}
             {type !== "default" && (
@@ -113,7 +122,7 @@ export default function Modal({
             </button>
 
             <div className="p-8 sm:p-10">
-              <div className="flex flex-col items-center text-center">
+              <div className={`flex flex-col ${align === "center" ? "items-center text-center" : "items-start text-left"}`}>
                 {config.icon && (
                   <div className={`p-4 rounded-2xl mb-6 shadow-inner ${config.bg} ${config.border} border`}>
                     {config.icon}

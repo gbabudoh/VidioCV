@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { connectDB } from "@/app/lib/mongodb";
+import prisma from "@/app/lib/prisma";
 import { getTokenFromRequest, verifyToken } from "@/app/lib/auth";
 import { z } from "zod";
+import { Notifications } from "@/lib/ntfy";
 
 const scheduleSchema = z.object({
   candidateId: z.string(),
@@ -32,18 +33,32 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const scheduleData = scheduleSchema.parse(body);
 
-    await connectDB();
+    // TODO: Remove (prisma as any) after running 'npx prisma generate' locally
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const interview = await (prisma as any).interview.create({
+      data: {
+        jobId: scheduleData.jobId,
+        candidateId: scheduleData.candidateId,
+        dateTime: new Date(scheduleData.dateTime),
+        interviewType: scheduleData.interviewType,
+        notes: scheduleData.notes,
+        status: "scheduled",
+      },
+    });
+
+    // Send system notification
+    await Notifications.system.newInterviewScheduled(
+      scheduleData.candidateId, // Should ideally be name, but we have ID here
+      scheduleData.jobId,       // Should ideally be title
+      interview.dateTime.toISOString()
+    );
 
     return NextResponse.json(
       {
         success: true,
         message: "Interview scheduled successfully",
-        interviewId: Math.random().toString(36).substr(2, 9),
-        interview: {
-          ...scheduleData,
-          status: "scheduled",
-          createdAt: new Date().toISOString(),
-        },
+        interviewId: interview.id,
+        interview: interview,
       },
       { status: 201 },
     );
@@ -55,6 +70,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    console.error("Interview scheduling error:", error);
     return NextResponse.json(
       { success: false, message: "Internal server error" },
       { status: 500 },

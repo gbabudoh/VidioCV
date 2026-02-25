@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import {
   Play,
@@ -12,7 +14,22 @@ import {
 import Link from "next/link";
 import { GlassPanel } from "@/components/ui/glass-panel";
 import { Navbar } from "@/components/Navbar";
+
 export default function Home() {
+  const router = useRouter();
+
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    const role = localStorage.getItem("userRole");
+
+    if (token && role) {
+      if (role === "candidate") {
+        router.push("/dashboard/candidate");
+      } else if (role === "employer") {
+        router.push("/dashboard/employer");
+      }
+    }
+  }, [router]);
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary-50 via-white to-secondary-50 dark:from-secondary-950 dark:via-secondary-900 dark:to-primary-950 overflow-hidden relative">
       {/* Decorative Background Elements */}

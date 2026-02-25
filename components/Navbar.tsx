@@ -9,12 +9,29 @@ import clsx from "clsx";
 export function Navbar() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [dashboardUrl, setDashboardUrl] = useState("/auth/login");
 
   useEffect(() => {
     const handleScroll = () => {
       setIsScrolled(window.scrollY > 20);
     };
     window.addEventListener("scroll", handleScroll);
+
+    // Session detection
+    const checkSession = () => {
+      const token = localStorage.getItem("token");
+      const role = localStorage.getItem("userRole");
+      if (token && role) {
+        setIsLoggedIn(true);
+        setDashboardUrl(role === "employer" ? "/dashboard/employer" : "/dashboard/candidate");
+      } else {
+        setIsLoggedIn(false);
+      }
+    };
+    
+    checkSession();
+
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
@@ -44,18 +61,29 @@ export function Navbar() {
         {/* Desktop Links */}
         <div className="hidden md:flex items-center gap-8">
           <div className="flex items-center gap-3">
-            <Link
-              href="/auth/login"
-              className="px-4 py-2 text-secondary-600 dark:text-secondary-300 font-semibold hover:text-primary-600 dark:hover:text-white transition-colors text-sm"
-            >
-              Log in
-            </Link>
-            <Link
-              href="/auth/signup"
-              className="px-5 py-2.5 bg-secondary-900 dark:bg-white text-white dark:text-secondary-900 hover:bg-primary-600 dark:hover:bg-primary-500 hover:text-white rounded-xl font-semibold text-sm transition-all transform hover:-translate-y-0.5 shadow-lg shadow-secondary-900/20 dark:shadow-white/10"
-            >
-              Get Started
-            </Link>
+            {isLoggedIn ? (
+              <Link
+                href={dashboardUrl}
+                className="px-6 py-2.5 bg-primary-600 text-white hover:bg-primary-700 rounded-xl font-bold text-sm transition-all transform hover:-translate-y-0.5 shadow-lg shadow-primary-500/20"
+              >
+                Go to Dashboard
+              </Link>
+            ) : (
+              <>
+                <Link
+                  href="/auth/login"
+                  className="px-4 py-2 text-secondary-600 dark:text-secondary-300 font-semibold hover:text-primary-600 dark:hover:text-white transition-colors text-sm"
+                >
+                  Log in
+                </Link>
+                <Link
+                  href="/auth/signup"
+                  className="px-5 py-2.5 bg-secondary-900 dark:bg-white text-white dark:text-secondary-900 hover:bg-primary-600 dark:hover:bg-primary-500 hover:text-white rounded-xl font-semibold text-sm transition-all transform hover:-translate-y-0.5 shadow-lg shadow-secondary-900/20 dark:shadow-white/10"
+                >
+                  Get Started
+                </Link>
+              </>
+            )}
           </div>
         </div>
 
@@ -80,20 +108,32 @@ export function Navbar() {
           className="absolute top-full left-0 w-full mt-2 px-6 pb-6 md:hidden"
         >
           <div className="flex flex-col gap-2 p-4 bg-white/90 dark:bg-secondary-900/90 backdrop-blur-2xl border border-secondary-200 dark:border-secondary-800 rounded-2xl shadow-xl">
-            <Link
-              href="/auth/login"
-              onClick={() => setMobileMenuOpen(false)}
-              className="p-3 text-center rounded-xl text-secondary-700 dark:text-secondary-200 font-semibold hover:bg-secondary-100 dark:hover:bg-secondary-800 transition-colors"
-            >
-              Log in
-            </Link>
-            <Link
-              href="/auth/signup"
-              onClick={() => setMobileMenuOpen(false)}
-              className="p-3 text-center bg-primary-600 text-white rounded-xl font-semibold hover:bg-primary-700 transition-colors"
-            >
-              Get Started
-            </Link>
+            {isLoggedIn ? (
+              <Link
+                href={dashboardUrl}
+                onClick={() => setMobileMenuOpen(false)}
+                className="p-3 text-center bg-primary-600 text-white rounded-xl font-bold hover:bg-primary-700 transition-colors"
+              >
+                Go to Dashboard
+              </Link>
+            ) : (
+              <>
+                <Link
+                  href="/auth/login"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="p-3 text-center rounded-xl text-secondary-700 dark:text-secondary-200 font-semibold hover:bg-secondary-100 dark:hover:bg-secondary-800 transition-colors"
+                >
+                  Log in
+                </Link>
+                <Link
+                  href="/auth/signup"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="p-3 text-center bg-primary-600 text-white rounded-xl font-semibold hover:bg-primary-700 transition-colors"
+                >
+                  Get Started
+                </Link>
+              </>
+            )}
           </div>
         </motion.div>
       )}

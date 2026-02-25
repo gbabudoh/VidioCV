@@ -3,14 +3,16 @@
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Plus, Settings, LogOut, Bell, Filter, Video, Users, Calendar as CalendarIcon, MapPin, Building2, Briefcase, Search } from "lucide-react";
-import Link from "next/link";
 import Button from "@/app/components/common/Button";
 import CandidateList from "@/app/components/dashboard/CandidateList";
 import InterviewCalendar from "@/app/components/dashboard/InterviewCalendar";
 import Modal from "@/app/components/common/Modal";
+import VideoPlayer from "@/app/components/video-tools/VideoPlayer";
 import Select from "react-select";
 import ReactCountryFlag from "react-country-flag";
 import countryList from "country-list";
+import { useRouter } from "next/navigation";
+import { useSessionSync } from "@/app/lib/hooks/useSessionSync";
 
 type Tab = "overview" | "candidates" | "jobs" | "interviews";
 
@@ -20,6 +22,8 @@ const countryOptions = countryList.getData().map((country) => ({
 }));
 
 export default function EmployerDashboard() {
+  const router = useRouter();
+  useSessionSync();
   const [activeTab, setActiveTab] = useState<Tab>("overview");
   const [selectedCountry, setSelectedCountry] = useState<{ value: string; label: string } | null>(null);
   const [isPostJobModalOpen, setIsPostJobModalOpen] = useState(false);
@@ -96,6 +100,12 @@ export default function EmployerDashboard() {
      c.skills.some(s => s.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    localStorage.removeItem("userRole");
+    router.push("/");
+  };
+
   return (
     <div className="min-h-screen bg-secondary-50 dark:bg-secondary-950 font-sans relative overflow-hidden">
       {/* Premium Glassmorphic Background Elements */}
@@ -106,14 +116,14 @@ export default function EmployerDashboard() {
       {/* Header */}
       <nav className="sticky top-0 z-40 bg-white/60 dark:bg-secondary-900/60 backdrop-blur-xl border-b border-white/40 dark:border-white/10 shadow-sm shadow-secondary-200/20 dark:shadow-none">
         <div className="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center relative bg-transparent">
-          <Link href="/" className="flex items-center gap-2 cursor-pointer group">
+          <div className="flex items-center gap-2 cursor-pointer group">
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary-500 to-accent-500 flex items-center justify-center text-white shadow-lg shadow-primary-500/30 group-hover:scale-105 transition-transform">
               <Video className="w-5 h-5 cursor-pointer" />
             </div>
             <span className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-secondary-900 to-secondary-700 dark:from-white dark:to-secondary-300 tracking-tight cursor-pointer flex items-center">
               VidioCV
             </span>
-          </Link>
+          </div>
           <div className="hidden md:flex absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
              <span className="px-4 py-1.5 text-xs font-bold uppercase tracking-widest text-primary-700 bg-primary-100 dark:text-primary-300 dark:bg-primary-900/50 rounded-xl border border-primary-200 dark:border-primary-800 shadow-sm shadow-primary-500/10 backdrop-blur-md">
                  Employer Dashboard
@@ -393,9 +403,15 @@ export default function EmployerDashboard() {
         title={`Video CV: ${selectedCandidateVideo?.name}`}
         closeActionLabel=" Watch Video "
       >
-        <div className="aspect-video bg-secondary-900 rounded-xl flex items-center justify-center relative overflow-hidden group">
-           <Video className="w-12 h-12 text-secondary-600 group-hover:scale-110 transition-transform cursor-pointer" />
-           <p className="absolute bottom-4 text-secondary-400 text-sm">Demo Video Player</p>
+        <div className="bg-secondary-900 rounded-xl overflow-hidden shadow-2xl">
+           {selectedCandidateVideo?.videoUrl && selectedCandidateVideo.videoUrl !== "#" ? (
+             <VideoPlayer src={selectedCandidateVideo.videoUrl} />
+           ) : (
+             <div className="aspect-video flex flex-col items-center justify-center gap-4">
+               <Video className="w-16 h-16 text-secondary-700" />
+               <p className="text-secondary-400 text-sm font-medium">No video CV available for this candidate.</p>
+             </div>
+           )}
         </div>
       </Modal>
 
@@ -435,7 +451,7 @@ export default function EmployerDashboard() {
         onClose={() => setIsLogoutModalOpen(false)} 
         type="default" 
         title="Confirm Logout"
-        primaryAction={{ label: "Logout", onClick: () => { window.location.href = '/'; } }}
+        primaryAction={{ label: "Logout", onClick: handleLogout }}
       >
         <p className="text-secondary-600 dark:text-secondary-300 font-medium">Are you sure you want to log out of your Employer account?</p>
       </Modal>

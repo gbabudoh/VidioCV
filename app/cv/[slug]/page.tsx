@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import ReactPlayer from "react-player/lazy";
+import prisma from "@/app/lib/prisma";
 import {
   Briefcase,
   GraduationCap,
@@ -16,73 +16,65 @@ import {
 } from "lucide-react";
 
 async function getCVProfile(slug: string) {
-  // Mock data for initial render until DB is hooked up
+  const profile = await prisma.cvProfile.findUnique({
+    where: { slug },
+    include: {
+      skills: {
+        include: {
+          skill: true,
+        },
+      },
+      workExperiences: {
+        orderBy: { startDate: 'desc' }
+      },
+      education: {
+        orderBy: { startDate: 'desc' }
+      },
+      certifications: {
+        orderBy: { issueDate: 'desc' }
+      },
+    },
+  });
+
+  if (!profile) return null;
+
+  // Fetch the user and their profile for contact details
+  const user = await prisma.user.findUnique({
+    where: { id: profile.userId },
+    include: {
+      profile: true
+    }
+  });
+
   return {
-    id: "123",
-    slug,
-    title: "Senior Full Stack Developer",
-    summary:
-      "Passionate developer with 8+ years of experience building scalable web applications.",
-    videoUrl: "https://example.com/video.mp4",
-    videoThumbnail: "/placeholder-video.jpg",
-    videoDuration: 180,
-    fullName: "John Doe",
-    location: "Lagos, Nigeria",
-    email: "john@example.com",
-    phone: "+234 123 456 7890",
-    website: "https://johndoe.com",
-    linkedinUrl: "https://linkedin.com/in/johndoe",
-    githubUrl: "https://github.com/johndoe",
-    yearsOfExperience: 8,
-    availability: "Open to opportunities",
-    remotePreference: "Remote or Hybrid",
-    viewsCount: 1234,
-    likesCount: 89,
-    skills: [
-      { name: "React", proficiency: "Expert", years: 5 },
-      { name: "Node.js", proficiency: "Expert", years: 6 },
-      { name: "TypeScript", proficiency: "Advanced", years: 4 },
-      { name: "PostgreSQL", proficiency: "Advanced", years: 5 },
-    ],
-    workExperiences: [
-      {
-        company: "Tech Corp",
-        position: "Senior Developer",
-        location: "Remote",
-        startDate: "2020-01",
-        endDate: null,
-        isCurrent: true,
-        description: "Leading development of microservices architecture",
-      },
-      {
-        company: "StartupXYZ",
-        position: "Full Stack Developer",
-        location: "Lagos, Nigeria",
-        startDate: "2017-06",
-        endDate: "2019-12",
-        isCurrent: false,
-        description: "Built and maintained multiple client projects",
-      },
-    ],
-    education: [
-      {
-        institution: "University of Lagos",
-        degree: "Bachelor's",
-        fieldOfStudy: "Computer Science",
-        startDate: "2012",
-        endDate: "2016",
-        grade: "First Class",
-      },
-    ],
-    certifications: [
-      {
-        name: "AWS Certified Developer",
-        issuingOrganization: "Amazon Web Services",
-        issueDate: "2021-05",
-      },
-    ],
+    ...profile,
+    fullName: user?.profile?.fullName || user?.name || "Candidate",
+    location: user?.profile?.location || profile.remotePreference || "Remote",
+    email: user?.profile?.email || user?.email || "",
+    phone: user?.profile?.phone || "",
+    website: user?.profile?.website || "",
+    linkedinUrl: user?.profile?.linkedinUrl || "",
+    githubUrl: user?.profile?.githubUrl || "",
+    // Map work experiences to match component expectation if different
+    workExperiences: profile.workExperiences.map(exp => ({
+      ...exp,
+      company: exp.companyName,
+      // Date formatting if needed, but for now we'll handle in component
+    })),
+    // Map education
+    education: profile.education.map(edu => ({
+      ...edu,
+      institution: edu.institutionName,
+    })),
+    // Map skills
+    skills: profile.skills.map(s => ({
+      name: s.skill.name,
+      proficiency: s.proficiencyLevel || "Intermediate",
+    }))
   };
 }
+
+import { getPeerTubeEmbedUrl } from "@/app/lib/video";
 
 export default async function CVProfilePage({
   params,
@@ -128,14 +120,20 @@ export default async function CVProfilePage({
           <div className="lg:col-span-2 space-y-6">
             {/* Video Player */}
             <div className="glass-panel rounded-2xl overflow-hidden overflow-hidden">
-              <div className="aspect-video bg-black/5 dark:bg-black/40">
-                <ReactPlayer
-                  url={cv.videoUrl}
-                  width="100%"
-                  height="100%"
-                  controls
-                  light={cv.videoThumbnail}
-                />
+              <div className="aspect-video bg-black/5 dark:bg-black/40 relative">
+                {cv.videoUrl ? (
+                  <iframe
+                    src={getPeerTubeEmbedUrl(cv.videoUrl) || ""}
+                    className="w-full h-full border-0 absolute inset-0"
+                    allowFullScreen
+                    sandbox="allow-same-origin allow-scripts allow-popups allow-forms"
+                    title={cv.title || "Video CV"}
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-secondary-400">
+                    No video available
+                  </div>
+                )}
               </div>
               <div className="p-8">
                 <div className="flex items-center justify-between mb-4">
@@ -183,8 +181,8 @@ export default async function CVProfilePage({
                       {exp.company}
                     </p>
                     <p className="text-sm text-secondary-500 dark:text-secondary-400 mb-3 mt-1 flex items-center gap-2">
-                      {exp.startDate} -{" "}
-                      {exp.isCurrent ? "Present" : exp.endDate}{" "}
+                      {new Date(exp.startDate).toLocaleDateString()} -{" "}
+                      {exp.isCurrent ? "Present" : exp.endDate ? new Date(exp.endDate).toLocaleDateString() : ""}{" "}
                       <span className="w-1 h-1 rounded-full bg-secondary-300"></span>{" "}
                       {exp.location}
                     </p>
@@ -217,7 +215,7 @@ export default async function CVProfilePage({
                       {edu.institution}
                     </p>
                     <p className="text-sm text-secondary-500 dark:text-secondary-400 mt-2">
-                      {edu.startDate} - {edu.endDate} • Grade: {edu.grade}
+                      {edu.startDate ? new Date(edu.startDate).toLocaleDateString() : ""} - {edu.endDate ? new Date(edu.endDate).toLocaleDateString() : ""} • Grade: {edu.grade}
                     </p>
                   </div>
                 ))}
@@ -247,7 +245,7 @@ export default async function CVProfilePage({
                         <p className="text-sm text-secondary-600 dark:text-secondary-400 mt-1">
                           {cert.issuingOrganization}
                           <br />
-                          Issued: {cert.issueDate}
+                          Issued: {new Date(cert.issueDate).toLocaleDateString()}
                         </p>
                       </div>
                     </div>

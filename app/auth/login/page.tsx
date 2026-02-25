@@ -69,14 +69,14 @@ export default function LoginPage() {
 
       <div className="w-full max-w-md relative z-10">
         {/* Logo */}
-        <div className="flex items-center justify-center gap-2 mb-10">
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-primary-500 to-accent-500 flex items-center justify-center text-white shadow-lg shadow-primary-500/30">
+        <Link href="/" className="flex items-center justify-center gap-2 mb-10 cursor-pointer group">
+          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-primary-500 to-accent-500 flex items-center justify-center text-white shadow-lg shadow-primary-500/30 group-hover:scale-105 transition-transform">
             <Video className="w-6 h-6" />
           </div>
           <span className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-secondary-900 to-secondary-700 dark:from-white dark:to-secondary-300 tracking-tight">
             VidioCV
           </span>
-        </div>
+        </Link>
 
         <motion.div
           initial={{ opacity: 0, y: 30 }}
@@ -96,13 +96,13 @@ export default function LoginPage() {
           <div className="flex bg-secondary-100 dark:bg-secondary-900/50 p-1 mb-8 rounded-xl">
             <Link
               href="/auth/login"
-              className="flex-1 text-center py-2.5 rounded-lg bg-white dark:bg-secondary-800 text-secondary-900 dark:text-white font-semibold text-sm shadow-sm transition-all"
+              className="flex-1 text-center py-2.5 rounded-lg bg-primary-600 text-white font-semibold text-sm shadow-md transition-all cursor-pointer"
             >
               Candidate
             </Link>
             <Link
               href="/auth/employer/login"
-              className="flex-1 text-center py-2.5 rounded-lg text-secondary-600 dark:text-secondary-400 font-medium text-sm hover:text-secondary-900 dark:hover:text-white transition-all"
+              className="flex-1 text-center py-2.5 rounded-lg text-secondary-600 dark:text-secondary-400 font-medium text-sm hover:text-secondary-900 dark:hover:text-white transition-all cursor-pointer"
             >
               Employer
             </Link>
@@ -144,7 +144,7 @@ export default function LoginPage() {
                 </label>
                 <Link
                   href="#"
-                  className="text-xs font-semibold text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 transition-colors"
+                  className="text-xs font-semibold text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 transition-colors cursor-pointer"
                 >
                   Forgot password?
                 </Link>
@@ -187,7 +187,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full mt-4 group relative overflow-hidden bg-gradient-to-r from-primary-600 to-primary-500 text-white font-semibold py-4 rounded-xl transition-all hover:shadow-lg hover:shadow-primary-500/25 disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              className="w-full mt-4 group relative overflow-hidden bg-gradient-to-r from-primary-600 to-primary-500 text-white font-semibold py-4 rounded-xl transition-all hover:shadow-lg hover:shadow-primary-500/25 disabled:opacity-70 disabled:cursor-not-allowed cursor-pointer flex items-center justify-center gap-2"
             >
               {isLoading ? (
                 <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -222,7 +222,7 @@ export default function LoginPage() {
                   setIsLoading(false);
                 }
               }}
-              className="w-full mt-3 group overflow-hidden bg-white dark:bg-secondary-800 text-secondary-900 dark:text-white border border-secondary-200 dark:border-secondary-700 font-semibold py-4 rounded-xl transition-all hover:bg-secondary-50 dark:hover:bg-secondary-700 flex items-center justify-center gap-2"
+              className="w-full mt-3 group overflow-hidden bg-white dark:bg-secondary-800 text-secondary-900 dark:text-white border border-secondary-200 dark:border-secondary-700 font-semibold py-4 rounded-xl transition-all hover:bg-secondary-50 dark:hover:bg-secondary-700 cursor-pointer flex items-center justify-center gap-2"
             >
               Demo Candidate Login
             </button>
@@ -233,7 +233,7 @@ export default function LoginPage() {
               Don&apos;t have an account?{" "}
               <Link
                 href="/auth/signup"
-                className="text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 font-bold transition-colors"
+                className="text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 font-bold transition-colors cursor-pointer"
               >
                 Sign up
               </Link>

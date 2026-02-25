@@ -108,6 +108,11 @@ export default function VideoRecorder({
         const url = URL.createObjectURL(blob);
         setPreviewUrl(url);
 
+        // Clear srcObject so the blob URL in src attribute takes effect for preview
+        if (videoRef.current) {
+          videoRef.current.srcObject = null;
+        }
+
         if (timerRef.current) {
           clearInterval(timerRef.current);
         }

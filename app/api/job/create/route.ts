@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { connectDB } from "@/app/lib/mongodb";
+import prisma from "@/app/lib/prisma";
 import { getTokenFromRequest, verifyToken } from "@/app/lib/auth";
 import { z } from "zod";
+import { Notifications } from "@/lib/ntfy";
 
 const jobSchema = z.object({
   title: z.string().min(5),
@@ -36,14 +37,30 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const jobData = jobSchema.parse(body);
 
-    await connectDB();
+    // TODO: Remove (prisma as any) after running 'npx prisma generate' locally
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const job = await (prisma as any).job.create({
+      data: {
+        title: jobData.title,
+        description: jobData.description,
+        location: jobData.location,
+        salaryMin: jobData.salary.min,
+        salaryMax: jobData.salary.max,
+        skills: jobData.skills,
+        department: jobData.department,
+        employerId: payload.userId,
+      },
+    });
+
+    // Send system notification
+    await Notifications.system.newJobPosted(payload.userId, job.title);
 
     return NextResponse.json(
       {
         success: true,
         message: "Job posted successfully",
-        jobId: Math.random().toString(36).substr(2, 9),
-        job: jobData,
+        jobId: job.id,
+        job: job,
       },
       { status: 201 },
     );
@@ -55,6 +72,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    console.error("Job creation error:", error);
     return NextResponse.json(
       { success: false, message: "Internal server error" },
       { status: 500 },

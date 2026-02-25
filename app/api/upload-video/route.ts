@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { uploadFile } from "@/lib/minio";
 import { randomUUID } from "crypto";
+import { Notifications } from "@/lib/ntfy";
 
 export async function POST(request: NextRequest) {
   try {
@@ -36,6 +37,9 @@ export async function POST(request: NextRequest) {
 
     // Upload to MinIO
     const videoUrl = await uploadFile(buffer, objectName, video.type);
+
+    // Send system notification
+    await Notifications.system.newCVUploaded(cvProfileId || "temp", videoUrl);
 
     return NextResponse.json({
       success: true,

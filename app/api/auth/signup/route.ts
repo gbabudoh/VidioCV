@@ -3,6 +3,8 @@ import { generateToken } from "@/app/lib/auth";
 import { z } from "zod";
 import prisma from "@/app/lib/prisma";
 import bcrypt from "bcryptjs";
+import { Notifications } from "@/lib/ntfy";
+import { EmailNotifications } from "@/lib/listmonk";
 
 const signupSchema = z.object({
   email: z.string().email(),
@@ -45,6 +47,23 @@ export async function POST(request: NextRequest) {
         }
       },
     });
+
+    // TODO: Remove (prisma as any) after running 'npx prisma generate' locally
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (prisma as any).userProfile.update({
+      where: { userId: user.id },
+      data: { ntfyTopic: `videocv-user-${user.id}` }
+    });
+
+    // Send system notification
+    await Notifications.system.newUserRegistered(name, role as 'candidate' | 'employer');
+
+    // Subscribe and send welcome email (Listmonk)
+    if (role === 'candidate') {
+      await EmailNotifications.welcomeCandidate(email, name);
+    } else if (role === 'employer') {
+      await EmailNotifications.welcomeEmployer(email, name);
+    }
 
     const token = generateToken({
       userId: user.id,

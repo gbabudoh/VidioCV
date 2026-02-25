@@ -1,20 +1,21 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
-import { 
-  Video, 
-  Square, 
-  Play, 
-  Pause, 
-  RotateCcw, 
-  Upload, 
+import {
+  Video,
+  Square,
+  Play,
+  Pause,
+  RotateCcw,
+  Upload,
   Camera,
   Mic,
   MicOff,
   VideoOff,
   Trash2
 } from "lucide-react";
- 
+import Modal from "@/app/components/common/Modal";
+import { getPeerTubeEmbedUrl } from "@/app/lib/video";
 
 interface VideoCreatorProps {
   onVideoUpload?: (file: File, url?: string) => void;
@@ -42,6 +43,20 @@ export default function VideoCreator({
   const [isUploading, setIsUploading] = useState(false);
   const [uploadSuccess, setUploadSuccess] = useState(false);
   const [videoUrl, setVideoUrl] = useState<string | null>(initialVideoUrl || null);
+  
+  // Modal State
+  const [modalConfig, setModalConfig] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    type: "info" | "success" | "warning" | "error" | "default";
+    onConfirm?: () => void;
+  }>({
+    isOpen: false,
+    title: "",
+    message: "",
+    type: "info",
+  });
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -115,6 +130,11 @@ export default function VideoCreator({
         const url = URL.createObjectURL(blob);
         setPreviewUrl(url);
         
+        // Clear srcObject so the blob URL in src attribute takes effect for preview
+        if (videoRef.current) {
+          videoRef.current.srcObject = null;
+        }
+
         if (timerRef.current) {
           clearInterval(timerRef.current);
         }
@@ -242,17 +262,29 @@ export default function VideoCreator({
       formData.append("video", file);
       formData.append("title", "Candidate Video CV");
       formData.append("description", `Duration: ${duration}s`);
-      formData.append("cvProfileId", "demo-candidate-123");
 
-      const response = await fetch("/api/upload-to-peertube", {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        // Try to redirect to login instead of just showing error
+        const shouldRedirect = confirm("You need to be logged in to upload. Go to login page?");
+        if (shouldRedirect) {
+          window.location.href = "/auth/login";
+        }
+        throw new Error("No authentication token found. Please log in first.");
+      }
+
+      const response = await fetch("/api/upload-to-vidiocv", {
         method: "POST",
+        headers: {
+          "Authorization": `Bearer ${token}`
+        },
         body: formData,
       });
 
       const data = await response.json();
       
       if (!response.ok) {
-        throw new Error(data.error || "Upload failed");
+        throw new Error(data.details || data.error || "Upload failed");
       }
 
       setUploadSuccess(true);
@@ -267,35 +299,65 @@ export default function VideoCreator({
     }
   };
 
-  const handleDelete = () => {
-    if (confirm("Are you sure you want to delete your Video CV?")) {
-        setVideoUrl(null);
-        setRecordedBlob(null);
-        setPreviewUrl("");
-        setUploadSuccess(false);
-        if (onVideoDelete) onVideoDelete();
-        requestPermissions();
-    }
+  const handleDelete = async () => {
+    setModalConfig({
+      isOpen: true,
+      title: "Delete Video CV?",
+      message: "Are you sure you want to delete your Video CV? This cannot be undone.",
+      type: "warning",
+      onConfirm: async () => {
+        try {
+          if (videoUrl) {
+            const response = await fetch("/api/profile/video/delete", { 
+              method: "DELETE",
+              headers: {
+                "Authorization": `Bearer ${localStorage.getItem("token")}`
+              }
+            });
+            
+            if (!response.ok) {
+              const data = await response.json();
+              throw new Error(data.error || data.details || "Failed to delete from server");
+            }
+          }
+          
+          setVideoUrl(null);
+          setRecordedBlob(null);
+          setPreviewUrl("");
+          setUploadSuccess(false);
+          if (onVideoDelete) onVideoDelete();
+          requestPermissions();
+          
+          setModalConfig({
+            isOpen: true,
+            title: "Success",
+            message: "Your Video CV has been deleted successfully.",
+            type: "success"
+          });
+        } catch (error) {
+          console.error("Deletion error:", error);
+          setModalConfig({
+            isOpen: true,
+            title: "Error",
+            message: error instanceof Error ? error.message : "Failed to delete video from server. Please try again.",
+            type: "error"
+          });
+        }
+      }
+    });
   };
 
   if (videoUrl && !recordedBlob && !isRecording) {
     return (
       <div className="w-full max-w-4xl mx-auto space-y-4">
         <div className="bg-slate-800 rounded-lg overflow-hidden border border-slate-700 relative w-full aspect-video bg-black flex flex-col justify-center">
-          {videoUrl.includes("/embed/") ? (
-              <iframe
-                 src={videoUrl}
-                 allowFullScreen
-                 sandbox="allow-same-origin allow-scripts allow-popups allow-forms"
-                 className="w-full h-full border-0 absolute inset-0"
-              />
-          ) : (
-              <video
-                src={videoUrl}
-                controls
-                className="w-full aspect-video bg-black"
-              />
-          )}
+          <iframe
+             src={getPeerTubeEmbedUrl(videoUrl) || ""}
+             allowFullScreen
+             sandbox="allow-same-origin allow-scripts allow-popups allow-forms"
+             className="w-full h-full border-0 absolute inset-0"
+             title="Video CV"
+          />
         </div>
         <div className="bg-white/5 dark:bg-secondary-900/50 backdrop-blur-xl rounded-2xl p-6 border border-white/20 dark:border-secondary-800 shadow-xl shadow-black/10">
            <button 
@@ -473,7 +535,17 @@ export default function VideoCreator({
                 </p>
                 
                 {error && (
-                   <p className="text-error-500 text-sm mb-4 text-center">{error}</p>
+                   <div className="mb-4 text-center">
+                     <p className="text-error-500 text-sm mb-2">{error}</p>
+                     <button 
+                       onClick={() => {
+                         window.location.href = "/auth/login";
+                       }}
+                       className="text-xs text-primary-600 hover:underline cursor-pointer"
+                     >
+                       Go to login page
+                     </button>
+                   </div>
                 )}
 
                 {!uploadSuccess && (
@@ -553,6 +625,26 @@ export default function VideoCreator({
           </ul>
         </div>
       )}
+
+      {/* Nice Popup Modal */}
+      <Modal
+        isOpen={modalConfig.isOpen}
+        onClose={() => setModalConfig({ ...modalConfig, isOpen: false })}
+        title={modalConfig.title}
+        type={modalConfig.type}
+        primaryAction={modalConfig.onConfirm ? {
+          label: modalConfig.title?.includes("Delete") ? "Delete Permanently" : "Confirm",
+          onClick: () => {
+            modalConfig.onConfirm?.();
+            setModalConfig({ ...modalConfig, isOpen: false });
+          }
+        } : undefined}
+        closeActionLabel={modalConfig.onConfirm ? "Cancel" : "Close"}
+      >
+        <div className="py-2">
+          {modalConfig.message}
+        </div>
+      </Modal>
     </div>
   );
 }
