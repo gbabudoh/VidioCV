@@ -1,4 +1,4 @@
-import { getPeerTubeEmbedUrl } from "@/app/lib/video";
+import LiveKitPlayer from "./LiveKitPlayer";
 
 interface VideoPlayerProps {
   src: string;
@@ -6,22 +6,10 @@ interface VideoPlayerProps {
 }
 
 export default function VideoPlayer({ src, title }: VideoPlayerProps) {
-  const embedUrl = getPeerTubeEmbedUrl(src);
-
-  if (!embedUrl) return null;
-
   return (
     <div className="w-full space-y-4">
-      {title && <h3 className="text-lg font-semibold text-white">{title}</h3>}
-      <div className="relative bg-black rounded-lg overflow-hidden aspect-video">
-        <iframe
-          src={embedUrl}
-          allowFullScreen
-          sandbox="allow-same-origin allow-scripts allow-popups allow-forms"
-          className="w-full h-full border-0 absolute inset-0"
-          title={title || "Video player"}
-        />
-      </div>
+      {title && <h3 className="text-lg font-semibold text-white/90 tracking-tight">{title}</h3>}
+      <LiveKitPlayer src={src} candidateName={title} />
     </div>
   );
 }

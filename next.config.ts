@@ -7,9 +7,9 @@ const nextConfig: NextConfig = {
         protocol: "http",
         hostname: "149.102.155.247",
       },
-      {
+{
         protocol: "https",
-        hostname: "peertube.feendesk.com",
+        hostname: "images.unsplash.com",
       },
       {
         protocol: "https",

@@ -4,17 +4,32 @@ import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   Settings, LogOut, Bell, Search, MapPin, Briefcase, Video, 
-  Building2, UserCircle, Link as LinkIcon, Shield, Trash2, 
-  Mail, Lock, Plus, X
+  Building2, UserCircle, Shield, Trash2, 
+  Mail, Lock, Plus, X, ChevronRight, Link as LinkIcon
 } from "lucide-react";
-import Select from "react-select";
+
+// Helper components
+const PlayIcon = ({ className, style }: { className?: string; style?: React.CSSProperties }) => (
+  <svg 
+    className={className} 
+    style={style}
+    viewBox="0 0 24 24" 
+    fill="currentColor" 
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    <path d="M8 5V19L19 12L8 5Z" />
+  </svg>
+);
+import Select, { OptionProps, SingleValueProps, SingleValue } from "react-select";
 import ReactCountryFlag from "react-country-flag";
 import countryList from "country-list";
 import Button from "@/app/components/common/Button";
 import VideoCreator from "@/app/components/video-tools/VideoCreator";
 import Modal from "@/app/components/common/Modal";
+import Toggle from "@/app/components/common/Toggle";
 import { useRouter } from "next/navigation";
-import { getPeerTubeEmbedUrl } from "@/app/lib/video";
+import Link from "next/link";
+import Image from "next/image";
 import { useSessionSync } from "@/app/lib/hooks/useSessionSync";
 
 type Tab = "profile" | "jobs" | "applications" | "interviews" | "messages" | "notifications" | "settings";
@@ -60,9 +75,43 @@ export default function CandidateDashboard() {
     unread: boolean;
   }
 
+  // Define Application Interface
+  interface Application {
+    id: string;
+    title: string;
+    company: string;
+    status: string;
+    date: string;
+    description: string;
+    color: string;
+    timeline: { date: string; event: string }[];
+  }
+
   const [activeTab, setActiveTab] = useState<Tab>("profile");
   const [activeVideoUrl, setActiveVideoUrl] = useState<string | null>(null);
   const [showVideoCreator, setShowVideoCreator] = useState(false);
+  const [settingsSection, setSettingsSection] = useState<"general" | "career" | "security" | "privacy" | "notifications">("general");
+
+  interface UserPreferences {
+    emailAlerts: boolean;
+    browserAlerts: boolean;
+    jobInvites: boolean;
+    videoPublic: boolean;
+    remoteOnly: boolean;
+    openToRelocate: boolean;
+    expectedSalary: string;
+  }
+
+  // Detailed Settings States
+  const [prefs, setPrefs] = useState<UserPreferences>({
+    emailAlerts: true,
+    browserAlerts: true,
+    jobInvites: true,
+    videoPublic: true,
+    remoteOnly: false,
+    openToRelocate: true,
+    expectedSalary: "120k - 150k"
+  });
 
   // Modal State
   const [modalConfig, setModalConfig] = useState<{
@@ -83,6 +132,37 @@ export default function CandidateDashboard() {
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
   const [selectedMessage, setSelectedMessage] = useState<Message | null>(null);
+  const [selectedApplication, setSelectedApplication] = useState<Application | null>(null);
+  const [applications] = useState<Application[]>([
+    { 
+      id: "1", 
+      title: "Senior Backend Engineer", 
+      company: "DataFlow", 
+      status: "Under Review", 
+      date: "Applied 2 days ago", 
+      description: "Leading the migration of core data pipelines to Go and optimizing high-concurrency microservices.",
+      color: "text-[#F7B980] bg-[#F7B980]/10 border-[#F7B980]/20",
+      timeline: [
+        { date: "Oct 24", event: "Application Received" },
+        { date: "Oct 25", event: "Initial Technical Scan" },
+        { date: "Oct 26", event: "Moved to Senior Review" }
+      ]
+    },
+    { 
+      id: "2", 
+      title: "Full Stack Developer", 
+      company: "FinTech Pro", 
+      status: "Shortlisted", 
+      date: "Applied 1 week ago", 
+      description: "Developing secure financial dashboard components using React and encrypted Node.js backends.",
+      color: "text-[#10B981] bg-[#10B981]/10 border-[#10B981]/20",
+      timeline: [
+        { date: "Oct 18", event: "Application Transmitted" },
+        { date: "Oct 20", event: "Profile Verified" },
+        { date: "Oct 22", event: "Marked as Shortlisted" }
+      ]
+    }
+  ]);
   const [messages, setMessages] = useState<Message[]>([
     {
       id: "1",
@@ -147,8 +227,7 @@ export default function CandidateDashboard() {
             setUserRole(data.cvProfile.title);
           }
           if (data.cvProfile?.skills) {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const fetchedSkills = data.cvProfile.skills.map((s: any) => s.skill.name);
+            const fetchedSkills = data.cvProfile.skills.map((s: { skill: { name: string } }) => s.skill.name);
             if (fetchedSkills.length > 0) setSkills(fetchedSkills);
           }
           if (data.cvProfile?.workExperiences) {
@@ -258,71 +337,154 @@ export default function CandidateDashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-secondary-50 dark:bg-secondary-950 font-sans relative overflow-hidden">
-      {/* Premium Glassmorphic Background Elements */}
-      <div className="absolute top-[-20%] right-[-10%] w-[800px] h-[800px] bg-primary-500/10 dark:bg-primary-500/5 blur-[120px] rounded-full pointer-events-none" />
-      <div className="absolute bottom-[-20%] left-[-10%] w-[800px] h-[800px] bg-accent-500/10 dark:bg-accent-500/5 blur-[120px] rounded-full pointer-events-none" />
-      <div className="absolute top-[30%] left-[20%] w-[500px] h-[500px] bg-secondary-400/10 dark:bg-secondary-600/5 blur-[100px] rounded-full pointer-events-none" />
+    <div 
+      className="min-h-screen font-sans relative overflow-hidden"
+      style={{
+        background: "linear-gradient(135deg, #F2F4F4 0%, #F9F9F9 45%, #F9F5F1 100%)",
+      }}
+    >
+      {/* Ambient orbs */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden">
+        <div
+          className="absolute top-[-10%] right-[-5%] w-[60%] h-[60%] rounded-full blur-[140px]"
+          style={{ background: "rgba(247,185,128,0.15)" }}
+        />
+        <div
+          className="absolute bottom-[-10%] left-[-5%] w-[60%] h-[60%] rounded-full blur-[130px]"
+          style={{ background: "rgba(172,186,196,0.18)" }}
+        />
+      </div>
+
+      {/* Dot grid */}
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          backgroundImage: "radial-gradient(circle, rgba(87,89,91,0.05) 1px, transparent 1px)",
+          backgroundSize: "40px 40px",
+          maskImage: "radial-gradient(ellipse 80% 80% at 50% 50%, black 40%, transparent 100%)",
+          WebkitMaskImage: "radial-gradient(ellipse 80% 80% at 50% 50%, black 40%, transparent 100%)",
+        }}
+      />
 
       {/* Header */}
-      <nav className="sticky top-0 z-40 bg-white/60 dark:bg-secondary-900/60 backdrop-blur-xl border-b border-white/40 dark:border-white/10 shadow-sm shadow-secondary-200/20 dark:shadow-none">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center relative bg-transparent">
-          <div className="flex items-center gap-2 cursor-pointer group">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary-500 to-accent-500 flex items-center justify-center text-white shadow-lg shadow-primary-500/30 group-hover:scale-105 transition-transform">
-              <Video className="w-5 h-5 cursor-pointer" />
-            </div>
-            <span className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-secondary-900 to-secondary-700 dark:from-white dark:to-secondary-300 tracking-tight cursor-pointer flex items-center">
-              VidioCV
-            </span>
-          </div>
+      <nav 
+        className="sticky top-0 z-50 backdrop-blur-2xl transition-all duration-300"
+        style={{ 
+          background: "rgba(253,252,250,0.92)", 
+          borderBottom: "1px solid #E0E4E3",
+          boxShadow: "0 2px 16px rgba(87,89,91,0.04)"
+        }}
+      >
+        <div className="max-w-7xl mx-auto px-6 py-2 flex justify-between items-center">
+          <Link href="/" className="flex items-center group cursor-pointer">
+            <Image
+              src="/logo.png"
+              alt="VidioCV Logo"
+              width={110}
+              height={48}
+              className="object-contain transition-all duration-300 group-hover:scale-105"
+            />
+          </Link>
+
           <div className="hidden md:flex absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
-             <span className="px-4 py-1.5 text-xs font-bold uppercase tracking-widest text-primary-700 bg-primary-100 dark:text-primary-300 dark:bg-primary-900/50 rounded-xl border border-primary-200 dark:border-primary-800 shadow-sm shadow-primary-500/10 backdrop-blur-md">
-                 Candidate Dashboard
+             <span 
+               className="px-4 py-1.5 text-[10px] font-bold uppercase tracking-[0.2em] rounded-full border shadow-sm"
+               style={{ 
+                 background: "rgba(255,255,255,0.8)", 
+                 borderColor: "#E0E4E3", 
+                 color: "#ACBAC4" 
+               }}
+             >
+                 Candidate Workspace
              </span>
           </div>
-          <div className="flex items-center gap-4">
-            <button onClick={() => setActiveTab("notifications")} className="p-2.5 bg-white/50 dark:bg-secondary-800/50 hover:bg-white dark:hover:bg-secondary-800 text-secondary-600 dark:text-secondary-300 rounded-xl backdrop-blur-sm border border-secondary-200 dark:border-secondary-700 shadow-sm transition-all cursor-pointer">
-              <Bell className="w-5 h-5 cursor-pointer" />
+
+          <div className="flex items-center gap-3">
+            <button 
+              onClick={() => setActiveTab("notifications")} 
+              className="p-2.5 rounded-xl transition-all hover:bg-[#F2F4F4] group cursor-pointer"
+              style={{ color: "#ACBAC4" }}
+            >
+              <Bell className="w-5 h-5 group-hover:text-[#57595B] transition-colors" />
             </button>
-            <button onClick={() => setActiveTab("settings")} className="p-2.5 bg-white/50 dark:bg-secondary-800/50 hover:bg-white dark:hover:bg-secondary-800 text-secondary-600 dark:text-secondary-300 rounded-xl backdrop-blur-sm border border-secondary-200 dark:border-secondary-700 shadow-sm transition-all cursor-pointer">
-              <Settings className="w-5 h-5 cursor-pointer" />
+            <button 
+              onClick={() => setActiveTab("settings")} 
+              className="p-2.5 rounded-xl transition-all hover:bg-[#F2F4F4] group cursor-pointer"
+              style={{ color: "#ACBAC4" }}
+            >
+              <Settings className="w-5 h-5 group-hover:text-[#57595B] transition-colors" />
             </button>
-            <button onClick={() => setIsLogoutModalOpen(true)} className="flex items-center gap-2 p-2.5 px-4 bg-error-50 dark:bg-error-500/10 hover:bg-error-100 dark:hover:bg-error-500/20 text-error-600 dark:text-error-400 rounded-xl backdrop-blur-sm border border-error-200 dark:border-error-500/20 transition-all cursor-pointer font-semibold">
-              <LogOut className="w-4 h-4 cursor-pointer" /> <span className="hidden sm:inline cursor-pointer">Logout</span>
+            <div className="h-6 w-px bg-[#E0E4E3] mx-1" />
+            <button 
+              onClick={() => setIsLogoutModalOpen(true)} 
+              className="flex items-center gap-2 px-4 py-2 rounded-xl transition-all font-semibold text-sm cursor-pointer"
+              style={{ 
+                background: "#FFFFFF", 
+                border: "1px solid #E0E4E3", 
+                color: "#EF4444",
+                boxShadow: "0 2px 8px rgba(239,68,68,0.05)"
+              }}
+              onMouseOver={e => {
+                e.currentTarget.style.background = "#FEF2F2";
+                e.currentTarget.style.borderColor = "#FCA5A5";
+              }}
+              onMouseOut={e => {
+                e.currentTarget.style.background = "#FFFFFF";
+                e.currentTarget.style.borderColor = "#E0E4E3";
+              }}
+            >
+              <LogOut className="w-4 h-4" /> 
+              <span className="hidden sm:inline">Logout</span>
             </button>
           </div>
         </div>
       </nav>
 
-      <div className="max-w-7xl mx-auto px-6 py-12 relative z-10">
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 mb-12">
+      <div className="max-w-7xl mx-auto px-6 py-10 relative z-10 font-sans">
+        <AnimatePresence mode="wait">
+          {activeTab !== "settings" ? (
+            <motion.div
+              key="overview-header"
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              transition={{ duration: 0.3 }}
+            >
+              <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 mb-12">
           {/* Profile Card */}
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 24 }}
             animate={{ opacity: 1, y: 0 }}
-            className="lg:col-span-1 bg-white/70 dark:bg-secondary-900/70 backdrop-blur-2xl border border-white/50 dark:border-secondary-800 rounded-3xl p-8 shadow-xl shadow-secondary-200/30 dark:shadow-black/40 flex flex-col items-center text-center"
+            transition={{ duration: 0.5 }}
+            className="lg:col-span-1 border border-white rounded-[32px] p-8 shadow-2xl flex flex-col items-center text-center group"
+            style={{ 
+              background: "rgba(255, 255, 255, 0.82)", 
+              backdropFilter: "blur(20px)",
+              boxShadow: "0 24px 64px rgba(87,89,91,0.08)"
+            }}
           >
-            <div className="w-24 h-24 bg-gradient-to-br from-primary-400 to-accent-400 rounded-full mb-5 shadow-lg shadow-primary-500/30 p-1">
-              <div className="w-full h-full bg-white dark:bg-secondary-800 rounded-full flex items-center justify-center border-2 border-transparent">
-                <span className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary-500 to-accent-500">
-                  JD
+            <div className="relative w-28 h-28 mb-6 p-1.5 rounded-full" style={{ background: "linear-gradient(135deg, #F7B980, #F0A060)" }}>
+              <div className="w-full h-full bg-white rounded-full flex items-center justify-center overflow-hidden">
+                <span className="text-3xl font-extrabold" style={{ color: "#F7B980" }}>
+                  {userName.split(" ").map(n => n[0]).join("")}
                 </span>
+                <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/20 to-transparent group-hover:translate-x-full duration-700 transition-transform" />
               </div>
             </div>
-            <h2 className="text-2xl font-bold text-secondary-900 dark:text-white mb-1">{userName}</h2>
-            <p className="text-primary-600 dark:text-primary-400 font-medium mb-5">{userRole}</p>
-            <div className="w-full space-y-3 text-sm text-left">
-              <div className="flex items-center gap-3 text-secondary-600 dark:text-secondary-400">
-                <div className="p-2 rounded-lg bg-secondary-100 dark:bg-secondary-800">
-                  <MapPin className="w-4 h-4" />
+            <h2 className="text-2xl font-bold mb-1" style={{ color: "#57595B" }}>{userName}</h2>
+            <p className="font-semibold text-sm mb-6 px-4 py-1 rounded-full" style={{ background: "#F2F4F4", color: "#ACBAC4" }}>{userRole}</p>
+            <div className="w-full space-y-4 text-sm text-left px-2">
+              <div className="flex items-center gap-4 py-3 border-b border-[#F2F4F4]">
+                <div className="p-2 rounded-xl" style={{ background: "rgba(172,186,196,0.1)" }}>
+                  <MapPin className="w-4 h-4" style={{ color: "#ACBAC4" }} />
                 </div>
-                <span>Global / Remote</span>
+                <span className="font-medium" style={{ color: "#8A8C8E" }}>Global / Remote</span>
               </div>
-              <div className="flex items-center gap-3 text-secondary-600 dark:text-secondary-400">
-                <div className="p-2 rounded-lg bg-secondary-100 dark:bg-secondary-800">
-                  <Briefcase className="w-4 h-4" />
+              <div className="flex items-center gap-4 py-3">
+                <div className="p-2 rounded-xl" style={{ background: "rgba(172,186,196,0.1)" }}>
+                  <Briefcase className="w-4 h-4" style={{ color: "#ACBAC4" }} />
                 </div>
-                <span>5+ years experience</span>
+                <span className="font-medium" style={{ color: "#8A8C8E" }}>5+ years experience</span>
               </div>
             </div>
           </motion.div>
@@ -330,43 +492,97 @@ export default function CandidateDashboard() {
           {/* KPI Stats */}
           <div className="lg:col-span-3 grid grid-cols-1 md:grid-cols-3 gap-6">
             {[
-              { label: "Profile Views", value: "342", color: "from-blue-500 to-cyan-400" },
-              { label: "Active Applications", value: "12", color: "from-primary-500 to-accent-500" },
-              { label: "Interview Invites", value: "4", color: "from-emerald-400 to-teal-500" },
+              { label: "Profile Views", value: "342", color: "from-[#8A8C8E] to-[#ACBAC4]" },
+              { label: "Active Applications", value: "12", color: "from-[#F7B980] to-[#F0A060]" },
+              { label: "Interview Invites", value: "4", color: "from-[#57595B] to-[#8A8C8E]" },
             ].map((stat, idx) => (
               <motion.div
                 key={stat.label}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.1 * (idx + 1) }}
-                className="bg-white/70 dark:bg-secondary-900/70 backdrop-blur-2xl border border-white/50 dark:border-secondary-800 rounded-3xl p-8 shadow-xl shadow-secondary-200/30 dark:shadow-black/40 flex flex-col justify-center relative overflow-hidden group"
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: 0.1 * (idx + 1), duration: 0.4 }}
+                className="border border-white rounded-[32px] p-8 shadow-xl flex flex-col justify-center relative overflow-hidden group hover:-translate-y-1 transition-all"
+                style={{ 
+                  background: "rgba(255, 255, 255, 0.75)", 
+                  backdropFilter: "blur(20px)",
+                  boxShadow: "0 16px 40px rgba(87,89,91,0.06)"
+                }}
               >
-                <div className="absolute -right-10 -top-10 w-32 h-32 bg-gradient-to-br opacity-10 group-hover:opacity-20 transition-opacity rounded-full blur-2xl" />
-                <p className="text-secondary-500 dark:text-secondary-400 font-medium mb-2">{stat.label}</p>
-                <p className={`text-5xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r ${stat.color} tracking-tight`}>
+                <div className={`absolute -right-8 -top-8 w-32 h-32 bg-gradient-to-br ${stat.color} opacity-[0.03] group-hover:opacity-[0.08] transition-opacity rounded-full blur-2xl`} />
+                <p className="font-bold text-xs uppercase tracking-widest mb-4" style={{ color: "#ACBAC4" }}>{stat.label}</p>
+                <p className={`text-6xl font-black bg-clip-text text-transparent bg-gradient-to-r ${stat.color} tracking-tighter`}>
                   {stat.value}
                 </p>
+                <div className="mt-4 flex items-center gap-2 text-[10px] font-bold" style={{ color: "#10B981" }}>
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#10B981] animate-pulse" />
+                  +12% vs last month
+                </div>
               </motion.div>
             ))}
           </div>
-        </div>
-
-        {/* Dynamic Navigation Tabs */}
-        <div className="flex gap-2 mb-8 bg-white/50 dark:bg-secondary-900/50 p-1.5 rounded-2xl backdrop-blur-md border border-white/60 dark:border-secondary-800 shadow-sm max-w-fit overflow-x-auto">
-          {(["profile", "jobs", "applications", "interviews", "messages"] as Tab[]).map((tab) => (
-            <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              className={`px-6 py-2.5 font-semibold text-sm rounded-xl transition-all duration-300 cursor-pointer whitespace-nowrap ${
-                activeTab === tab
-                  ? "bg-white dark:bg-secondary-800 text-secondary-900 dark:text-white shadow-sm"
-                  : "text-secondary-500 dark:text-secondary-400 hover:text-secondary-900 dark:hover:text-white hover:bg-white/40 dark:hover:bg-secondary-800/40"
-              }`}
+          </div>
+            </motion.div>
+          ) : (
+            <motion.div
+              key="settings-header"
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              transition={{ duration: 0.3 }}
+              className="mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-6"
             >
-              {tab === "jobs" ? "Global Job Search" : tab.charAt(0).toUpperCase() + tab.slice(1)}
-            </button>
-          ))}
-        </div>
+              <div>
+                <div className="flex items-center gap-3 text-sm font-bold mb-3" style={{ color: "#ACBAC4" }}>
+                  <button onClick={() => setActiveTab("profile")} className="hover:text-[#F7B980] transition-colors cursor-pointer">Dashboard</button>
+                  <ChevronRight className="w-4 h-4" />
+                  <span style={{ color: "#57595B" }}>Workspace Settings</span>
+                </div>
+                <h1 className="text-4xl font-black tracking-tight" style={{ color: "#57595B" }}>Account Workspace</h1>
+              </div>
+              <div className="flex items-center gap-4">
+                 <button onClick={() => setActiveTab("profile")} className="px-6 py-3 rounded-2xl border-2 font-bold text-sm transition-all hover:bg-[#F2F4F4] cursor-pointer" style={{ borderColor: "#E0E4E3", color: "#8A8C8E" }}>
+                   Discard Changes
+                 </button>
+                 <Button onClick={() => setSuccessMessage({ title: "Workspace Synced", message: "All your global preferences and security protocols have been successfully localized." })} size="lg" className="px-10 shadow-lg shadow-[#F7B980]/20">
+                   Sync Global Preferences
+                 </Button>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {activeTab !== "settings" && (
+          <div className="flex gap-2 mb-10 p-1.5 rounded-2xl max-w-fit overflow-x-auto border border-white shadow-lg" style={{ background: "rgba(255, 255, 255, 0.6)", backdropFilter: "blur(10px)" }}>
+            {(["profile", "jobs", "applications", "interviews", "messages", "settings"] as Tab[]).map((tab) => (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                className="px-8 py-3 font-bold text-xs uppercase tracking-widest rounded-xl transition-all duration-500 cursor-pointer whitespace-nowrap"
+                style={activeTab === tab ? {
+                  background: "#57595B",
+                  color: "#FFFFFF",
+                  boxShadow: "0 8px 20px rgba(87,89,91,0.2)"
+                } : {
+                  color: "#ACBAC4"
+                }}
+                onMouseOver={e => {
+                  if(activeTab !== tab) {
+                    e.currentTarget.style.color = "#57595B";
+                    e.currentTarget.style.background = "rgba(255,255,255,0.5)";
+                  }
+                }}
+                onMouseOut={e => {
+                  if(activeTab !== tab) {
+                    e.currentTarget.style.color = "#ACBAC4";
+                    e.currentTarget.style.background = "transparent";
+                  }
+                }}
+              >
+                {tab === "jobs" ? "Global Search" : tab}
+              </button>
+            ))}
+          </div>
+        )}
 
         {/* Main Content Area */}
         <AnimatePresence mode="wait">
@@ -379,62 +595,67 @@ export default function CandidateDashboard() {
           >
             {activeTab === "messages" && (
               <div className="space-y-6">
-                <div className="bg-white/70 dark:bg-secondary-900/70 backdrop-blur-2xl border border-white/50 dark:border-secondary-800 rounded-3xl p-8 lg:p-10 shadow-xl shadow-secondary-200/30 dark:shadow-black/40">
-                  <div className="flex justify-between items-center mb-8 pb-6 border-b border-secondary-200 dark:border-secondary-800">
-                    <h3 className="text-2xl font-bold text-secondary-900 dark:text-white flex items-center gap-3">
-                      <Mail className="w-6 h-6 text-primary-500" /> Message Center
+                <div 
+                  className="border border-white rounded-[40px] p-8 lg:p-12 shadow-2xl relative overflow-hidden"
+                  style={{ 
+                    background: "rgba(255, 255, 255, 0.7)", 
+                    backdropFilter: "blur(24px)",
+                    boxShadow: "0 24px 64px rgba(87,89,91,0.06)"
+                  }}
+                >
+                  <div className="flex justify-between items-center mb-10 pb-6 border-b border-[#F2F4F4]">
+                    <h3 className="text-3xl font-bold flex items-center gap-4" style={{ color: "#57595B" }}>
+                      <div className="p-2.5 rounded-2xl bg-[#F7B980]/10">
+                        <Mail className="w-7 h-7 text-[#F7B980]" />
+                      </div>
+                      Communications
                     </h3>
                   </div>
                   
-                  <div className="space-y-4">
+                  <div className="grid grid-cols-1 gap-4">
                     {messages.map((msg) => (
                       <div 
                         key={msg.id} 
                         onClick={() => {
                           setSelectedMessage(msg);
-                          // Mark as read locally
                           setMessages(prev => prev.map(m => m.id === msg.id ? { ...m, unread: false } : m));
                         }}
-                        className={`p-6 rounded-2xl border transition-all cursor-pointer group ${
-                          msg.unread 
-                            ? "bg-primary-50/50 dark:bg-primary-500/5 border-primary-200 dark:border-primary-500/30 ring-1 ring-primary-500/10" 
-                            : "bg-white/30 dark:bg-secondary-950/30 border-secondary-200 dark:border-secondary-800 hover:border-primary-300 dark:hover:border-primary-700"
-                        }`}
+                        className="p-6 rounded-[24px] border transition-all cursor-pointer group flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4"
+                        style={msg.unread ? { 
+                          background: "#FFFFFF", 
+                          borderColor: "#F7B980",
+                          boxShadow: "0 12px 32px rgba(247,185,128,0.08)"
+                        } : {
+                          background: "rgba(255, 255, 255, 0.4)",
+                          borderColor: "#E0E4E3"
+                        }}
                       >
-                        <div className="flex justify-between items-start mb-3">
-                          <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-secondary-100 to-secondary-200 dark:from-secondary-800 dark:to-secondary-700 flex items-center justify-center font-bold text-secondary-700 dark:text-secondary-300">
-                              {msg.company.charAt(0)}
-                            </div>
-                            <div>
-                              <h4 className="font-bold text-secondary-900 dark:text-white group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors">
-                                {msg.company}
-                              </h4>
-                              <p className="text-xs text-secondary-500 dark:text-secondary-400 font-medium">
-                                {msg.sender}
-                              </p>
-                            </div>
+                        <div className="flex gap-4 items-center flex-1">
+                          <div 
+                            className="w-12 h-12 rounded-2xl flex items-center justify-center font-bold text-lg shrink-0"
+                            style={{ background: "#F2F4F4", color: "#F7B980" }}
+                          >
+                            {msg.company.charAt(0)}
                           </div>
-                          <div className="text-right">
-                             <p className="text-xs text-secondary-400 dark:text-secondary-500 font-semibold uppercase tracking-wider">{msg.time}</p>
-                             {msg.unread && <span className="inline-block w-2.5 h-2.5 bg-primary-500 rounded-full mt-1.5 shadow-sm shadow-primary-500/50" />}
+                          <div>
+                            <h4 className="font-bold text-base transition-colors group-hover:text-[#F7B980]" style={{ color: "#57595B" }}>
+                              {msg.company}
+                              {msg.unread && <span className="ml-3 inline-block w-2 h-2 rounded-full bg-[#F7B980]" />}
+                            </h4>
+                            <p className="text-sm font-medium" style={{ color: "#ACBAC4" }}>{msg.subject}</p>
                           </div>
                         </div>
-                        <div>
-                          <p className={`text-sm font-bold mb-1 ${msg.unread ? "text-secondary-900 dark:text-white" : "text-secondary-700 dark:text-secondary-300"}`}>
-                            {msg.subject}
-                          </p>
-                          <p className="text-sm text-secondary-600 dark:text-secondary-400 line-clamp-1">
-                            {msg.preview}
-                          </p>
+                        <div className="flex items-center gap-6">
+                          <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: "#ACBAC4" }}>{msg.time}</p>
+                          <ChevronRight className="w-5 h-5 opacity-40 group-hover:opacity-100 group-hover:translate-x-1 transition-all" style={{ color: "#57595B" }} />
                         </div>
                       </div>
                     ))}
                   </div>
 
-                  <div className="mt-8 pt-8 border-t border-secondary-200 dark:border-secondary-800 text-center">
-                    <button className="text-sm font-bold text-primary-600 dark:text-primary-400 hover:text-primary-700 transition-colors cursor-pointer">
-                      View All Archived Messages
+                  <div className="mt-10 pt-10 border-t border-[#F2F4F4] text-center">
+                    <button className="text-sm font-bold uppercase tracking-widest underline opacity-60 hover:opacity-100 transition-opacity cursor-pointer" style={{ color: "#57595B" }}>
+                      Archive History
                     </button>
                   </div>
                 </div>
@@ -444,33 +665,43 @@ export default function CandidateDashboard() {
             {activeTab === "profile" && (
               <div className="space-y-8">
                 {/* Video CV Section */}
-                <div className="bg-white/70 dark:bg-secondary-900/70 backdrop-blur-2xl border border-white/50 dark:border-secondary-800 rounded-3xl p-8 lg:p-10 shadow-xl shadow-secondary-200/30 dark:shadow-black/40">
-                  <div className="flex flex-col md:flex-row justify-between items-start md:items-center pb-8 border-b border-secondary-200 dark:border-secondary-800 mb-8">
+                <div 
+                  className="border border-white rounded-[40px] p-8 lg:p-12 shadow-2xl relative overflow-hidden"
+                  style={{ 
+                    background: "rgba(255, 255, 255, 0.7)", 
+                    backdropFilter: "blur(24px)",
+                    boxShadow: "0 24px 64px rgba(87,89,91,0.06)"
+                  }}
+                >
+                  <div className="flex flex-col md:flex-row justify-between items-start md:items-center pb-10 mb-10 border-b border-[#F2F4F4]">
                     <div className="mb-6 md:mb-0">
-                      <h3 className="text-2xl font-bold text-secondary-900 dark:text-white mb-2 flex items-center gap-3">
-                        <Video className="w-6 h-6 text-primary-500" /> Your Video CV
+                      <h3 className="text-3xl font-bold mb-3 flex items-center gap-4" style={{ color: "#57595B" }}>
+                        <div className="p-2.5 rounded-2xl bg-[#F7B980]/10">
+                          <Video className="w-7 h-7 text-[#F7B980]" />
+                        </div>
+                        Video Portfolio
                       </h3>
-                      <p className="text-secondary-600 dark:text-secondary-400 max-w-xl">
-                        Stand out from the crowd. Record or upload a high-quality video introduction that showcases your personality, communication skills, and passion directly to top employers worldwide.
+                      <p className="max-w-xl text-base font-medium" style={{ color: "#ACBAC4" }}>
+                        Record or upload a high-fidelity introduction. Your Video CV is your competitive edge, showcasing your personality directly to global hiring teams.
                       </p>
                     </div>
                     <Button
                       onClick={() => setShowVideoCreator(!showVideoCreator)}
-                      className="bg-secondary-900 hover:bg-secondary-800 dark:bg-white dark:hover:bg-secondary-100 text-white dark:text-secondary-900 shadow-lg shrink-0 flex items-center gap-2 cursor-pointer"
+                      variant={showVideoCreator ? "outline" : "primary"}
+                      size="lg"
                     >
-                      {showVideoCreator ? "Hide Studio" : "Open Video Studio"}
+                      {showVideoCreator ? "Close Studio" : "Open Video Studio"}
                     </Button>
                   </div>
 
                   {showVideoCreator ? (
-                    <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} className="pt-4">
-                      <div className="bg-secondary-50 dark:bg-secondary-950/50 rounded-2xl p-6 md:p-8 border border-secondary-200 dark:border-secondary-800">
+                    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="pt-4">
+                      <div className="bg-[#F9F9F9] rounded-[32px] p-6 md:p-10 border border-[#E0E4E3]">
                         <VideoCreator 
                            initialVideoUrl={activeVideoUrl || undefined}
                            onVideoUpload={(file, url) => {
                              console.log("Uploaded:", file.name);
                              if (url) setActiveVideoUrl(url);
-                             // Automatically close studio when done so user can see it
                              setShowVideoCreator(false);
                            }} 
                            onVideoDelete={() => setActiveVideoUrl(null)}
@@ -478,115 +709,118 @@ export default function CandidateDashboard() {
                       </div>
                     </motion.div>
                   ) : activeVideoUrl ? (
-                    <div className="w-full aspect-video md:aspect-[21/9] bg-black rounded-2xl border border-secondary-200 dark:border-secondary-800 overflow-hidden relative shadow-xl group">
-                        <iframe 
-                          src={getPeerTubeEmbedUrl(activeVideoUrl) || ""}
-                          allowFullScreen
-                          sandbox="allow-same-origin allow-scripts allow-popups allow-forms"
-                          className="w-full h-full border-0 absolute inset-0"
+                    <div className="w-full aspect-video md:aspect-[21/9] bg-[#57595B] rounded-[32px] border-4 border-white overflow-hidden relative shadow-2xl group">
+                        <video
+                          src={activeVideoUrl}
+                          controls
+                          className="w-full h-full absolute inset-0 object-contain transition-transform duration-700 group-hover:scale-[1.01]"
                           title="Video CV"
                         />
+                        <div className="absolute inset-0 bg-gradient-to-t from-[#57595B]/40 to-transparent pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity" />
                         <button 
                           onClick={() => {
                             setModalConfig({
                               isOpen: true,
-                              title: "Delete Video CV?",
-                              message: "Are you sure you want to delete your active Video CV? This cannot be undone.",
+                              title: "Delete Portfolio Video?",
+                              message: "This will permanently remove your active Video CV from your profile. Are you sure?",
                               type: "confirm",
                               onConfirm: async () => {
                                 try {
                                   const response = await fetch("/api/profile/video/delete", { 
                                     method: "DELETE",
-                                    headers: {
-                                      "Authorization": `Bearer ${localStorage.getItem("token")}`
-                                    }
+                                    headers: { "Authorization": `Bearer ${localStorage.getItem("token")}` }
                                   });
-                                  
                                   if (response.ok) {
                                     setActiveVideoUrl(null);
-                                    setModalConfig({
-                                      isOpen: true,
-                                      title: "Success",
-                                      message: "Your Video CV has been permanently deleted.",
-                                      type: "success"
-                                    });
+                                    setModalConfig({ isOpen: true, title: "Success", message: "Video deleted.", type: "success" });
                                   } else {
-                                    const data = await response.json();
-                                    setModalConfig({
-                                      isOpen: true,
-                                      title: "Deletion Failed",
-                                      message: data.error || data.details || "Failed to delete video. Please try again.",
-                                      type: "error"
-                                    });
+                                    setModalConfig({ isOpen: true, title: "Failed", message: "Failed to delete video.", type: "error" });
                                   }
                                 } catch (error) {
                                   console.error("Deletion error:", error);
-                                  setModalConfig({
-                                    isOpen: true,
-                                    title: "Error",
-                                    message: "An error occurred while deleting your video. Please check your connection.",
-                                    type: "error"
-                                  });
                                 }
                               }
                             });
                           }}
-                          className="absolute top-4 right-4 bg-error-500/90 hover:bg-error-600 text-white p-2.5 rounded-xl backdrop-blur-md transition-colors cursor-pointer shadow-lg opacity-0 group-hover:opacity-100"
-                          title="Delete Video CV"
+                          className="absolute top-6 right-6 bg-red-500/90 hover:bg-red-600 text-white p-3.5 rounded-2xl backdrop-blur-md transition-all cursor-pointer shadow-xl opacity-0 group-hover:opacity-100 scale-90 group-hover:scale-100"
                         >
-                          <Trash2 className="w-5 h-5 cursor-pointer" />
+                          <Trash2 className="w-6 h-6" />
                         </button>
                     </div>
                   ) : (
-                    <div className="w-full aspect-video md:aspect-[21/9] bg-secondary-100 dark:bg-secondary-950 rounded-2xl border border-secondary-200 dark:border-secondary-800 flex flex-col items-center justify-center text-center p-8 group overflow-hidden relative cursor-pointer" onClick={() => setShowVideoCreator(true)}>
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent pointer-events-none" />
-                      <div className="w-20 h-20 rounded-full bg-white/80 dark:bg-white/10 backdrop-blur flex items-center justify-center mb-6 shadow-xl group-hover:scale-110 transition-transform cursor-pointer">
-                        <PlayIcon className="w-8 h-8 text-primary-500 translate-x-1 cursor-pointer" />
+                    <div 
+                      className="w-full aspect-video md:aspect-[21/9] rounded-[32px] border-2 border-dashed flex flex-col items-center justify-center text-center p-12 group transition-all cursor-pointer" 
+                      style={{ background: "#F9F9F9", borderColor: "#E0E4E3" }}
+                      onClick={() => setShowVideoCreator(true)}
+                    >
+                      <div className="w-24 h-24 rounded-full bg-white flex items-center justify-center mb-8 shadow-2xl group-hover:scale-110 transition-transform cursor-pointer border border-[#E0E4E3]">
+                        <PlayIcon className="w-10 h-10 translate-x-1" style={{ color: "#F7B980" }} />
                       </div>
-                      <h4 className="text-xl font-bold text-secondary-900 dark:text-white mb-2 z-10 cursor-pointer">You don&apos;t have an active Video CV</h4>
-                      <p className="text-secondary-500 dark:text-secondary-400 z-10 max-w-md cursor-pointer">Open the Video Studio to record your stunning introduction and unlock global opportunities.</p>
+                      <h4 className="text-2xl font-bold mb-3" style={{ color: "#57595B" }}>Bring your profile to life</h4>
+                      <p className="max-w-md font-medium" style={{ color: "#ACBAC4" }}>You haven&apos;t added a Video CV yet. Launch the studio to record your 60-second elevator pitch.</p>
+                      <button 
+                        className="mt-8 px-8 py-3 rounded-full font-bold text-sm transition-all shadow-lg hover:shadow-xl active:scale-95 cursor-pointer"
+                        style={{ background: "#57595B", color: "white" }}
+                      >
+                        Launch Studio
+                      </button>
                     </div>
                   )}
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                   {/* Skills Section */}
-                  <div className="bg-white/70 dark:bg-secondary-900/70 backdrop-blur-2xl border border-white/50 dark:border-secondary-800 rounded-3xl p-8 shadow-xl shadow-secondary-200/30 dark:shadow-black/40">
-                    <h4 className="text-xl font-bold text-secondary-900 dark:text-white mb-6">Verified Skills</h4>
+                  <div 
+                    className="border border-white rounded-[40px] p-8 lg:p-10 shadow-xl"
+                    style={{ 
+                      background: "rgba(255, 255, 255, 0.7)", 
+                      backdropFilter: "blur(24px)",
+                      boxShadow: "0 24px 64px rgba(87,89,91,0.06)"
+                    }}
+                  >
+                    <h4 className="text-xl font-bold mb-8 flex items-center gap-3" style={{ color: "#57595B" }}>
+                      Professional Skills
+                    </h4>
                     
-                    <div className="flex gap-2 mb-6">
+                    <div className="flex gap-3 mb-8">
                       <input 
                         type="text" 
                         value={newSkill}
                         onChange={(e) => setNewSkill(e.target.value)}
                         onKeyDown={handleAddSkill}
-                        placeholder="Add a new skill (e.g. Next.js)..." 
-                        className="flex-1 px-4 py-2.5 bg-white/50 dark:bg-secondary-950/50 border border-secondary-200 dark:border-secondary-700 rounded-xl text-secondary-900 dark:text-white focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 outline-none transition-all text-sm" 
+                        placeholder="Expertise (e.g. Next.js)..." 
+                        className="flex-1 px-5 py-3 bg-white border rounded-2xl outline-none transition-all text-sm font-medium"
+                        style={{ borderColor: "#E0E4E3", color: "#57595B" }}
                       />
                       <button 
                         onClick={handleAddSkill}
                         disabled={!newSkill.trim()}
-                        className="p-2.5 bg-primary-600 hover:bg-primary-700 disabled:bg-primary-300 disabled:cursor-not-allowed text-white rounded-xl shadow-md transition-colors flex items-center justify-center cursor-pointer disabled:opacity-50"
+                        className="p-3 rounded-2xl transition-all shadow-md active:scale-95 disabled:opacity-50 disabled:scale-100 cursor-pointer"
+                        style={{ background: "#57595B", color: "white" }}
                       >
                         <Plus className="w-5 h-5" />
                       </button>
                     </div>
 
-                    <div className="flex flex-wrap gap-2">
+                    <div className="flex flex-wrap gap-2.5">
                       <AnimatePresence>
                         {skills.map((skill) => (
                           <motion.span 
                             key={skill}
-                            initial={{ opacity: 0, scale: 0.8 }}
+                            initial={{ opacity: 0, scale: 0.9 }}
                             animate={{ opacity: 1, scale: 1 }}
-                            exit={{ opacity: 0, scale: 0.8 }}
-                            className="group flex items-center gap-1.5 pl-4 pr-2 py-1.5 bg-primary-50 dark:bg-primary-500/10 border border-primary-200 dark:border-primary-500/20 rounded-xl text-sm font-semibold text-primary-700 dark:text-primary-300 cursor-default"
+                            exit={{ opacity: 0, scale: 0.9 }}
+                            className="group flex items-center gap-2 pl-4 pr-3 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all border group"
+                            style={{ 
+                              background: "#FFFFFF", 
+                              borderColor: "#E0E4E3", 
+                              color: "#8A8C8E" 
+                            }}
                           >
                             {skill}
                             <button 
                               onClick={() => handleRemoveSkill(skill)}
-                              className="p-1 hover:bg-primary-200 dark:hover:bg-primary-800 rounded-lg text-primary-500 hover:text-primary-700 dark:text-primary-400 transition-colors cursor-pointer"
-                              title="Remove skill"
+                              className="p-1 hover:bg-[#F2F4F4] rounded-lg text-[#ACBAC4] hover:text-[#EF4444] transition-colors cursor-pointer"
                             >
                               <X className="w-3.5 h-3.5" />
                             </button>
@@ -594,81 +828,100 @@ export default function CandidateDashboard() {
                         ))}
                       </AnimatePresence>
                       {skills.length === 0 && (
-                        <span className="text-secondary-500 text-sm">No skills added yet.</span>
+                        <span className="text-sm font-medium italic" style={{ color: "#ACBAC4" }}>Define your stack...</span>
                       )}
                     </div>
                   </div>
 
                   {/* Experience Section */}
-                  <div className="bg-white/70 dark:bg-secondary-900/70 backdrop-blur-2xl border border-white/50 dark:border-secondary-800 rounded-3xl p-8 shadow-xl shadow-secondary-200/30 dark:shadow-black/40">
-                    <h4 className="text-xl font-bold text-secondary-900 dark:text-white mb-6">Experience</h4>
+                  <div 
+                    className="border border-white rounded-[40px] p-8 lg:p-10 shadow-xl"
+                    style={{ 
+                      background: "rgba(255, 255, 255, 0.7)", 
+                      backdropFilter: "blur(24px)",
+                      boxShadow: "0 24px 64px rgba(87,89,91,0.06)"
+                    }}
+                  >
+                    <h4 className="text-xl font-bold mb-8 flex items-center gap-3" style={{ color: "#57595B" }}>
+                      Work Experience
+                    </h4>
                     
                     {/* Add Experience Form */}
-                    <div className="bg-secondary-50 dark:bg-secondary-800/30 p-4 rounded-2xl border border-secondary-200 dark:border-secondary-700/50 mb-8 space-y-3">
-                      <p className="text-sm font-semibold text-secondary-900 dark:text-white mb-2">Add New Experience</p>
+                    <div className="p-6 rounded-[24px] border border-dashed mb-10 space-y-4" style={{ background: "rgba(242, 244, 244, 0.4)", borderColor: "#E0E4E3" }}>
+                      <p className="text-xs font-bold uppercase tracking-widest mb-4" style={{ color: "#ACBAC4" }}>Add New Milestone</p>
                       <input 
                         type="text" 
                         value={newExperience.role}
                         onChange={(e) => setNewExperience({...newExperience, role: e.target.value})}
-                        placeholder="Role (e.g. Senior Developer)" 
-                        className="w-full px-4 py-2.5 bg-white/50 dark:bg-secondary-950/50 border border-secondary-200 dark:border-secondary-700 rounded-xl text-secondary-900 dark:text-white focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 outline-none transition-all text-sm mb-2" 
+                        placeholder="Role / Position" 
+                        className="w-full px-5 py-3 bg-white border rounded-2xl outline-none transition-all text-sm font-medium mb-2"
+                        style={{ borderColor: "#E0E4E3", color: "#57595B" }}
                       />
-                      <div className="flex gap-2 mb-2">
+                      <div className="flex gap-3">
                         <input 
                           type="text" 
                           value={newExperience.company}
                           onChange={(e) => setNewExperience({...newExperience, company: e.target.value})}
                           placeholder="Company" 
-                          className="flex-1 px-4 py-2.5 bg-white/50 dark:bg-secondary-950/50 border border-secondary-200 dark:border-secondary-700 rounded-xl text-secondary-900 dark:text-white focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 outline-none transition-all text-sm" 
+                          className="flex-1 px-5 py-3 bg-white border rounded-2xl outline-none transition-all text-sm font-medium"
+                          style={{ borderColor: "#E0E4E3", color: "#57595B" }}
                         />
                         <input 
                           type="text" 
                           value={newExperience.duration}
                           onChange={(e) => setNewExperience({...newExperience, duration: e.target.value})}
-                          placeholder="Duration (e.g. 2021 - Present)" 
-                          className="flex-1 px-4 py-2.5 bg-white/50 dark:bg-secondary-950/50 border border-secondary-200 dark:border-secondary-700 rounded-xl text-secondary-900 dark:text-white focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 outline-none transition-all text-sm" 
+                          placeholder="Duration" 
+                          className="flex-1 px-5 py-3 bg-white border rounded-2xl outline-none transition-all text-sm font-medium"
+                          style={{ borderColor: "#E0E4E3", color: "#57595B" }}
                         />
                       </div>
                       <button 
                         onClick={handleAddExperience}
                         disabled={!newExperience.role.trim() || !newExperience.company.trim()}
-                        className="w-full py-2.5 bg-primary-600 hover:bg-primary-700 disabled:bg-primary-300 disabled:cursor-not-allowed text-white rounded-xl shadow-md transition-colors flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 text-sm font-bold"
+                        className="w-full py-3.5 rounded-2xl font-bold text-xs uppercase tracking-[0.2em] shadow-lg transition-all hover:shadow-xl active:scale-95 disabled:opacity-50 mt-2 cursor-pointer"
+                        style={{ background: "#57595B", color: "white" }}
                       >
-                        <Plus className="w-4 h-4" /> Add Experience
+                        Add to Profile
                       </button>
                     </div>
 
-                    <div className="space-y-6">
+                    <div className="space-y-8">
                       <AnimatePresence>
                         {experiences.map((exp) => (
                           <motion.div 
                             key={exp.id}
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={{ opacity: 1, y: 0 }}
+                            initial={{ opacity: 0, x: -10 }}
+                            animate={{ opacity: 1, x: 0 }}
                             exit={{ opacity: 0, height: 0 }}
-                            className="flex gap-4 group relative"
+                            className="flex gap-5 group relative"
                           >
-                            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-500 flex items-center justify-center text-white font-bold shrink-0 shadow-md">
-                              {exp.company.substring(0, 2).toUpperCase()}
+                            <div 
+                              className="w-14 h-14 rounded-[20px] flex items-center justify-center font-bold text-lg shrink-0 shadow-lg"
+                              style={{ 
+                                background: "linear-gradient(135deg, #F9F9F9, #F2F4F4)", 
+                                border: "1px solid #E0E4E3",
+                                color: "#F7B980" 
+                              }}
+                            >
+                              {exp.company.substring(0, 1).toUpperCase()}
                             </div>
-                            <div className="flex-1 pr-8">
-                              <p className="font-bold text-secondary-900 dark:text-white text-lg">{exp.role}</p>
-                              <p className="text-sm font-medium text-primary-600 dark:text-primary-400 mb-1">{exp.company}</p>
-                              <p className="text-sm text-secondary-500 dark:text-secondary-400">{exp.duration}</p>
+                            <div className="flex-1 pr-10">
+                              <p className="font-bold text-lg leading-tight mb-1" style={{ color: "#57595B" }}>{exp.role}</p>
+                              <div className="flex items-center gap-2 mb-2">
+                                <span className="font-bold text-xs uppercase tracking-wider" style={{ color: "#F7B980" }}>{exp.company}</span>
+                                <span className="w-1 h-1 rounded-full bg-[#E0E4E3]" />
+                                <span className="text-xs font-semibold" style={{ color: "#ACBAC4" }}>{exp.duration}</span>
+                              </div>
                             </div>
                             <button 
                               onClick={() => handleRemoveExperience(exp.id)}
-                              className="absolute top-2 right-0 opacity-0 group-hover:opacity-100 p-2 text-secondary-400 hover:text-error-500 dark:hover:text-error-400 transition-all cursor-pointer"
-                              title="Delete experience"
+                              className="absolute top-0 right-0 opacity-0 group-hover:opacity-100 p-2 text-[#ACBAC4] hover:text-[#EF4444] transition-all cursor-pointer"
                             >
-                              <Trash2 className="w-4 h-4" />
+                              <Trash2 className="w-5 h-5" />
                             </button>
                           </motion.div>
                         ))}
                       </AnimatePresence>
-                      {experiences.length === 0 && (
-                        <p className="text-secondary-500 text-sm italic">No experiences added yet.</p>
-                      )}
                     </div>
                   </div>
                 </div>
@@ -677,55 +930,63 @@ export default function CandidateDashboard() {
 
             {activeTab === "jobs" && (
               <div className="space-y-8">
-                <div className="bg-white/70 dark:bg-secondary-900/70 backdrop-blur-2xl border border-white/50 dark:border-secondary-800 rounded-3xl p-8 shadow-xl shadow-secondary-200/30 dark:shadow-black/40">
-                  <div className="mb-8">
-                    <h3 className="text-2xl font-bold text-secondary-900 dark:text-white mb-2">Global Job Search</h3>
-                    <p className="text-secondary-600 dark:text-secondary-400">Find your dream role and instantly apply using your Video CV.</p>
+                <div 
+                  className="border border-white rounded-[40px] p-8 lg:p-12 shadow-2xl relative overflow-hidden"
+                  style={{ 
+                    background: "rgba(255, 255, 255, 0.7)", 
+                    backdropFilter: "blur(24px)",
+                    boxShadow: "0 24px 64px rgba(87,89,91,0.06)"
+                  }}
+                >
+                  <div className="mb-12">
+                    <h3 className="text-3xl font-bold mb-3" style={{ color: "#57595B" }}>Global Job Search</h3>
+                    <p className="font-medium text-base" style={{ color: "#ACBAC4" }}>Find your dream role and instantly apply using your verified Video Portfolio.</p>
                   </div>
                   
                   {/* Search and Filters */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-                    <div className="relative">
-                      <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-secondary-400">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-12">
+                    <div className="relative group">
+                      <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none transition-colors group-focus-within:text-[#F7B980]" style={{ color: "#ACBAC4" }}>
                         <Search className="h-5 w-5" />
                       </div>
                       <input
                         type="text"
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        placeholder="Search roles, companies..."
-                        className="w-full pl-12 pr-4 py-2.5 bg-white/50 dark:bg-secondary-950/50 border border-secondary-200 dark:border-secondary-700 rounded-xl text-secondary-900 dark:text-white placeholder-secondary-400 focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all outline-none"
+                        placeholder="Search roles or companies..."
+                        className="w-full pl-14 pr-6 py-4 bg-white border rounded-[20px] outline-none transition-all font-medium"
+                        style={{ borderColor: "#E0E4E3", color: "#57595B" }}
                       />
                     </div>
                     <div className="relative z-20">
                       <Select
                         options={countryOptions}
-                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                        onChange={(selected: any) => setSelectedCountry(selected)}
+                        onChange={(newValue) => setSelectedCountry(newValue as SingleValue<{ value: string; label: string }>)}
                         value={selectedCountry}
                         isClearable
-                        placeholder="Filter by Country Location..."
-                        className="react-select-container text-left"
+                        placeholder="Filter by Location..."
+                        className="react-select-container text-left font-medium"
                         classNamePrefix="react-select"
-                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                        components={{ Option: CustomOption as any, SingleValue: CustomSingleValue as any }}
+                        components={{ Option: CustomOption, SingleValue: CustomSingleValue }}
                         styles={{
                           control: (base, state) => ({
                             ...base,
-                            height: "42px",
-                            minHeight: "42px",
-                            backgroundColor: "rgba(255, 255, 255, 0.5)",
-                            borderColor: state.isFocused ? "#8b5cf6" : "#e2e8f0",
-                            borderRadius: "0.75rem",
-                            boxShadow: state.isFocused ? "0 0 0 4px rgba(139, 92, 246, 0.2)" : "none",
-                            className: "dark:bg-secondary-950/50 dark:border-secondary-700",
+                            height: "56px",
+                            paddingLeft: "8px",
+                            backgroundColor: "#FFFFFF",
+                            borderColor: state.isFocused ? "#F7B980" : "#E0E4E3",
+                            borderRadius: "20px",
+                            boxShadow: "none",
+                            "&:hover": { borderColor: "#F7B980" }
                           }),
                           menu: (base) => ({
                             ...base,
-                            backgroundColor: "rgba(255, 255, 255, 0.95)",
-                            backdropFilter: "blur(16px)",
-                            borderRadius: "0.75rem",
-                            className: "dark:bg-secondary-900/95 dark:border-secondary-800",
+                            backgroundColor: "rgba(255, 255, 255, 0.98)",
+                            backdropFilter: "blur(20px)",
+                            borderRadius: "20px",
+                            padding: "8px",
+                            border: "1px solid #E0E4E3",
+                            boxShadow: "0 10px 30px rgba(87,89,91,0.1)"
                           }),
                         }}
                       />
@@ -733,43 +994,70 @@ export default function CandidateDashboard() {
                   </div>
 
                   {/* Job List */}
-                  <div className="space-y-4">
+                  <div className="space-y-6">
                     {filteredJobs.length > 0 ? (
                       filteredJobs.map((job) => (
-                        <div key={job.id} className="group bg-white/50 dark:bg-secondary-950/50 border border-secondary-200 dark:border-secondary-800 rounded-2xl p-6 hover:shadow-lg transition-all flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-                          <div className="flex gap-4 items-start">
-                            <div className="w-14 h-14 rounded-xl bg-secondary-100 dark:bg-secondary-800 flex items-center justify-center shrink-0">
-                               <Building2 className="w-7 h-7 text-secondary-500 dark:text-secondary-400" />
+                        <div 
+                          key={job.id} 
+                          className="group bg-white/40 border-2 rounded-[32px] p-8 transition-all hover:bg-white hover:border-[#F7B980]/30 hover:shadow-2xl flex flex-col md:flex-row justify-between items-start md:items-center gap-8 relative overflow-hidden"
+                          style={{ borderColor: "rgba(224, 228, 227, 0.5)" }}
+                        >
+                          <div className="flex gap-6 items-start z-10">
+                            <div 
+                              className="w-16 h-16 rounded-[24px] flex items-center justify-center shrink-0 shadow-lg"
+                              style={{ background: "#F9F9F9", border: "1px solid #E0E4E3" }}
+                            >
+                               <Building2 className="w-8 h-8" style={{ color: "#ACBAC4" }} />
                             </div>
                             <div>
-                              <h4 className="text-xl font-bold text-secondary-900 dark:text-white group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors">{job.title}</h4>
-                              <p className="text-secondary-600 dark:text-secondary-400 font-medium">{job.company}</p>
-                              <div className="flex flex-wrap gap-4 mt-3 text-sm text-secondary-500">
-                                <span className="flex items-center gap-1.5"><MapPin className="w-4 h-4" /> {job.location}</span>
-                                <span className="flex items-center gap-1.5"><Briefcase className="w-4 h-4" /> {job.type}</span>
-                                <span className="font-mono bg-secondary-100 dark:bg-secondary-800 px-2 py-0.5 rounded text-secondary-700 dark:text-secondary-300">{job.salary}</span>
+                              <h4 className="text-xl font-bold mb-1 transition-colors group-hover:text-[#F7B980]" style={{ color: "#57595B" }}>{job.title}</h4>
+                              <p className="font-bold text-sm tracking-wide mb-4" style={{ color: "#ACBAC4" }}>{job.company.toUpperCase()}</p>
+                              <div className="flex flex-wrap gap-4 text-xs font-bold uppercase tracking-wider" style={{ color: "#8A8C8E" }}>
+                                <span className="flex items-center gap-2 bg-[#F2F4F4] px-3 py-1.5 rounded-lg"><MapPin className="w-3.5 h-3.5" /> {job.location}</span>
+                                <span className="flex items-center gap-2 bg-[#F2F4F4] px-3 py-1.5 rounded-lg"><Briefcase className="w-3.5 h-3.5" /> {job.type}</span>
+                                <span className="bg-[#10B981]/10 text-[#10B981] px-3 py-1.5 rounded-lg">{job.salary}</span>
                               </div>
                             </div>
                           </div>
-                          <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto mt-4 md:mt-0">
-                            <Button 
-                              size="sm"
+                          <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto z-10">
+                            <button 
                               onClick={() => setSelectedJob(job)} 
-                              className="flex-1 justify-center bg-primary-50 hover:bg-primary-100 dark:bg-primary-900/20 dark:hover:bg-primary-900/40 text-primary-600 dark:text-primary-400 font-bold transition-colors rounded-lg cursor-pointer px-4 py-2 text-sm"
+                              className="px-6 py-3 rounded-2xl font-bold text-xs uppercase tracking-widest transition-all hover:bg-[#F2F4F4] cursor-pointer"
+                              style={{ background: "transparent", color: "#57595B", border: "1px solid #E0E4E3" }}
                             >
-                              View Details
-                            </Button>
-                            <Button size="sm" onClick={() => handleApply(job.id)} className="flex-1 shrink-0 bg-primary-600 hover:bg-primary-500 text-white shadow-md flex items-center justify-center gap-2 rounded-lg cursor-pointer px-4 py-2 text-sm">
-                              <Video className="w-4 h-4 cursor-pointer" /> 
-                              Submit Video CV
+                              Explore
+                            </button>
+                            <Button 
+                              onClick={() => handleApply(job.id)} 
+                              className="flex-1 shrink-0 flex items-center justify-center gap-3"
+                              size="md"
+                            >
+                              <Video className="w-4 h-4" /> 
+                              Submit Portfolio
                             </Button>
                           </div>
+                          {/* Subtle decorative element */}
+                          <div className="absolute right-0 bottom-0 w-32 h-32 bg-[#F7B980]/5 rounded-full blur-3xl -mr-16 -mb-16 pointer-events-none group-hover:bg-[#F7B980]/10 transition-all" />
                         </div>
                       ))
                     ) : (
-                      <div className="text-center py-12 bg-white/30 dark:bg-secondary-950/30 rounded-2xl border border-dashed border-secondary-300 dark:border-secondary-700 cursor-pointer" onClick={() => { setSearchQuery(""); setSelectedCountry(null); }}>
-                        <p className="text-secondary-500 dark:text-secondary-400 text-lg mb-2">No jobs match your current filters.</p>
-                        <button onClick={() => { setSearchQuery(""); setSelectedCountry(null); }} className="text-primary-600 dark:text-primary-400 font-medium hover:underline cursor-pointer">Clear all filters</button>
+                      <div 
+                        className="text-center py-24 rounded-[32px] border-2 border-dashed flex flex-col items-center" 
+                        style={{ borderColor: "#E0E4E3", background: "rgba(249, 249, 249, 0.4)" }}
+                        onClick={() => { setSearchQuery(""); setSelectedCountry(null); }}
+                      >
+                        <div className="w-20 h-20 rounded-full bg-white flex items-center justify-center mb-6 shadow-xl border border-[#E0E4E3]">
+                          <Search className="w-10 h-10" style={{ color: "#ACBAC4" }} />
+                        </div>
+                        <p className="text-xl font-bold mb-2" style={{ color: "#57595B" }}>No matching opportunities</p>
+                        <p className="font-medium mb-8" style={{ color: "#ACBAC4" }}>Try adjusting your filters or search terms.</p>
+                        <button 
+                          onClick={() => { setSearchQuery(""); setSelectedCountry(null); }} 
+                          className="font-bold text-sm underline opacity-60 hover:opacity-100 transition-opacity cursor-pointer"
+                          style={{ color: "#57595B" }}
+                        >
+                          Clear all filters
+                        </button>
                       </div>
                     )}
                   </div>
@@ -778,21 +1066,38 @@ export default function CandidateDashboard() {
             )}
 
             {activeTab === "applications" && (
-              <div className="bg-white/70 dark:bg-secondary-900/70 backdrop-blur-2xl border border-white/50 dark:border-secondary-800 rounded-3xl p-8 shadow-xl shadow-secondary-200/30 dark:shadow-black/40">
-                <h3 className="text-2xl font-bold text-secondary-900 dark:text-white mb-8">Active Applications</h3>
-                <div className="space-y-4">
-                  {[
-                    { title: "Senior Backend Engineer", company: "DataFlow", status: "Under Review", date: "Applied 2 days ago", color: "text-amber-600 bg-amber-50 dark:bg-amber-500/10 border-amber-200 dark:border-amber-500/20" },
-                    { title: "Full Stack Developer", company: "FinTech Pro", status: "Interview Scheduled", date: "Applied 1 week ago", color: "text-emerald-600 bg-emerald-50 dark:bg-emerald-500/10 border-emerald-200 dark:border-emerald-500/20" }
-                  ].map((app, i) => (
-                    <div key={i} className="bg-white/50 dark:bg-secondary-950/50 border border-secondary-200 dark:border-secondary-800 rounded-2xl p-6 flex flex-col md:flex-row justify-between md:items-center gap-4">
+              <div 
+                className="border border-white rounded-[40px] p-8 lg:p-12 shadow-2xl relative overflow-hidden"
+                style={{ 
+                  background: "rgba(255, 255, 255, 0.7)", 
+                  backdropFilter: "blur(24px)",
+                  boxShadow: "0 24px 64px rgba(87,89,91,0.06)"
+                }}
+              >
+                <h3 className="text-3xl font-bold mb-10 flex items-center gap-4" style={{ color: "#57595B" }}>
+                  <div className="p-2.5 rounded-2xl bg-[#F7B980]/10">
+                    <Briefcase className="w-7 h-7 text-[#F7B980]" />
+                  </div>
+                  Applied Opportunities
+                </h3>
+                <div className="space-y-6">
+                  {applications.map((app) => (
+                    <div 
+                      key={app.id} 
+                      onClick={() => setSelectedApplication(app)}
+                      className="bg-white/40 border-2 border-transparent rounded-[32px] p-8 transition-all hover:bg-white hover:border-[#F7B980]/30 hover:shadow-2xl flex flex-col md:flex-row justify-between md:items-center gap-6 cursor-pointer group"
+                      style={{ background: "rgba(255, 255, 255, 0.4)", border: "1px solid #E0E4E3" }}
+                    >
                       <div>
-                        <h4 className="text-lg font-bold text-secondary-900 dark:text-white">{app.title}</h4>
-                        <p className="text-secondary-600 dark:text-secondary-400">{app.company} • <span className="text-sm">{app.date}</span></p>
+                        <h4 className="text-xl font-bold mb-1 group-hover:text-[#F7B980] transition-colors" style={{ color: "#57595B" }}>{app.title}</h4>
+                        <p className="font-bold text-sm" style={{ color: "#ACBAC4" }}>{app.company} <span className="mx-2">•</span> {app.date}</p>
                       </div>
-                      <span className={`px-4 py-1.5 rounded-full text-sm font-semibold border ${app.color}`}>
-                        {app.status}
-                      </span>
+                      <div className="flex items-center gap-6">
+                        <span className={`px-6 py-2 rounded-full text-[10px] font-black uppercase tracking-widest border transition-all ${app.color}`}>
+                          {app.status}
+                        </span>
+                        <ChevronRight className="w-5 h-5 opacity-40 group-hover:opacity-100 group-hover:translate-x-1 transition-all" style={{ color: "#57595B" }} />
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -800,27 +1105,46 @@ export default function CandidateDashboard() {
             )}
             
             {activeTab === "interviews" && (
-              <div className="bg-white/70 dark:bg-secondary-900/70 backdrop-blur-2xl border border-white/50 dark:border-secondary-800 rounded-3xl p-8 shadow-xl shadow-secondary-200/30 dark:shadow-black/40 text-center py-20">
-                 <div className="w-20 h-20 bg-secondary-100 dark:bg-secondary-800 rounded-full flex items-center justify-center mx-auto mb-6">
-                   <Bell className="w-10 h-10 text-secondary-400" />
+              <div 
+                className="border border-white rounded-[40px] p-8 lg:p-12 shadow-2xl relative overflow-hidden text-center py-32"
+                style={{ 
+                  background: "rgba(255, 255, 255, 0.7)", 
+                  backdropFilter: "blur(24px)",
+                  boxShadow: "0 24px 64px rgba(87,89,91,0.06)"
+                }}
+              >
+                 <div className="w-24 h-24 bg-white rounded-full flex items-center justify-center mx-auto mb-10 shadow-2xl border border-[#F2F4F4]">
+                   <Bell className="w-10 h-10" style={{ color: "#F7B980" }} />
                  </div>
-                 <h3 className="text-2xl font-bold text-secondary-900 dark:text-white mb-2">No Upcoming Interviews</h3>
-                 <p className="text-secondary-600 dark:text-secondary-400 max-w-sm mx-auto">Keep applying with your stunning Video CV. Your interview schedule will appear here when employers invite you!</p>
+                 <h3 className="text-2xl font-bold mb-4" style={{ color: "#57595B" }}>Ready for the spotlight?</h3>
+                 <p className="max-w-md mx-auto font-medium" style={{ color: "#ACBAC4" }}>Your upcoming interview schedule is currently clear. Keep your portfolio updated to attract global hiring teams.</p>
+                 <button onClick={() => setActiveTab("jobs")} className="mt-10 px-10 py-4 rounded-full font-bold text-sm tracking-widest uppercase transition-all shadow-xl hover:-translate-y-1 active:scale-95" style={{ background: "#57595B", color: "white" }}>
+                   Browse Roles
+                 </button>
               </div>
             )}
             
             {activeTab === "notifications" && (
-              <div className="bg-white/70 dark:bg-secondary-900/70 backdrop-blur-2xl border border-white/50 dark:border-secondary-800 rounded-3xl p-8 shadow-xl shadow-secondary-200/30 dark:shadow-black/40">
-                <h3 className="text-2xl font-bold text-secondary-900 dark:text-white mb-8">Notifications</h3>
-                <div className="space-y-4">
-                  <div className="bg-white/50 dark:bg-secondary-950/50 border border-secondary-200 dark:border-secondary-800 rounded-2xl p-6 flex items-start gap-4">
-                    <div className="w-10 h-10 rounded-full bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center shrink-0">
-                      <Bell className="w-5 h-5 text-primary-600 dark:text-primary-400" />
+              <div 
+                className="border border-white rounded-[40px] p-8 lg:p-12 shadow-2xl relative overflow-hidden"
+                style={{ 
+                  background: "rgba(255, 255, 255, 0.7)", 
+                  backdropFilter: "blur(24px)",
+                  boxShadow: "0 24px 64px rgba(87,89,91,0.06)"
+                }}
+              >
+                <h3 className="text-3xl font-bold mb-10" style={{ color: "#57595B" }}>Alerts & Activity</h3>
+                <div className="space-y-6">
+                  <div className="bg-white/40 border border-[#E0E4E3] rounded-[32px] p-8 flex items-start gap-6 transition-all hover:bg-white cursor-pointer">
+                    <div className="w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 shadow-lg" style={{ background: "#F2F4F4" }}>
+                      <Bell className="w-6 h-6 text-[#F7B980]" />
                     </div>
-                    <div>
-                      <h4 className="text-lg font-bold text-secondary-900 dark:text-white">Welcome to VidioCV!</h4>
-                      <p className="text-secondary-600 dark:text-secondary-400">Complete your profile and upload your first Video CV to stand out.</p>
-                      <span className="text-xs text-secondary-500 mt-2 block">Just now</span>
+                    <div className="flex-1">
+                      <div className="flex justify-between items-start mb-2">
+                        <h4 className="text-xl font-bold" style={{ color: "#57595B" }}>Welcome to VidioCV</h4>
+                        <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: "#ACBAC4" }}>Just now</span>
+                      </div>
+                      <p className="font-medium text-base" style={{ color: "#ACBAC4" }}>Your account is verified. Start by customizing your profile and recording your first intro.</p>
                     </div>
                   </div>
                 </div>
@@ -828,129 +1152,365 @@ export default function CandidateDashboard() {
             )}
 
             {activeTab === "settings" && (
-              <div className="space-y-8">
-                <div className="bg-white/70 dark:bg-secondary-900/70 backdrop-blur-2xl border border-white/50 dark:border-secondary-800 rounded-3xl p-8 shadow-xl shadow-secondary-200/30 dark:shadow-black/40">
-                  <div className="flex items-center gap-3 mb-8 pb-6 border-b border-secondary-200 dark:border-secondary-800">
-                    <div className="w-12 h-12 bg-primary-100 dark:bg-primary-900/30 rounded-xl flex items-center justify-center">
-                      <Settings className="w-6 h-6 text-primary-600 dark:text-primary-400" />
-                    </div>
-                    <div>
-                      <h3 className="text-2xl font-bold text-secondary-900 dark:text-white">Account Settings</h3>
-                      <p className="text-secondary-600 dark:text-secondary-400">Manage your profile, preferences, and security.</p>
-                    </div>
-                  </div>
+              <div 
+                className="border border-white rounded-[48px] p-2 shadow-2xl relative overflow-hidden flex flex-col lg:flex-row min-h-[800px]"
+                style={{ 
+                  background: "rgba(255, 255, 255, 0.8)", 
+                  backdropFilter: "blur(40px)",
+                  boxShadow: "0 32px 80px rgba(87,89,91,0.12)"
+                }}
+              >
+                {/* Settings Sidebar */}
+                <div className="w-full lg:w-80 border-b lg:border-b-0 lg:border-r border-[#F2F4F4]/60 p-10 space-y-3">
+                   <div className="mb-10 px-4">
+                     <p className="text-[10px] font-black uppercase tracking-[0.2em]" style={{ color: "#ACBAC4" }}>Configuration</p>
+                     <h3 className="text-xl font-bold" style={{ color: "#57595B" }}>Workspace</h3>
+                   </div>
+                   {[
+                     { id: "general", label: "Identity & Profile", icon: UserCircle, desc: "Personal footprint" },
+                     { id: "career", label: "Career Strategy", icon: Briefcase, desc: "Job match logic" },
+                     { id: "security", label: "Access & Security", icon: Shield, desc: "Keys and sessions" },
+                     { id: "privacy", label: "Privacy Guard", icon: Lock, desc: "Video visibility" },
+                     { id: "notifications", label: "Alert Protocols", icon: Bell, desc: "Push & email" },
+                   ].map((item) => (
+                     <button
+                       key={item.id}
+                       onClick={() => setSettingsSection(item.id as "general" | "career" | "security" | "privacy" | "notifications")}
+                       className={`w-full flex items-center gap-5 px-6 py-5 rounded-[28px] transition-all cursor-pointer group text-left`}
+                       style={settingsSection === item.id ? {
+                         background: "white",
+                         color: "#F7B980",
+                         boxShadow: "0 12px 32px rgba(247,185,128,0.15)"
+                       } : {
+                         color: "#ACBAC4",
+                       }}
+                     >
+                       <div className={`p-3 rounded-2xl transition-colors ${settingsSection === item.id ? "bg-[#F7B980]/10 text-[#F7B980]" : "bg-[#F2F4F4] text-[#ACBAC4] group-hover:text-[#57595B]"}`}>
+                         <item.icon className="w-5 h-5" />
+                       </div>
+                       <div>
+                         <p className="font-bold text-sm leading-tight">{item.label}</p>
+                         <p className="text-[10px] opacity-60 font-bold uppercase tracking-widest mt-0.5">{item.desc}</p>
+                       </div>
+                     </button>
+                   ))}
 
-                  <div className="space-y-10">
-                    {/* Personal Information */}
-                    <div className="space-y-6">
-                      <h4 className="text-lg font-bold text-secondary-900 dark:text-white flex items-center gap-2">
-                        <UserCircle className="w-5 h-5 text-secondary-500" /> Personal Information
-                      </h4>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div>
-                          <label className="block text-sm font-medium text-secondary-700 dark:text-secondary-300 mb-2">First Name</label>
-                          <input type="text" defaultValue="John" className="w-full px-4 py-3 bg-white/50 dark:bg-secondary-950/50 border border-secondary-200 dark:border-secondary-700 rounded-xl text-secondary-900 dark:text-white focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 outline-none transition-all" />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-secondary-700 dark:text-secondary-300 mb-2">Last Name</label>
-                          <input type="text" defaultValue="Doe" className="w-full px-4 py-3 bg-white/50 dark:bg-secondary-950/50 border border-secondary-200 dark:border-secondary-700 rounded-xl text-secondary-900 dark:text-white focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 outline-none transition-all" />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-secondary-700 dark:text-secondary-300 mb-2">Phone Number</label>
-                          <input type="tel" defaultValue="+1 (555) 000-0000" className="w-full px-4 py-3 bg-white/50 dark:bg-secondary-950/50 border border-secondary-200 dark:border-secondary-700 rounded-xl text-secondary-900 dark:text-white focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 outline-none transition-all" />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-secondary-700 dark:text-secondary-300 mb-2">Location</label>
-                          <input type="text" defaultValue="San Francisco, CA" className="w-full px-4 py-3 bg-white/50 dark:bg-secondary-950/50 border border-secondary-200 dark:border-secondary-700 rounded-xl text-secondary-900 dark:text-white focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 outline-none transition-all" />
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Professional Links */}
-                    <div className="space-y-6 pt-6 border-t border-secondary-200 dark:border-secondary-800">
-                      <h4 className="text-lg font-bold text-secondary-900 dark:text-white flex items-center gap-2">
-                        <LinkIcon className="w-5 h-5 text-secondary-500" /> Professional Links
-                      </h4>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div>
-                          <label className="block text-sm font-medium text-secondary-700 dark:text-secondary-300 mb-2">LinkedIn Profile</label>
-                          <input type="url" placeholder="https://linkedin.com/in/..." defaultValue="https://linkedin.com/in/johndoe" className="w-full px-4 py-3 bg-white/50 dark:bg-secondary-950/50 border border-secondary-200 dark:border-secondary-700 rounded-xl text-secondary-900 dark:text-white focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 outline-none transition-all" />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-secondary-700 dark:text-secondary-300 mb-2">Portfolio / Website</label>
-                          <input type="url" placeholder="https://..." defaultValue="https://johndoe.dev" className="w-full px-4 py-3 bg-white/50 dark:bg-secondary-950/50 border border-secondary-200 dark:border-secondary-700 rounded-xl text-secondary-900 dark:text-white focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 outline-none transition-all" />
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Security */}
-                     <div className="space-y-6 pt-6 border-t border-secondary-200 dark:border-secondary-800">
-                      <h4 className="text-lg font-bold text-secondary-900 dark:text-white flex items-center gap-2">
-                        <Shield className="w-5 h-5 text-secondary-500" /> Security & Credentials
-                      </h4>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl">
-                        <div>
-                          <label className="block text-sm font-medium text-secondary-700 dark:text-secondary-300 mb-2 flex items-center gap-2">
-                            <Mail className="w-4 h-4" /> Email Address
-                          </label>
-                          <div className="relative">
-                            <input type="email" defaultValue="johndoe@example.com" disabled className="w-full px-4 py-3 bg-secondary-100/50 dark:bg-secondary-900/50 border border-secondary-200 dark:border-secondary-700 rounded-xl text-secondary-500 dark:text-secondary-400 cursor-not-allowed" />
-                            <button className="absolute right-4 top-1/2 -translate-y-1/2 text-sm font-semibold text-primary-600 dark:text-primary-400 hover:text-primary-700 cursor-pointer transition-colors">Change</button>
-                          </div>
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-secondary-700 dark:text-secondary-300 mb-2 flex items-center gap-2">
-                            <Lock className="w-4 h-4" /> Password
-                          </label>
-                          <div className="relative">
-                            <input type="password" defaultValue="********" disabled className="w-full px-4 py-3 bg-secondary-100/50 dark:bg-secondary-900/50 border border-secondary-200 dark:border-secondary-700 rounded-xl text-secondary-500 dark:text-secondary-400 cursor-not-allowed" />
-                            <button className="absolute right-4 top-1/2 -translate-y-1/2 text-sm font-semibold text-primary-600 dark:text-primary-400 hover:text-primary-700 cursor-pointer transition-colors">Update</button>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Preferences */}
-                    <div className="space-y-6 pt-6 border-t border-secondary-200 dark:border-secondary-800">
-                      <h4 className="text-lg font-bold text-secondary-900 dark:text-white flex items-center gap-2">
-                        <Bell className="w-5 h-5 text-secondary-500" /> Notifications
-                      </h4>
-                      <div className="space-y-4 max-w-2xl">
-                        {[
-                          { title: "Email Notifications", desc: "Receive email updates about your applications.", defaultChecked: true },
-                          { title: "Interview Invites", desc: "Get instantly notified when an employer invites you.", defaultChecked: true },
-                          { title: "Marketing & News", desc: "Receive occasional updates about VidioCV new features.", defaultChecked: false },
-                        ].map((pref, i) => (
-                           <div key={i} className="flex items-center justify-between p-4 bg-white/30 dark:bg-secondary-950/30 rounded-xl border border-secondary-200 dark:border-secondary-800">
-                             <div>
-                               <p className="font-semibold text-secondary-900 dark:text-white">{pref.title}</p>
-                               <p className="text-sm text-secondary-500 dark:text-secondary-400">{pref.desc}</p>
-                             </div>
-                             <label className="relative inline-flex items-center cursor-pointer">
-                               <input type="checkbox" value="" className="sr-only peer" defaultChecked={pref.defaultChecked} />
-                               <div className="w-11 h-6 bg-secondary-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-500/20 dark:peer-focus:ring-primary-800 rounded-full peer dark:bg-secondary-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-secondary-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-secondary-600 peer-checked:bg-primary-600"></div>
-                             </label>
-                           </div>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Action Buttons */}
-                    <div className="pt-8 flex flex-col sm:flex-row gap-4 items-center justify-between border-t border-secondary-200 dark:border-secondary-800">
-                      <Button onClick={() => { 
-                          setActiveTab("profile"); 
-                          setSuccessMessage({ title: "Settings Saved", message: "Account settings saved successfully." }); 
-                        }} 
-                        className="w-full sm:w-auto px-8 bg-primary-600 hover:bg-primary-500 text-white shadow-md flex items-center justify-center gap-2 py-3 rounded-xl cursor-pointer">
-                        Save All Changes
-                      </Button>
-                      
-                      <button className="flex items-center gap-2 text-error-600 hover:text-error-700 dark:text-error-500 dark:hover:text-error-400 font-semibold cursor-pointer transition-colors px-4 py-2 hover:bg-error-50 dark:hover:bg-error-500/10 rounded-lg">
-                        <Trash2 className="w-5 h-5" /> Delete Account
+                   <div className="pt-10 mt-10 border-t border-[#F2F4F4] px-4">
+                      <button onClick={() => setIsLogoutModalOpen(true)} className="flex items-center gap-3 text-red-400 hover:text-red-500 font-bold text-xs uppercase tracking-widest transition-all group cursor-pointer">
+                        <LogOut className="w-4 h-4 group-hover:-translate-x-1 transition-transform" /> Sign Out Workspace
                       </button>
-                    </div>
+                   </div>
+                </div>
 
-                  </div>
+                {/* Settings Content Area */}
+                <div className="flex-1 p-10 lg:p-20 overflow-y-auto bg-white/30">
+                    <AnimatePresence mode="wait">
+                      <motion.div
+                        key={settingsSection}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -10 }}
+                        transition={{ duration: 0.3 }}
+                        className="max-w-4xl mx-auto space-y-16"
+                      >
+                        {settingsSection === "general" && (
+                          <div className="space-y-12">
+                            <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-8 border-b border-[#F2F4F4]">
+                               <div>
+                                 <h3 className="text-3xl font-black tracking-tight mb-2" style={{ color: "#57595B" }}>Identity & Presence</h3>
+                                 <p className="font-medium text-base leading-relaxed" style={{ color: "#ACBAC4" }}>Manage your global professional footprint and verified identifier.</p>
+                               </div>
+                               <div className="flex -space-x-3">
+                                  {[1,2,3].map(i => (
+                                    <div key={i} className="w-10 h-10 rounded-full border-2 border-white bg-[#F2F4F4] flex items-center justify-center text-[10px] font-bold" style={{ color: "#ACBAC4" }}>
+                                      {i===3 ? "+4" : "JD"}
+                                    </div>
+                                  ))}
+                               </div>
+                            </div>
+                            
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+                              <div className="space-y-4">
+                                <label className="text-[10px] font-black uppercase tracking-[0.25em]" style={{ color: "#ACBAC4" }}>Legal Identifier</label>
+                                <input type="text" defaultValue={userName} className="w-full px-8 py-5 bg-white border-2 rounded-3xl outline-none transition-all font-bold focus:border-[#F7B980] shadow-sm" style={{ borderColor: "#F2F4F4", color: "#57595B" }} />
+                              </div>
+                              <div className="space-y-4">
+                                <label className="text-[10px] font-black uppercase tracking-[0.25em]" style={{ color: "#ACBAC4" }}>Main Connection</label>
+                                <input type="tel" defaultValue="+1 (555) 782-0192" className="w-full px-8 py-5 bg-white border-2 rounded-3xl outline-none transition-all font-bold focus:border-[#F7B980] shadow-sm" style={{ borderColor: "#F2F4F4", color: "#57595B" }} />
+                              </div>
+                              <div className="md:col-span-2 space-y-4">
+                                <label className="text-[10px] font-black uppercase tracking-[0.25em]" style={{ color: "#ACBAC4" }}>Professional Narrative</label>
+                                <textarea rows={5} defaultValue="Senior Software Engineer with a passion for high-fidelity UI/UX and scalable distributed systems. Currently optimizing video delivery at scale." className="w-full px-8 py-6 bg-white border-2 rounded-[32px] outline-none transition-all font-medium text-lg leading-relaxed focus:border-[#F7B980] shadow-sm resize-none" style={{ borderColor: "#F2F4F4", color: "#57595B" }} />
+                              </div>
+                            </div>
+
+                            <div className="pt-4 space-y-10">
+                                <div>
+                                  <h4 className="text-xl font-bold mb-2" style={{ color: "#57595B" }}>Ecosystem Hub</h4>
+                                  <p className="text-sm font-medium" style={{ color: "#ACBAC4" }}>Connect your external professional nodes for deeper verification.</p>
+                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-1 gap-6">
+                                  {[
+                                    { label: "LinkedIn Domain", val: "linkedin.com/in/johndoe", icon: LinkIcon },
+                                    { label: "Architecture Portfolio", val: "johndoe.dev", icon: LinkIcon }
+                                  ].map((hub, i) => (
+                                    <div key={i} className="flex items-center gap-6 p-6 rounded-[28px] bg-white border border-[#F2F4F4] shadow-sm group hover:border-[#F7B980] transition-all">
+                                      <div className="p-3 rounded-2xl bg-[#F2F4F4] text-[#ACBAC4] group-hover:bg-[#F7B980]/10 group-hover:text-[#F7B980] transition-colors">
+                                        <hub.icon className="w-5 h-5" />
+                                      </div>
+                                      <div className="flex-1">
+                                        <p className="text-[10px] font-black uppercase tracking-widest mb-1" style={{ color: "#ACBAC4" }}>{hub.label}</p>
+                                        <input type="text" defaultValue={hub.val} className="w-full bg-transparent outline-none font-bold text-sm" style={{ color: "#57595B" }} />
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {settingsSection === "career" && (
+                          <div className="space-y-12">
+                            <div className="pb-8 border-b border-[#F2F4F4]">
+                               <h3 className="text-3xl font-black tracking-tight mb-2" style={{ color: "#57595B" }}>Career Strategy</h3>
+                               <p className="font-medium text-base leading-relaxed" style={{ color: "#ACBAC4" }}>Configure your employment mobility and signal your availability to the network.</p>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
+                               <div className="space-y-8">
+                                  <div>
+                                    <label className="text-[10px] font-black uppercase tracking-[0.25em] mb-6 block" style={{ color: "#ACBAC4" }}>Mobility Protocols</label>
+                                    <div className="space-y-6">
+                                      <Toggle 
+                                        enabled={prefs.remoteOnly} 
+                                        setEnabled={(val) => setPrefs({...prefs, remoteOnly: val})} 
+                                        label="Remote Operations" 
+                                        description="Prioritize opportunities with distributed workspace culture."
+                                      />
+                                      <Toggle 
+                                        enabled={prefs.openToRelocate} 
+                                        setEnabled={(val) => setPrefs({...prefs, openToRelocate: val})} 
+                                        label="Global Relocation" 
+                                        description="Willing to move for the right high-impact mission."
+                                      />
+                                    </div>
+                                  </div>
+                               </div>
+                               <div className="space-y-8">
+                                  <label className="text-[10px] font-black uppercase tracking-[0.25em]" style={{ color: "#ACBAC4" }}>Compensation Blueprint</label>
+                                  <div className="p-8 rounded-[32px] bg-[#F7B980]/5 border border-[#F7B980]/10 space-y-6">
+                                    <div className="flex justify-between items-end">
+                                      <p className="text-sm font-bold" style={{ color: "#57595B" }}>Target Range</p>
+                                      <p className="text-2xl font-black" style={{ color: "#F7B980" }}>{prefs.expectedSalary}</p>
+                                    </div>
+                                    <input 
+                                      type="range" 
+                                      min="50000" 
+                                      max="300000" 
+                                      step="5000"
+                                      value={parseInt(prefs.expectedSalary.replace(/[^0-9]/g, "")) || 150000} 
+                                      onChange={(e) => setPrefs({...prefs, expectedSalary: `$${(parseInt(e.target.value)/1000).toFixed(0)}k+ USD`})} 
+                                      className="w-full accent-[#F7B980] cursor-pointer" 
+                                    />
+                                    <div className="flex justify-between text-[10px] font-bold" style={{ color: "#ACBAC4" }}>
+                                      <span>$50k</span>
+                                      <span>$175k (Avg)</span>
+                                      <span>$300k+</span>
+                                    </div>
+                                  </div>
+                               </div>
+                            </div>
+
+                            <div className="pt-4 space-y-8">
+                               <div>
+                                 <h4 className="text-xl font-bold mb-2" style={{ color: "#57595B" }}>Mission Targets</h4>
+                                 <p className="text-sm font-medium" style={{ color: "#ACBAC4" }}>Tag the sectors where you want to make the most professional impact.</p>
+                               </div>
+                               <div className="flex flex-wrap gap-4">
+                                  {["FinTech", "HealthTech", "AI / ML", "Cybersecurity", "E-commerce", "SaaS", "Web3"].map(tag => (
+                                    <button 
+                                      key={tag} 
+                                      className="px-8 py-3.5 rounded-2xl border-2 font-bold text-sm transition-all hover:bg-[#F7B980] hover:text-white hover:border-[#F7B980] hover:shadow-lg hover:shadow-[#F7B980]/20 cursor-pointer"
+                                      style={{ borderColor: "#F2F4F4", color: "#8A8C8E", backgroundColor: "white" }}
+                                    >
+                                      {tag}
+                                    </button>
+                                  ))}
+                                  <button className="px-8 py-3.5 rounded-2xl border-2 border-dashed font-bold text-sm flex items-center gap-3 cursor-pointer group hover:bg-white transition-all" style={{ borderColor: "#E0E4E3", color: "#ACBAC4" }}>
+                                    <Plus className="w-4 h-4 group-hover:rotate-90 transition-transform" /> New Target
+                                  </button>
+                               </div>
+                            </div>
+                          </div>
+                        )}
+                        {settingsSection === "notifications" && (
+                          <div className="space-y-12">
+                            <div className="pb-8 border-b border-[#F2F4F4]">
+                               <h3 className="text-3xl font-black tracking-tight mb-2" style={{ color: "#57595B" }}>Alert Protocols</h3>
+                               <p className="font-medium text-base leading-relaxed" style={{ color: "#ACBAC4" }}>Configure your real-time signal preferences for the dashboard.</p>
+                            </div>
+
+                            <div className="space-y-6">
+                              <div className="bg-white border border-[#F2F4F4] rounded-[32px] p-8 flex items-start gap-8 shadow-sm group hover:shadow-md transition-all">
+                                <div className="p-4 rounded-2xl bg-[#F2F4F4] text-[#ACBAC4] group-hover:bg-[#F7B980]/10 group-hover:text-[#F7B980] transition-colors">
+                                  <Mail className="w-6 h-6" />
+                                </div>
+                                <div className="flex-1">
+                                  <Toggle 
+                                    enabled={prefs.emailAlerts} 
+                                    setEnabled={(val) => setPrefs({...prefs, emailAlerts: val})} 
+                                    label="Email Sync" 
+                                    description="Weekly digests and mission-critical updates."
+                                  />
+                                </div>
+                              </div>
+
+                              <div className="bg-white border border-[#F2F4F4] rounded-[32px] p-8 flex items-start gap-8 shadow-sm group hover:shadow-md transition-all">
+                                <div className="p-4 rounded-2xl bg-[#F2F4F4] text-[#ACBAC4] group-hover:bg-[#F7B980]/10 group-hover:text-[#F7B980] transition-colors">
+                                  <Bell className="w-6 h-6" />
+                                </div>
+                                <div className="flex-1">
+                                  <Toggle 
+                                    enabled={prefs.browserAlerts} 
+                                    setEnabled={(val) => setPrefs({...prefs, browserAlerts: val})} 
+                                    label="Desktop Signals" 
+                                    description="Instant push notifications for recruiter inquiries."
+                                  />
+                                </div>
+                              </div>
+
+                              <div className="bg-white border border-[#F2F4F4] rounded-[32px] p-8 flex items-start gap-8 shadow-sm group hover:shadow-md transition-all">
+                                <div className="p-4 rounded-2xl bg-[#F2F4F4] text-[#ACBAC4] group-hover:bg-[#F7B980]/10 group-hover:text-[#F7B980] transition-colors">
+                                  <Shield className="w-6 h-6" />
+                                </div>
+                                <div className="flex-1">
+                                  <Toggle 
+                                    enabled={prefs.jobInvites} 
+                                    setEnabled={(val) => setPrefs({...prefs, jobInvites: val})} 
+                                    label="Private Inquiries" 
+                                    description="Allow high-tier recruiters to reach out directly."
+                                  />
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {settingsSection === "privacy" && (
+                          <div className="space-y-12">
+                            <div className="pb-8 border-b border-[#F2F4F4]">
+                               <h3 className="text-3xl font-black tracking-tight mb-2" style={{ color: "#57595B" }}>Privacy Guard</h3>
+                               <p className="font-medium text-base leading-relaxed" style={{ color: "#ACBAC4" }}>Control your video resume discoverability and narrative data.</p>
+                            </div>
+
+                            <div className="grid grid-cols-1 gap-8">
+                                <div className="bg-[#57595B] rounded-[40px] p-10 text-white relative overflow-hidden shadow-2xl">
+                                    <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-10">
+                                      <div className="max-w-md space-y-4">
+                                         <h4 className="text-2xl font-black">Spotlight Visibility</h4>
+                                         <p className="text-white/60 font-medium leading-relaxed">When active, your high-fidelity Video Resume is promoted to the global recruiter network.</p>
+                                         <div className="flex items-center gap-3 p-4 rounded-2xl bg-white/10 border border-white/10">
+                                            <Shield className="w-5 h-5 text-[#F7B980]" />
+                                            <p className="text-[10px] font-black uppercase tracking-widest">Secured by VidioCV Privacy Protocols</p>
+                                         </div>
+                                      </div>
+                                      <div className="bg-white/10 p-8 rounded-[32px] border border-white/20">
+                                        <Toggle 
+                                          enabled={prefs.videoPublic} 
+                                          setEnabled={(val) => setPrefs({...prefs, videoPublic: val})} 
+                                          label="Go Public" 
+                                          description="Enable for recruiters"
+                                          dark
+                                        />
+                                      </div>
+                                    </div>
+                                    <div className="absolute top-0 right-0 w-96 h-96 bg-[#F7B980]/10 rounded-full blur-[120px] -mr-48 -mt-48" />
+                                </div>
+
+                                <div className="p-8 rounded-[32px] border-2 border-dashed border-[#F2F4F4] flex items-center justify-between">
+                                   <div className="flex items-center gap-6">
+                                      <div className="p-4 rounded-2xl bg-[#F2F4F4] text-[#ACBAC4]">
+                                        <Trash2 className="w-6 h-6" />
+                                      </div>
+                                      <div>
+                                        <p className="font-bold text-sm" style={{ color: "#57595B" }}>Narrative Data Wipe</p>
+                                        <p className="text-xs font-medium" style={{ color: "#ACBAC4" }}>Irreversibly delete your active Video CV and local metadata.</p>
+                                      </div>
+                                   </div>
+                                   <button className="px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest text-red-400 hover:bg-red-50 hover:text-red-500 transition-all cursor-pointer">Execute Wipe</button>
+                                </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {settingsSection === "security" && (
+                          <div className="space-y-12">
+                            <div className="pb-8 border-b border-[#F2F4F4]">
+                               <h3 className="text-3xl font-black tracking-tight mb-2" style={{ color: "#57595B" }}>Security Hub</h3>
+                               <p className="font-medium text-base leading-relaxed" style={{ color: "#ACBAC4" }}>Manage authentication hardware and active workspace sessions.</p>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                              <div className="space-y-4">
+                                <label className="text-[10px] font-black uppercase tracking-[0.25em]" style={{ color: "#ACBAC4" }}>Access Key</label>
+                                <div className="relative group">
+                                  <input type="password" defaultValue="********" disabled className="w-full px-8 py-5 bg-white border-2 rounded-3xl transition-all font-bold" style={{ borderColor: "#F2F4F4", color: "#ACBAC4" }} />
+                                  <button className="absolute right-6 top-1/2 -translate-y-1/2 font-black text-[10px] uppercase tracking-widest text-[#F7B980] hover:scale-105 transition-transform cursor-pointer">Rotate Key</button>
+                                </div>
+                              </div>
+                              <div className="space-y-4">
+                                <label className="text-[10px] font-black uppercase tracking-[0.25em]" style={{ color: "#ACBAC4" }}>Verified Terminal</label>
+                                <div className="relative group">
+                                  <input type="email" defaultValue="johndoe@example.com" disabled className="w-full px-8 py-5 bg-white border-2 rounded-3xl transition-all font-bold" style={{ borderColor: "#F2F4F4", color: "#ACBAC4" }} />
+                                  <button className="absolute right-6 top-1/2 -translate-y-1/2 font-black text-[10px] uppercase tracking-widest text-[#F7B980] hover:scale-105 transition-transform cursor-pointer">Update</button>
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="space-y-8">
+                               <div className="flex items-center justify-between">
+                                 <h4 className="text-xl font-bold" style={{ color: "#57595B" }}>Active Terminals</h4>
+                                 <button className="text-[10px] font-black uppercase tracking-widest text-[#F7B980] hover:underline cursor-pointer">Disconnect All</button>
+                               </div>
+                               <div className="grid grid-cols-1 gap-4">
+                                  {[
+                                    { device: "MacBook Pro M2 - San Francisco, US", time: "Active Workspace", current: true, icon: "💻" },
+                                    { device: "iPhone 15 Pro - Austin, TX", time: "Last check-in 2h ago", current: false, icon: "📱" }
+                                  ].map((session, i) => (
+                                    <div key={i} className="flex justify-between items-center p-6 rounded-[32px] bg-white border border-[#F2F4F4] shadow-sm hover:shadow-md transition-all">
+                                      <div className="flex items-center gap-6">
+                                        <div className="w-14 h-14 rounded-2xl bg-[#F2F4F4] flex items-center justify-center text-2xl shadow-inner">
+                                          {session.icon}
+                                        </div>
+                                        <div>
+                                          <p className="font-bold text-base" style={{ color: "#57595B" }}>{session.device}</p>
+                                          <div className="flex items-center gap-2 mt-1">
+                                            <div className={`w-2 h-2 rounded-full ${session.current ? "bg-[#10B981] shadow-[0_0_8px_rgba(16,185,129,0.5)]" : "bg-[#ACBAC4]"}`} />
+                                            <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: "#ACBAC4" }}>{session.time}</p>
+                                          </div>
+                                        </div>
+                                      </div>
+                                      {!session.current && <button className="p-3 text-red-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all cursor-pointer"><Trash2 className="w-5 h-5" /></button>}
+                                    </div>
+                                  ))}
+                               </div>
+                            </div>
+
+                            <div className="pt-10 border-t border-[#F2F4F4]">
+                               <div className="p-10 rounded-[40px] bg-red-50 border border-red-100 flex flex-col md:flex-row items-center justify-between gap-10">
+                                  <div className="max-w-md text-center md:text-left">
+                                     <h5 className="text-xl font-black text-red-500 mb-2">Danger Zone</h5>
+                                     <p className="text-sm font-semibold text-red-400">Permanently deactivate your professional profile and erase all narrative history across the VidioCV network.</p>
+                                  </div>
+                                  <button onClick={() => setIsLogoutModalOpen(true)} className="px-10 py-5 bg-red-500 text-white rounded-[24px] font-black text-xs uppercase tracking-widest shadow-xl shadow-red-500/20 hover:scale-105 active:scale-95 transition-all cursor-pointer">
+                                    Deactivate Profile
+                                  </button>
+                               </div>
+                            </div>
+                          </div>
+                        )}
+                      </motion.div>
+                    </AnimatePresence>
                 </div>
               </div>
             )}
@@ -965,9 +1525,14 @@ export default function CandidateDashboard() {
         type="success" 
         title={successMessage?.title}
       >
-        <p className="text-secondary-600 dark:text-secondary-300 font-medium">
-          {successMessage?.message}
-        </p>
+        <div className="py-4 text-center">
+          <div className="w-20 h-20 bg-[#F7B980]/10 rounded-full flex items-center justify-center mx-auto mb-6">
+            <Shield className="w-10 h-10 text-[#F7B980]" />
+          </div>
+          <p className="text-lg font-medium" style={{ color: "#8A8C8E" }}>
+            {successMessage?.message}
+          </p>
+        </div>
       </Modal>
 
       {/* Generic Modal for Confirmations/Alerts */}
@@ -977,16 +1542,16 @@ export default function CandidateDashboard() {
         title={modalConfig.title}
         type={modalConfig.type === "confirm" ? "default" : modalConfig.type}
         primaryAction={modalConfig.type === "confirm" ? {
-          label: "Delete Permanently",
+          label: "Confirm Action",
           onClick: () => {
             modalConfig.onConfirm?.();
             setModalConfig({ ...modalConfig, isOpen: false });
           }
         } : undefined}
-        closeActionLabel={modalConfig.type === "confirm" ? "Keep Video" : "Close"}
+        closeActionLabel={modalConfig.type === "confirm" ? "Cancel" : "Close"}
       >
-        <div className="py-2">
-          {modalConfig.message}
+        <div className="py-6 text-center">
+           <p className="text-lg font-medium" style={{ color: "#8A8C8E" }}>{modalConfig.message}</p>
         </div>
       </Modal>
 
@@ -997,55 +1562,55 @@ export default function CandidateDashboard() {
         title={selectedJob?.title}
         type="info"
         primaryAction={{
-          label: "Quick Apply with Video CV",
+          label: "Submit Video Portfolio",
           onClick: () => {
              setModalConfig({
                isOpen: true,
-               title: "Application Sent!",
-               message: "Your application has been successfully submitted to " + selectedJob?.company,
+               title: "Application Synced",
+               message: "Your Video Portfolio has been successfully transmitted to " + selectedJob?.company + ". Good luck!",
                type: "success"
              });
              setSelectedJob(null);
           }
         }}
         closeActionLabel="Close"
+        maxWidth="max-w-3xl"
       >
         {selectedJob && (
-          <div className="space-y-6">
-            <div className="flex flex-wrap items-center gap-4 border-b border-secondary-200 dark:border-secondary-800 pb-4">
-               <div>
-                  <p className="font-semibold text-secondary-900 dark:text-white flex items-center gap-2">
-                     <Building2 className="w-4 h-4 text-secondary-400" />
-                     {selectedJob.company}
-                  </p>
+          <div className="space-y-8 py-4">
+            <div className="flex flex-col sm:flex-row justify-between border-b border-[#F2F4F4] pb-8 gap-6">
+               <div className="flex gap-4 items-center">
+                  <div className="w-16 h-16 rounded-2xl bg-[#F2F4F4] flex items-center justify-center">
+                    <Building2 className="w-8 h-8 text-[#57595B]" />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold" style={{ color: "#57595B" }}>{selectedJob.company}</p>
+                    <div className="flex items-center gap-3 text-sm font-bold" style={{ color: "#ACBAC4" }}>
+                      <MapPin className="w-4 h-4" /> {selectedJob.location}
+                    </div>
+                  </div>
                </div>
-               <div className="flex items-center gap-2 text-secondary-600 dark:text-secondary-400 bg-secondary-100 dark:bg-secondary-800 px-3 py-1 rounded-lg text-sm">
-                 <MapPin className="w-4 h-4" />
-                 {selectedJob.location}
+               <div className="flex flex-wrap gap-3">
+                  <span className="px-4 py-2 rounded-xl bg-[#F7B980]/10 text-[#F7B980] text-xs font-bold uppercase tracking-widest">{selectedJob.type}</span>
+                  <span className="px-4 py-2 rounded-xl bg-[#10B981]/10 text-[#10B981] text-xs font-bold uppercase tracking-widest">{selectedJob.salary}</span>
                </div>
             </div>
             
-            <div className="flex flex-wrap gap-4">
-              <div className="bg-primary-50 dark:bg-primary-500/10 border border-primary-100 dark:border-primary-500/20 px-4 py-3 rounded-xl flex-1">
-                 <p className="text-secondary-500 dark:text-secondary-400 text-xs uppercase font-bold tracking-wider mb-1">Employment Type</p>
-                 <p className="font-semibold text-primary-700 dark:text-primary-300 flex items-center gap-2"><Briefcase className="w-4 h-4" /> {selectedJob.type}</p>
-              </div>
-              <div className="bg-success-50 dark:bg-success-500/10 border border-success-100 dark:border-success-500/20 px-4 py-3 rounded-xl flex-1">
-                 <p className="text-secondary-500 dark:text-secondary-400 text-xs uppercase font-bold tracking-wider mb-1">Salary</p>
-                 <p className="font-semibold text-success-700 dark:text-success-400">{selectedJob.salary}</p>
-              </div>
+            <div className="space-y-6">
+               <h4 className="text-xl font-bold" style={{ color: "#57595B" }}>Opportunity Blueprint</h4>
+               <p className="text-lg leading-relaxed font-medium" style={{ color: "#8A8C8E" }}>
+                 {selectedJob.description}
+               </p>
             </div>
 
-            <div className="bg-secondary-50 dark:bg-secondary-950/50 p-6 rounded-2xl border border-secondary-200 dark:border-secondary-800">
-              <h4 className="font-bold text-secondary-900 dark:text-white mb-3 text-lg">About this role</h4>
-              <p className="text-secondary-600 dark:text-secondary-300 leading-relaxed text-sm">
-                {selectedJob.description}
-              </p>
-            </div>
-            
-            <div className="text-sm text-secondary-500 italic mt-6 flex items-center gap-2">
-              <Shield className="w-4 h-4" />
-              Applying will securely send your active Video CV to the employer.
+            <div className="p-6 rounded-3xl flex items-start gap-5 border border-[#F2F4F4]" style={{ background: "rgba(242, 244, 244, 0.3)" }}>
+               <div className="p-3 rounded-2xl bg-white shadow-sm">
+                 <Shield className="w-6 h-6 text-[#10B981]" />
+               </div>
+               <div>
+                  <p className="font-bold text-sm mb-1" style={{ color: "#57595B" }}>Verified Selection Process</p>
+                  <p className="text-xs font-medium" style={{ color: "#ACBAC4" }}>Applying will securely transmit your active Video Resume. Your data is protected by global encryption standards.</p>
+               </div>
             </div>
           </div>
         )}
@@ -1055,45 +1620,135 @@ export default function CandidateDashboard() {
         isOpen={isLogoutModalOpen} 
         onClose={() => setIsLogoutModalOpen(false)} 
         type="default" 
-        title="Confirm Logout"
-        primaryAction={{ label: "Logout", onClick: handleLogout }}
+        title="Sign Out"
+        primaryAction={{ label: "Confirm Logout", onClick: handleLogout }}
+        closeActionLabel="Stay Logged In"
       >
-        <p className="text-secondary-600 dark:text-secondary-300 font-medium">Are you sure you want to log out of your Candidate account?</p>
+        <div className="py-6 text-center">
+          <p className="text-lg font-medium" style={{ color: "#8A8C8E" }}>Are you ready to sign out of your professional workspace?</p>
+        </div>
       </Modal>
 
       {/* Read Email Modal */}
       <Modal
         isOpen={!!selectedMessage}
         onClose={() => setSelectedMessage(null)}
-        title={selectedMessage?.subject}
         type="info"
-        closeActionLabel="Done"
-        maxWidth="max-w-4xl"
+        closeActionLabel="Back to Inbox"
+        maxWidth="max-w-3xl"
         align="left"
       >
         {selectedMessage && (
-          <div className="space-y-4">
-            <div className="flex justify-between items-start border-b border-secondary-200 dark:border-secondary-800 pb-3">
-              <div>
-                <p className="font-bold text-secondary-900 dark:text-white text-base">{selectedMessage.company}</p>
-                <p className="text-xs text-secondary-500 dark:text-secondary-400 font-medium">{selectedMessage.sender}</p>
+          <div className="space-y-4 -mt-2">
+            <div className="flex justify-between items-center border-b border-[#F2F4F4] pb-5">
+              <div className="flex gap-3 items-center">
+                <div 
+                  className="w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm shadow-sm"
+                  style={{ background: "linear-gradient(135deg, #F7B980, #F0A060)", color: "white" }}
+                >
+                  {selectedMessage.company.charAt(0)}
+                </div>
+                <div>
+                  <p className="text-base font-black leading-tight" style={{ color: "#57595B" }}>{selectedMessage.company}</p>
+                  <p className="text-[10px] font-black uppercase tracking-widest mt-0.5" style={{ color: "#ACBAC4" }}>{selectedMessage.sender}</p>
+                </div>
               </div>
-              <p className="text-[10px] text-secondary-400 font-bold uppercase tracking-wider">{selectedMessage.time}</p>
+              <div className="text-right">
+                <p className="text-[9px] font-black uppercase tracking-[0.2em] opacity-40 mb-1">{selectedMessage.time}</p>
+                <div className="px-2 py-0.5 bg-[#10B981]/5 text-[#10B981] rounded-full text-[8px] font-black uppercase tracking-widest inline-block border border-[#10B981]/10">Verified</div>
+              </div>
             </div>
             
-            <div className="bg-secondary-50 dark:bg-secondary-950 p-4 rounded-2xl border border-secondary-100 dark:border-secondary-800">
-              <div className="text-secondary-700 dark:text-secondary-300 whitespace-pre-wrap leading-relaxed text-sm">
+            <div className="p-6 rounded-[24px] border border-[#F2F4F4] relative overflow-hidden group shadow-inner" style={{ background: "rgba(249, 249, 249, 0.4)" }}>
+              <div className="text-sm font-medium whitespace-pre-wrap relative z-10 leading-relaxed" style={{ color: "#57595B" }}>
                 {selectedMessage.body}
               </div>
+              <div className="absolute top-0 right-0 w-32 h-32 bg-[#F7B980]/5 rounded-full blur-[60px] -mr-16 -mt-16 pointer-events-none" />
+            </div>
+ 
+            <div className="flex flex-col sm:flex-row gap-2 pt-1">
+              <Button className="flex-[2] py-3.5" size="lg">
+                Quick Reply
+              </Button>
+              <button 
+                onClick={() => setSelectedMessage(null)} 
+                className="flex-1 py-3.5 rounded-2xl font-bold text-[9px] tracking-[0.2em] uppercase transition-all border-2 border-[#F2F4F4] hover:bg-white hover:border-[#F7B980]/20 hover:text-[#F7B980] cursor-pointer"
+                style={{ color: "#ACBAC4" }}
+              >
+                Archive
+              </button>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* Application Details Modal */}
+      <Modal
+        isOpen={!!selectedApplication}
+        onClose={() => setSelectedApplication(null)}
+        type="info"
+        closeActionLabel="Back to Applications"
+        maxWidth="max-w-3xl"
+        align="left"
+      >
+        {selectedApplication && (
+          <div className="space-y-8 pb-4">
+            <div className="flex justify-between items-start border-b border-[#F2F4F4] pb-8 -mt-2">
+               <div className="flex gap-5 items-center">
+                  <div className="w-16 h-16 rounded-[24px] bg-[#F2F4F4] flex items-center justify-center shadow-inner">
+                    <Building2 className="w-8 h-8 text-[#ACBAC4]" />
+                  </div>
+                  <div>
+                    <h3 className="text-2xl font-black tracking-tight" style={{ color: "#57595B" }}>{selectedApplication.company}</h3>
+                    <p className="text-sm font-bold opacity-60 uppercase tracking-[0.15em]">{selectedApplication.title}</p>
+                  </div>
+               </div>
+               <span className={`px-6 py-2 rounded-full text-[10px] font-black uppercase tracking-widest border ${selectedApplication.color}`}>
+                 {selectedApplication.status}
+               </span>
             </div>
 
-            <div className="flex gap-3">
-              <Button className="flex-1 bg-primary-600 hover:bg-primary-500 text-white font-bold py-2.5 rounded-xl transition cursor-pointer text-sm">
-                Reply to Employer
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+               <div className="md:col-span-2 space-y-6">
+                  <div>
+                    <h4 className="text-xs font-black uppercase tracking-[0.2em] mb-4" style={{ color: "#ACBAC4" }}>Role Blueprint</h4>
+                    <p className="text-base font-medium leading-relaxed" style={{ color: "#57595B" }}>{selectedApplication.description}</p>
+                  </div>
+                  
+                  <div className="p-8 rounded-[32px] bg-[#F2F4F4]/30 border border-[#F2F4F4] flex items-center justify-between">
+                     <div className="flex items-center gap-4">
+                        <Video className="w-6 h-6 text-[#F7B980]" />
+                        <p className="text-sm font-bold" style={{ color: "#57595B" }}>Video Portfolio Linked</p>
+                     </div>
+                     <button className="text-[10px] font-black uppercase tracking-widest text-[#F7B980] hover:underline cursor-pointer">Preview Reel</button>
+                  </div>
+               </div>
+
+               <div className="space-y-6">
+                  <h4 className="text-xs font-black uppercase tracking-[0.2em]" style={{ color: "#ACBAC4" }}>Life Cycle</h4>
+                  <div className="relative pl-6 space-y-6">
+                     <div className="absolute left-[7px] top-2 bottom-2 w-0.5 bg-[#F2F4F4]" />
+                     {selectedApplication.timeline.map((item, i) => (
+                       <div key={i} className="relative">
+                         <div className="absolute -left-[23px] top-1 w-2.5 h-2.5 rounded-full border-2 border-white" style={{ background: i === 0 ? "#F7B980" : "#ACBAC4" }} />
+                         <p className="text-[10px] font-black uppercase tracking-widest opacity-40 mb-1">{item.date}</p>
+                         <p className="text-xs font-bold" style={{ color: "#57595B" }}>{item.event}</p>
+                       </div>
+                     ))}
+                  </div>
+               </div>
+            </div>
+
+            <div className="flex flex-col sm:flex-row gap-4 pt-4">
+              <Button className="flex-1 py-4 shadow-xl shadow-[#F7B980]/15" size="lg">
+                Recruiter Workspace
               </Button>
-              <Button onClick={() => setSelectedMessage(null)} className="flex-1 bg-secondary-100 dark:bg-secondary-800 text-secondary-600 dark:text-secondary-300 font-bold py-2.5 rounded-xl transition cursor-pointer text-sm">
-                Archive
-              </Button>
+              <button 
+                className="flex-1 py-4 rounded-2xl font-bold text-[10px] tracking-[0.2em] uppercase transition-all border-2 border-[#F2F4F4] hover:bg-white hover:border-red-500/20 hover:text-red-500 cursor-pointer"
+                style={{ color: "#ACBAC4" }}
+              >
+                Withdraw Intent
+              </button>
             </div>
           </div>
         )}
@@ -1103,28 +1758,20 @@ export default function CandidateDashboard() {
   );
 }
 
-// Helpers for React-Select Custom Options
-const PlayIcon = (props: React.SVGProps<SVGSVGElement>) => (
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" {...props}>
-    <path fillRule="evenodd" d="M4.5 5.653c0-1.426 1.529-2.33 2.779-1.643l11.54 6.348c1.295.712 1.295 2.573 0 3.285L7.28 19.991c-1.25.687-2.779-.217-2.779-1.643V5.653z" clipRule="evenodd" />
-  </svg>
-);
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const CustomOption = (props: any) => {
+// Helpers System
+const CustomOption = (props: OptionProps<{ value: string; label: string }>) => {
   return (
-    <div {...props.innerProps} className="flex items-center gap-2 px-3 py-2 hover:bg-primary-50 dark:hover:bg-primary-900/30 cursor-pointer text-secondary-900 dark:text-white">
-      <ReactCountryFlag countryCode={props.data.value} svg style={{ width: "1.2rem", height: "1.2rem" }} />
-      <span>{props.data.label}</span>
+    <div {...props.innerProps} className="flex items-center gap-3 px-4 py-3 hover:bg-[#F2F4F4] cursor-pointer transition-colors group">
+      <ReactCountryFlag countryCode={props.data.value} svg style={{ width: "1.5rem", height: "1.5rem" }} className="rounded-sm shadow-sm" />
+      <span className="font-bold text-sm group-hover:text-[#57595B]" style={{ color: "#8A8C8E" }}>{props.data.label}</span>
     </div>
   );
 };
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const CustomSingleValue = (props: any) => {
+const CustomSingleValue = (props: SingleValueProps<{ value: string; label: string }>) => {
   return (
-    <div {...props.innerProps} className="flex items-center gap-2 text-secondary-900 dark:text-white">
-      <ReactCountryFlag countryCode={props.data.value} svg style={{ width: "1.2rem", height: "1.2rem" }} />
+    <div {...props.innerProps} className="flex items-center gap-3 font-bold text-sm" style={{ color: "#57595B" }}>
+      <ReactCountryFlag countryCode={props.data.value} svg style={{ width: "1.5rem", height: "1.5rem" }} className="rounded-sm shadow-sm" />
       <span>{props.data.label}</span>
     </div>
   );

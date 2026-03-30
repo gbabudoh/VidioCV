@@ -74,8 +74,6 @@ async function getCVProfile(slug: string) {
   };
 }
 
-import { getPeerTubeEmbedUrl } from "@/app/lib/video";
-
 export default async function CVProfilePage({
   params,
 }: {
@@ -122,11 +120,10 @@ export default async function CVProfilePage({
             <div className="glass-panel rounded-2xl overflow-hidden overflow-hidden">
               <div className="aspect-video bg-black/5 dark:bg-black/40 relative">
                 {cv.videoUrl ? (
-                  <iframe
-                    src={getPeerTubeEmbedUrl(cv.videoUrl) || ""}
-                    className="w-full h-full border-0 absolute inset-0"
-                    allowFullScreen
-                    sandbox="allow-same-origin allow-scripts allow-popups allow-forms"
+                  <video
+                    src={cv.videoUrl}
+                    controls
+                    className="w-full h-full absolute inset-0 object-contain bg-black"
                     title={cv.title || "Video CV"}
                   />
                 ) : (

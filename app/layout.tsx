@@ -16,6 +16,9 @@ export const metadata: Metadata = {
   title: "VidioCV - Transform Your Recruitment",
   description:
     "VidioCV: A revolutionary platform that replaces static resumes with dynamic, AI-enhanced video profiles for modern recruitment.",
+  icons: {
+    icon: "/favicon.png",
+  },
 };
 
 export default function RootLayout({

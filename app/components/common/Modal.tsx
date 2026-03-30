@@ -56,29 +56,29 @@ export default function Modal({
 
   const typeConfig: Record<ModalType, { icon: React.ReactNode; bg: string; border: string }> = {
     success: {
-      icon: <CheckCircle2 className="w-8 h-8 text-success-500" />,
-      bg: "bg-success-50 dark:bg-success-500/10",
-      border: "border-success-200 dark:border-success-500/20",
+      icon: <CheckCircle2 className="w-8 h-8 text-[#10B981]" />,
+      bg: "bg-[#10B981]/10",
+      border: "border-[#10B981]/20",
     },
     error: {
-      icon: <AlertCircle className="w-8 h-8 text-error-500" />,
-      bg: "bg-error-50 dark:bg-error-500/10",
-      border: "border-error-200 dark:border-error-500/20",
+      icon: <AlertCircle className="w-8 h-8 text-[#EF4444]" />,
+      bg: "bg-[#EF4444]/10",
+      border: "border-[#EF4444]/20",
     },
     info: {
-      icon: <Info className="w-8 h-8 text-primary-500" />,
-      bg: "bg-primary-50 dark:bg-primary-500/10",
-      border: "border-primary-200 dark:border-primary-500/20",
+      icon: <Info className="w-8 h-8 text-[#F7B980]" />,
+      bg: "bg-[#F7B980]/10",
+      border: "border-[#F7B980]/20",
     },
     warning: {
-      icon: <HelpCircle className="w-8 h-8 text-warning-500" />,
-      bg: "bg-warning-50 dark:bg-warning-500/10",
-      border: "border-warning-200 dark:border-warning-500/20",
+      icon: <HelpCircle className="w-8 h-8 text-[#F59E0B]" />,
+      bg: "bg-[#F59E0B]/10",
+      border: "border-[#F59E0B]/20",
     },
     default: {
       icon: null,
-      bg: "bg-white/5 dark:bg-secondary-800/50",
-      border: "border-secondary-200 dark:border-secondary-700",
+      bg: "bg-white/5",
+      border: "border-[#E0E4E3]",
     },
   };
 
@@ -87,14 +87,14 @@ export default function Modal({
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 font-sans">
           {/* Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="absolute inset-0 bg-secondary-900/40 dark:bg-black/60 backdrop-blur-md cursor-pointer"
+            className="absolute inset-0 bg-[#57595B]/20 backdrop-blur-md cursor-pointer"
           />
 
           {/* Modal Content */}
@@ -103,25 +103,26 @@ export default function Modal({
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
             transition={{ type: "spring", duration: 0.5, bounce: 0.3 }}
-            className={`relative w-full ${maxWidth} bg-white/90 dark:bg-secondary-900/90 backdrop-blur-2xl rounded-3xl shadow-2xl overflow-hidden border ${config.border} z-10 flex flex-col`}
+            className={`relative w-full ${maxWidth} bg-white/95 backdrop-blur-2xl rounded-[32px] shadow-2xl overflow-hidden border border-white z-10 flex flex-col`}
+            style={{ boxShadow: "0 24px 64px rgba(87,89,91,0.12)" }}
           >
             {/* Top decorative gradient based on type */}
             {type !== "default" && (
               <div className={`absolute top-0 left-0 right-0 h-1.5 ${
-                type === "success" ? "bg-gradient-to-r from-success-400 to-success-600" :
-                type === "error" ? "bg-gradient-to-r from-error-400 to-error-600" :
-                "bg-gradient-to-r from-primary-400 to-primary-600"
+                type === "success" ? "bg-[#10B981]" :
+                type === "error" ? "bg-[#EF4444]" :
+                "bg-gradient-to-r from-[#F7B980] to-[#F0A060]"
               }`} />
             )}
 
             <button
               onClick={onClose}
-              className="absolute top-5 right-5 p-2 rounded-full text-secondary-400 hover:text-secondary-600 dark:hover:text-white hover:bg-secondary-100 dark:hover:bg-secondary-800 transition-colors z-20 cursor-pointer"
+              className="absolute top-6 right-6 p-2 rounded-xl text-[#ACBAC4] hover:text-[#57595B] hover:bg-[#F2F4F4]/50 transition-colors z-20 cursor-pointer"
             >
               <X className="w-5 h-5" />
             </button>
 
-            <div className="p-8 sm:p-10">
+            <div className="p-6 sm:p-10">
               <div className={`flex flex-col ${align === "center" ? "items-center text-center" : "items-start text-left"}`}>
                 {config.icon && (
                   <div className={`p-4 rounded-2xl mb-6 shadow-inner ${config.bg} ${config.border} border`}>
@@ -130,33 +131,43 @@ export default function Modal({
                 )}
                 
                 {title && (
-                  <h2 className="text-2xl font-bold text-secondary-900 dark:text-white mb-3">
+                  <h2 className="text-xl font-bold text-[#57595B] mb-2 tracking-tight">
                     {title}
                   </h2>
                 )}
                 
-                <div className="text-secondary-600 dark:text-secondary-300 text-base leading-relaxed mb-8 w-full">
+                <div className="text-[#ACBAC4] text-sm leading-relaxed mb-6 w-full font-medium">
                   {children}
                 </div>
 
-                <div className="flex gap-4 w-full mt-auto">
+                <div className="flex flex-col sm:flex-row gap-3 w-full mt-auto">
                   {primaryAction && (
                     <button
                       onClick={primaryAction.onClick}
-                      className="flex-1 py-3.5 px-6 bg-secondary-900 hover:bg-secondary-800 dark:bg-white dark:hover:bg-secondary-100 text-white dark:text-secondary-900 rounded-xl font-bold transition-all shadow-lg hover:shadow-xl cursor-pointer"
+                      className="flex-1 py-3.5 px-6 rounded-2xl font-bold transition-all shadow-lg hover:-translate-y-1 cursor-pointer"
+                      style={{ 
+                        background: "linear-gradient(135deg, #F7B980 0%, #F0A060 100%)", 
+                        color: "#57595B",
+                        boxShadow: "0 8px 24px rgba(247,185,128,0.3)"
+                      }}
                     >
                       {primaryAction.label}
                     </button>
                   )}
                   <button
                     onClick={onClose}
-                    className={`font-semibold rounded-xl py-3.5 px-6 transition-colors duration-200 cursor-pointer ${
+                    className={`font-bold rounded-2xl py-3.5 px-6 transition-all duration-300 cursor-pointer ${
                       primaryAction 
-                        ? "flex-1 bg-secondary-100 hover:bg-secondary-200 dark:bg-secondary-800 dark:hover:bg-secondary-700 text-secondary-700 dark:text-secondary-300"
-                        : "w-full bg-secondary-900 hover:bg-secondary-800 dark:bg-white dark:hover:bg-secondary-100 text-white dark:text-secondary-900 shadow-lg"
+                        ? "flex-1 bg-[#F2F4F4] hover:bg-[#E8ECED] text-[#ACBAC4] hover:text-[#57595B]"
+                        : "w-full shadow-lg hover:-translate-y-1"
                     }`}
+                    style={primaryAction ? {} : { 
+                      background: "#57595B", 
+                      color: "#FFFFFF",
+                      boxShadow: "0 8px 24px rgba(87,89,91,0.18)"
+                    }}
                   >
-                    {primaryAction ? "Cancel" : (closeActionLabel || "Awesome, got it")}
+                    {primaryAction ? "Cancel" : (closeActionLabel || "Got it")}
                   </button>
                 </div>
               </div>

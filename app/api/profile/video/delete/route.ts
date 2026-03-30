@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import { deleteVideoFromVidioCV } from "@/lib/vidiocv";
 import prisma from "@/app/lib/prisma";
 import { getTokenFromRequest, verifyToken } from "@/app/lib/auth";
 
@@ -32,12 +31,9 @@ export async function DELETE(request: NextRequest) {
 
     const payload = verifyToken(token);
     if (!payload) {
-      console.error("Deletion API: Token verification failed for token:", token.substring(0, 15) + "...");
       return NextResponse.json({ error: "Invalid token" }, { status: 401 });
     }
-    console.log("Deletion API: Request authorized for user:", payload.userId);
 
-    // Find the user's CvProfile
     const cvProfile = await prisma.cvProfile.findFirst({
       where: { userId: payload.userId }
     });
@@ -46,34 +42,6 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: "No video found to delete" }, { status: 404 });
     }
 
-    // Extract UUID from videoUrl
-    // Case 1: embed URL
-    // https://.../videos/embed/uuid?...
-    let uuid = null;
-    const embedMatch = cvProfile.videoUrl.match(/embed\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/i);
-    if (embedMatch) {
-      uuid = embedMatch[1];
-    } else {
-      // Case 2: direct/fallback UUID search
-      const uuidRegex = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
-      const match = cvProfile.videoUrl.match(uuidRegex);
-      if (match) uuid = match[0];
-    }
-
-    if (uuid) {
-      console.log(`Deletion API: Found UUID ${uuid}. Attempting VidioCV server removal...`);
-      // 1. Delete from VidioCV server
-      const serverDeleted = await deleteVideoFromVidioCV(uuid);
-      if (!serverDeleted) {
-        console.warn(`Deletion API: Failed to delete video ${uuid} from VidioCV server, but proceeding with DB update.`);
-      } else {
-        console.log(`Deletion API: Successfully confirmed removal from VidioCV server for ${uuid}`);
-      }
-    } else {
-      console.warn(`Deletion API: No UUID extracted from URL: ${cvProfile.videoUrl}`);
-    }
-
-    // 2. Clear from Database
     await prisma.cvProfile.update({
       where: { id: cvProfile.id },
       data: {
