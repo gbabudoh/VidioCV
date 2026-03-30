@@ -12,13 +12,26 @@ import {
   MicOff,
   Trash2,
   Settings,
-  FlipHorizontal
+  FlipHorizontal,
+  Wifi,
+  WifiOff
 } from "lucide-react";
+import { 
+  Room, 
+  RoomEvent, 
+  VideoPresets, 
+  createLocalVideoTrack,
+  createLocalAudioTrack
+} from "livekit-client";
 import Modal from "@/app/components/common/Modal";
 import type { ImageSegmenter, ImageSegmenterResult } from "@mediapipe/tasks-vision";
+import dynamic from "next/dynamic";
+import type { ComponentProps } from "react";
+
+const ReactPlayer = dynamic<ComponentProps<typeof import("react-player").default>>(() => import("react-player"), { ssr: false });
 
 interface VideoCreatorProps {
-  onVideoUpload?: (file: File, url?: string) => void;
+  onVideoUpload?: (file: File, url?: string, streamingUrl?: string) => void;
   initialVideoUrl?: string;
   onVideoDelete?: () => void;
   maxDuration?: number;
@@ -43,6 +56,11 @@ export default function VideoCreator({
   const [uploadSuccess, setUploadSuccess] = useState(false);
   const [videoUrl, setVideoUrl] = useState<string | null>(initialVideoUrl || null);
   
+  // LiveKit States
+  const [room, setRoom] = useState<Room | null>(null);
+  const [isConnecting, setIsConnecting] = useState(false);
+  const [connectionQuality, setConnectionQuality] = useState<string>("excellent");
+  
   // Advanced Recording Controls
   const [isMirrored, setIsMirrored] = useState(true);
   const [showSettings, setShowSettings] = useState(false);
@@ -66,6 +84,23 @@ export default function VideoCreator({
 
   const [activePreset, setActivePreset] = useState(studioPresets[0]);
   const [studioReady, setStudioReady] = useState(false);
+  const [recordedMimeType, setRecordedMimeType] = useState<string>("");
+
+  const getSupportedMimeType = () => {
+    const types = [
+      "video/webm;codecs=vp9,opus",
+      "video/webm;codecs=vp8,opus",
+      "video/mp4;codecs=h264,aac",
+      "video/mp4",
+      "video/webm",
+    ];
+    for (const type of types) {
+      if (MediaRecorder.isTypeSupported(type)) {
+        return type;
+      }
+    }
+    return "";
+  };
   
   // Modal State
   const [modalConfig, setModalConfig] = useState<{
@@ -97,28 +132,91 @@ export default function VideoCreator({
   const tempCtxRef = useRef<CanvasRenderingContext2D | null>(null);
   const loopActiveRef = useRef(false);
   const isSegmentingRef = useRef(false);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const analyserRef = useRef<AnalyserNode | null>(null);
+  const vuRafRef = useRef<number | null>(null);
+  const [audioLevel, setAudioLevel] = useState(0);
+
+  const connectToRoom = React.useCallback(async () => {
+    if (isConnecting || room) return;
+    setIsConnecting(true);
+    try {
+      const resp = await fetch("/api/livekit-token?room=vidiocv-studio");
+      const data = await resp.json();
+
+      const r = new Room({
+        adaptiveStream: true,
+        dynacast: true,
+        videoCaptureDefaults: {
+          resolution: VideoPresets.h720.resolution,
+        },
+      });
+
+      r.on(RoomEvent.ConnectionQualityChanged, (quality) => {
+        setConnectionQuality(quality.toString());
+      });
+
+      r.on(RoomEvent.Disconnected, () => {
+        setRoom(null);
+      });
+
+      await r.connect(data.url, data.token);
+      setRoom(r);
+      console.log("Connected to LiveKit room:", r.name);
+    } catch (e) {
+      console.error("Failed to connect to LiveKit:", e);
+      setError("Failed to connect to professional recording studio.");
+    } finally {
+      setIsConnecting(false);
+    }
+  }, [isConnecting, room]);
 
   const requestPermissions = React.useCallback(async () => {
     try {
+      // If we don't have a room yet, connect first
+      if (!room) {
+        await connectToRoom();
+      }
+
       // If we already have a stream and are changing devices, stop the old one first
       if (streamRef.current) {
          streamRef.current.getTracks().forEach(track => track.stop());
       }
 
-      const constraints: MediaStreamConstraints = {
-        video: {
-          width: { ideal: 1280, max: 1920 },
-          height: { ideal: 720, max: 1080 },
-          facingMode: "user",
-          ...(selectedCamera ? { deviceId: { exact: selectedCamera } } : {})
-        },
-        audio: selectedMic ? { deviceId: { exact: selectedMic } } : true
-      };
+      const videoTrack = await createLocalVideoTrack({
+        facingMode: "user",
+        resolution: VideoPresets.h720.resolution,
+        deviceId: selectedCamera || undefined,
+      });
 
-      const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      const audioTrack = await createLocalAudioTrack({
+        deviceId: selectedMic || undefined,
+      });
+
+      const stream = new MediaStream([videoTrack.mediaStreamTrack, audioTrack.mediaStreamTrack]);
       streamRef.current = stream;
+
       if (videoRef.current) videoRef.current.srcObject = stream;
-      
+
+      // Start audio level analyser for VU meter
+      if (vuRafRef.current) cancelAnimationFrame(vuRafRef.current);
+      if (audioContextRef.current) audioContextRef.current.close();
+      const ctx = new AudioContext();
+      audioContextRef.current = ctx;
+      const analyser = ctx.createAnalyser();
+      analyser.fftSize = 256;
+      analyserRef.current = analyser;
+      const source = ctx.createMediaStreamSource(stream);
+      source.connect(analyser);
+      const data = new Uint8Array(analyser.frequencyBinCount);
+      const tick = () => {
+        analyser.getByteFrequencyData(data);
+        const avg = data.reduce((a, b) => a + b, 0) / data.length;
+        setAudioLevel(Math.min(100, (avg / 128) * 100));
+        vuRafRef.current = requestAnimationFrame(tick);
+      };
+      vuRafRef.current = requestAnimationFrame(tick);
+
       setHasPermission(true);
       setError("");
 
@@ -135,7 +233,7 @@ export default function VideoCreator({
       setError("Camera/microphone access denied. Please allow access to record your video.");
       console.error("Permission error:", err);
     }
-  }, [selectedCamera, selectedMic]);
+  }, [selectedCamera, selectedMic, room, connectToRoom]);
 
   useEffect(() => {
     // ONLY re-request if we are NOT recording and don't have a final video yet
@@ -149,12 +247,17 @@ export default function VideoCreator({
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
       if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
+      if (vuRafRef.current) cancelAnimationFrame(vuRafRef.current);
+      if (audioContextRef.current) { audioContextRef.current.close(); audioContextRef.current = null; }
       if (streamRef.current) {
         streamRef.current.getTracks().forEach(track => track.stop());
         streamRef.current = null;
       }
+      if (room) {
+        room.disconnect();
+      }
     };
-  }, []);
+  }, [room]);
 
   // Handle Background Image Preloading
   useEffect(() => {
@@ -362,8 +465,13 @@ export default function VideoCreator({
       chunksRef.current = [];
       setVideoUrl(null);
       setUploadSuccess(false);
-      const options: MediaRecorderOptions = { mimeType: "video/webm;codecs=vp9,opus", videoBitsPerSecond: 2500000 };
-      if (!MediaRecorder.isTypeSupported(options.mimeType!)) options.mimeType = "video/webm;codecs=vp8,opus";
+      const mimeType = getSupportedMimeType();
+      setRecordedMimeType(mimeType);
+      const options: MediaRecorderOptions = {
+        mimeType: mimeType || undefined,
+        videoBitsPerSecond: 2500000,
+        audioBitsPerSecond: 128000,
+      };
       
       let recordStream = streamRef.current;
       if (canvasRef.current) {
@@ -375,7 +483,8 @@ export default function VideoCreator({
       const mediaRecorder = new MediaRecorder(recordStream, options);
       mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data); };
       mediaRecorder.onstop = () => {
-        const blob = new Blob(chunksRef.current, { type: "video/webm" });
+        const finalMimeType = mediaRecorder.mimeType || recordedMimeType || "video/webm";
+        const blob = new Blob(chunksRef.current, { type: finalMimeType });
         setRecordedBlob(blob);
         setPreviewUrl(URL.createObjectURL(blob));
         if (videoRef.current) videoRef.current.srcObject = null;
@@ -451,7 +560,10 @@ export default function VideoCreator({
       const token = localStorage.getItem("token");
       if (!token) { if (confirm("Please log in first.")) window.location.href = "/auth/login"; return; }
 
-      const file = new File([recordedBlob], "video-cv.webm", { type: "video/webm" });
+      const blobType = recordedBlob.type;
+      const isMp4 = blobType.includes("mp4");
+      const extension = isMp4 ? "mp4" : "webm";
+      const file = new File([recordedBlob], `video-cv.${extension}`, { type: blobType });
       const formData = new FormData();
       formData.append("video", file);
       formData.append("duration", String(duration));
@@ -465,8 +577,8 @@ export default function VideoCreator({
       if (!response.ok) throw new Error(data.details || data.error || "Upload failed");
 
       setUploadSuccess(true);
-      setVideoUrl(data.videoUrl);
-      if (onVideoUpload) onVideoUpload(file, data.videoUrl);
+      setVideoUrl(data.streamingUrl || data.videoUrl);
+      if (onVideoUpload) onVideoUpload(file, data.videoUrl, data.streamingUrl);
     } catch (err) { setError(err instanceof Error ? err.message : "Upload failed"); } finally { setIsUploading(false); }
   };
 
@@ -487,15 +599,17 @@ export default function VideoCreator({
   };
 
   if (videoUrl && !recordedBlob && !isRecording) {
+    const urlMime = videoUrl.endsWith(".mp4") ? "video/mp4" : "video/webm";
     return (
       <div className="w-full max-w-4xl mx-auto space-y-4 text-center">
         <div className="bg-black rounded-2xl overflow-hidden border border-slate-700 aspect-video relative">
           <video
-            src={videoUrl}
             controls
             playsInline
             className="w-full h-full object-contain absolute inset-0"
-          />
+          >
+            <source src={videoUrl} type={urlMime} />
+          </video>
         </div>
         <button onClick={handleDelete} className="text-red-500 font-semibold hover:underline cursor-pointer">
           Delete Video CV &amp; Retake
@@ -510,7 +624,25 @@ export default function VideoCreator({
         <video ref={videoRef} autoPlay muted playsInline className={`w-full h-full object-cover ${activePreset.id !== "natural" ? "hidden" : ""}`} />
         <canvas ref={canvasRef} width={1280} height={720} className="w-full h-full object-cover bg-black" />
         
-        {recordedBlob && <video autoPlay controls className="w-full h-full object-cover absolute inset-0 z-10" src={previewUrl} />}
+        {recordedBlob && previewUrl && (
+          <div className="absolute inset-0 z-10 bg-black">
+            <ReactPlayer
+              src={previewUrl}
+              playing
+              controls
+              width="100%"
+              height="100%"
+              config={{
+                html: {
+                  forceVideo: true,
+                  attributes: {
+                    style: { objectFit: "cover", width: "100%", height: "100%" }
+                  }
+                }
+              }}
+            />
+          </div>
+        )}
         
         {isRecording && !isPaused && (
           <div className="absolute top-4 left-4 flex items-center gap-2 bg-red-500 px-3 py-2 rounded-full shadow-lg z-20">
@@ -518,6 +650,26 @@ export default function VideoCreator({
             <span className="text-white font-black text-[10px] uppercase tracking-widest">RECORDING</span>
           </div>
         )}
+
+        {/* LiveKit Connection Status */}
+        <div className="absolute top-4 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/10 z-20 transition-all">
+          {room ? (
+            <>
+              <Wifi className={`w-3 h-3 ${connectionQuality === "excellent" ? "text-green-400" : "text-yellow-400"}`} />
+              <span className="text-white font-bold text-[9px] uppercase tracking-tight">Studio Connected</span>
+            </>
+          ) : isConnecting ? (
+            <>
+              <div className="w-2 h-2 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              <span className="text-white/60 font-bold text-[9px] uppercase tracking-tight">Connecting Studio...</span>
+            </>
+          ) : (
+            <>
+              <WifiOff className="w-3 h-3 text-red-400" />
+              <span className="text-red-400 font-bold text-[9px] uppercase tracking-tight">Studio Offline</span>
+            </>
+          )}
+        </div>
 
         {(isRecording || recordedBlob) && (
           <div className="absolute top-4 right-4 bg-black/80 backdrop-blur-xl px-4 py-2 rounded-2xl shadow-lg z-20 border border-white/10 text-white font-mono font-bold">
@@ -534,9 +686,29 @@ export default function VideoCreator({
         {isRecording && !recordedBlob && (
           <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex flex-col items-center gap-4 z-40 w-full px-8 pointer-events-none">
              <div className="flex items-center gap-3 bg-black/80 backdrop-blur-xl px-5 py-2 rounded-2xl shadow-2xl border border-white/10 pointer-events-auto">
-               <button onClick={toggleMute} className={`p-2.5 rounded-xl transition-all cursor-pointer ${isMuted ? "bg-red-500" : "bg-white/10 text-white hover:bg-white/20"}`}>
+               {/* Mic mute + VU meter */}
+               <button onClick={toggleMute} className={`p-2.5 rounded-xl transition-all cursor-pointer ${isMuted ? "bg-red-500 text-white" : "bg-white/10 text-white hover:bg-white/20"}`}>
                  {isMuted ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
                </button>
+               {/* Live audio level bars */}
+               <div className="flex items-end gap-[2px] h-5" title={isMuted ? "Microphone muted" : "Microphone active"}>
+                 {Array.from({ length: 8 }).map((_, i) => {
+                   const threshold = (i + 1) * 12.5;
+                   const active = !isMuted && audioLevel >= threshold;
+                   return (
+                     <div
+                       key={i}
+                       className="w-1 rounded-full transition-all duration-75"
+                       style={{
+                         height: `${40 + i * 8}%`,
+                         background: active
+                           ? i < 5 ? "#4ade80" : i < 7 ? "#facc15" : "#f87171"
+                           : "rgba(255,255,255,0.15)",
+                       }}
+                     />
+                   );
+                 })}
+               </div>
 
                <button 
                  onClick={() => !isRecording && setShowSettings(!showSettings)} 

@@ -121,11 +121,12 @@ export default async function CVProfilePage({
               <div className="aspect-video bg-black/5 dark:bg-black/40 relative">
                 {cv.videoUrl ? (
                   <video
-                    src={cv.videoUrl}
                     controls
                     className="w-full h-full absolute inset-0 object-contain bg-black"
                     title={cv.title || "Video CV"}
-                  />
+                  >
+                    <source src={cv.videoUrl} type={cv.videoUrl.endsWith(".mp4") ? "video/mp4" : "video/webm"} />
+                  </video>
                 ) : (
                   <div className="w-full h-full flex items-center justify-center text-secondary-400">
                     No video available

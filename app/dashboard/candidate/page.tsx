@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { 
   Settings, LogOut, Bell, Search, MapPin, Briefcase, Video, 
   Building2, UserCircle, Shield, Trash2, 
-  Mail, Lock, Plus, X, ChevronRight, Link as LinkIcon
+  Mail, Lock, Plus, X, ChevronRight, Link as LinkIcon, ArrowRight
 } from "lucide-react";
 
 // Helper components
@@ -25,11 +25,12 @@ import ReactCountryFlag from "react-country-flag";
 import countryList from "country-list";
 import Button from "@/app/components/common/Button";
 import VideoCreator from "@/app/components/video-tools/VideoCreator";
+import LiveKitPlayer from "@/app/components/video-tools/LiveKitPlayer";
 import Modal from "@/app/components/common/Modal";
 import Toggle from "@/app/components/common/Toggle";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import Image from "next/image";
+import NextImage from "next/image";
 import { useSessionSync } from "@/app/lib/hooks/useSessionSync";
 
 type Tab = "profile" | "jobs" | "applications" | "interviews" | "messages" | "notifications" | "settings";
@@ -376,15 +377,24 @@ export default function CandidateDashboard() {
         }}
       >
         <div className="max-w-7xl mx-auto px-6 py-2 flex justify-between items-center">
-          <Link href="/" className="flex items-center group cursor-pointer">
-            <Image
-              src="/logo.png"
-              alt="VidioCV Logo"
-              width={110}
-              height={48}
-              className="object-contain transition-all duration-300 group-hover:scale-105"
-            />
-          </Link>
+          <div className="flex items-center gap-6">
+            <Link href="/" className="flex items-center gap-3 group cursor-pointer">
+              <NextImage 
+                src="/logo.png" 
+                alt="VidioCV Logo" 
+                width={140}
+                height={44}
+                className="object-contain group-hover:scale-105 transition-all"
+                priority
+              />
+            </Link>
+            <Link 
+              href="/" 
+              className="hidden lg:flex items-center gap-2 px-4 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-[0.2em] text-[#ACBAC4] hover:text-[#57595B] hover:bg-[#F2F4F4]/50 transition-all group"
+            >
+              Go to homepage <ArrowRight className="w-3 h-3 group-hover:translate-x-1 transition-transform" />
+            </Link>
+          </div>
 
           <div className="hidden md:flex absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
              <span 
@@ -699,9 +709,10 @@ export default function CandidateDashboard() {
                       <div className="bg-[#F9F9F9] rounded-[32px] p-6 md:p-10 border border-[#E0E4E3]">
                         <VideoCreator 
                            initialVideoUrl={activeVideoUrl || undefined}
-                           onVideoUpload={(file, url) => {
+                           onVideoUpload={(file, url, streamingUrl) => {
                              console.log("Uploaded:", file.name);
-                             if (url) setActiveVideoUrl(url);
+                             const finalUrl = streamingUrl || url;
+                             if (finalUrl) setActiveVideoUrl(finalUrl);
                              setShowVideoCreator(false);
                            }} 
                            onVideoDelete={() => setActiveVideoUrl(null)}
@@ -710,11 +721,9 @@ export default function CandidateDashboard() {
                     </motion.div>
                   ) : activeVideoUrl ? (
                     <div className="w-full aspect-video md:aspect-[21/9] bg-[#57595B] rounded-[32px] border-4 border-white overflow-hidden relative shadow-2xl group">
-                        <video
+                        <LiveKitPlayer 
                           src={activeVideoUrl}
-                          controls
-                          className="w-full h-full absolute inset-0 object-contain transition-transform duration-700 group-hover:scale-[1.01]"
-                          title="Video CV"
+                          candidateName="Candidate"
                         />
                         <div className="absolute inset-0 bg-gradient-to-t from-[#57595B]/40 to-transparent pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity" />
                         <button 
