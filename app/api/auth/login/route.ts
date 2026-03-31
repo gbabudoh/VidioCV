@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
       role: user.role as "candidate" | "employer" | "admin",
     });
 
-    return NextResponse.json(
+    const response = NextResponse.json(
       {
         success: true,
         message: "Login successful",
@@ -62,6 +62,17 @@ export async function POST(request: NextRequest) {
       },
       { status: 200 }
     );
+
+    // Set persistent session cookie (7 days)
+    response.cookies.set("auth_token", token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 60 * 60 * 24 * 7, // 7 days
+      path: "/",
+    });
+
+    return response;
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(

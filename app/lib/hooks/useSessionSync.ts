@@ -12,7 +12,10 @@ export const useSessionSync = () => {
   const router = useRouter();
 
   useEffect(() => {
+    let isMounted = true;
+
     const checkSession = () => {
+      if (!isMounted) return;
       const token = localStorage.getItem("token");
       if (!token) {
         console.log("SessionSync: Token missing, logging out...");
@@ -28,17 +31,21 @@ export const useSessionSync = () => {
       }
     };
 
-    // 2. Periodic check (manual cache clear via devtools/browser settings often doesn't fire storage events)
-    const intervalId = setInterval(checkSession, 2000);
+    // 2. Periodic check
+    const intervalId = setInterval(checkSession, 5000); // 5s is plenty for background sync
 
     window.addEventListener("storage", handleStorageChange);
 
-    // Initial check
-    checkSession();
+    // Initial check with a small delay to allow hydration and localStorage availability
+    const timeoutId = setTimeout(() => {
+      checkSession();
+    }, 500);
 
     return () => {
+      isMounted = false;
       window.removeEventListener("storage", handleStorageChange);
       clearInterval(intervalId);
+      clearTimeout(timeoutId);
     };
   }, [router]);
 };

@@ -11,28 +11,28 @@ export const minioClient = new Minio.Client({
 
 export const BUCKET_NAME = process.env.MINIO_BUCKET || "videocv";
 
-// Ensure bucket exists
+// Ensure bucket exists with public read policy
 export async function ensureBucket() {
   const exists = await minioClient.bucketExists(BUCKET_NAME);
 
   if (!exists) {
     await minioClient.makeBucket(BUCKET_NAME, "us-east-1");
-
-    // Set public read policy
-    const policy = {
-      Version: "2012-10-17",
-      Statement: [
-        {
-          Effect: "Allow",
-          Principal: { AWS: ["*"] },
-          Action: ["s3:GetObject"],
-          Resource: [`arn:aws:s3:::${BUCKET_NAME}/*`],
-        },
-      ],
-    };
-
-    await minioClient.setBucketPolicy(BUCKET_NAME, JSON.stringify(policy));
   }
+
+  // Always enforce public read policy so browser can load videos directly
+  const policy = {
+    Version: "2012-10-17",
+    Statement: [
+      {
+        Effect: "Allow",
+        Principal: { AWS: ["*"] },
+        Action: ["s3:GetObject"],
+        Resource: [`arn:aws:s3:::${BUCKET_NAME}/*`],
+      },
+    ],
+  };
+
+  await minioClient.setBucketPolicy(BUCKET_NAME, JSON.stringify(policy));
 }
 
 // Upload file

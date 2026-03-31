@@ -14,7 +14,12 @@ import {
   Settings,
   FlipHorizontal,
   Wifi,
-  WifiOff
+  WifiOff,
+  Sun,
+  Volume2,
+  VolumeX,
+  RefreshCw,
+  Sliders
 } from "lucide-react";
 import { 
   Room, 
@@ -25,10 +30,6 @@ import {
 } from "livekit-client";
 import Modal from "@/app/components/common/Modal";
 import type { ImageSegmenter, ImageSegmenterResult } from "@mediapipe/tasks-vision";
-import dynamic from "next/dynamic";
-import type { ComponentProps } from "react";
-
-const ReactPlayer = dynamic<ComponentProps<typeof import("react-player").default>>(() => import("react-player"), { ssr: false });
 
 interface VideoCreatorProps {
   onVideoUpload?: (file: File, url?: string, streamingUrl?: string) => void;
@@ -63,7 +64,6 @@ export default function VideoCreator({
   
   // Advanced Recording Controls
   const [isMirrored, setIsMirrored] = useState(true);
-  const [showSettings, setShowSettings] = useState(false);
   const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
   const [selectedCamera, setSelectedCamera] = useState<string>("");
   const [selectedMic, setSelectedMic] = useState<string>("");
@@ -134,8 +134,26 @@ export default function VideoCreator({
   const isSegmentingRef = useRef(false);
   const audioContextRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
+  const gainNodeRef = useRef<GainNode | null>(null);
   const vuRafRef = useRef<number | null>(null);
   const [audioLevel, setAudioLevel] = useState(0);
+
+  // Recording controls
+  const [brightness, setBrightness] = useState(100);
+  const [micVolume, setMicVolume] = useState(100);
+  const [activeFilter, setActiveFilter] = useState("none");
+  const [showControlPanel, setShowControlPanel] = useState(false);
+  const [activeControlTab, setActiveControlTab] = useState<"brightness" | "volume" | "filters" | "settings">("brightness");
+
+  const FILTERS: { id: string; label: string; css: string }[] = [
+    { id: "none",       label: "None",        css: "" },
+    { id: "vivid",      label: "Vivid",       css: "saturate(1.6) contrast(1.1)" },
+    { id: "cool",       label: "Cool",        css: "hue-rotate(20deg) saturate(1.2)" },
+    { id: "warm",       label: "Warm",        css: "sepia(0.3) saturate(1.4)" },
+    { id: "cinematic",  label: "Cinematic",   css: "contrast(1.2) saturate(0.85) brightness(0.95)" },
+    { id: "bw",         label: "B&W",         css: "grayscale(1) contrast(1.1)" },
+    { id: "soft",       label: "Soft",        css: "brightness(1.05) blur(0.4px) saturate(0.9)" },
+  ];
 
   const connectToRoom = React.useCallback(async () => {
     if (isConnecting || room) return;
@@ -198,7 +216,7 @@ export default function VideoCreator({
 
       if (videoRef.current) videoRef.current.srcObject = stream;
 
-      // Start audio level analyser for VU meter
+      // Start audio level analyser + gain node for mic volume control
       if (vuRafRef.current) cancelAnimationFrame(vuRafRef.current);
       if (audioContextRef.current) audioContextRef.current.close();
       const ctx = new AudioContext();
@@ -206,8 +224,12 @@ export default function VideoCreator({
       const analyser = ctx.createAnalyser();
       analyser.fftSize = 256;
       analyserRef.current = analyser;
+      const gain = ctx.createGain();
+      gain.gain.value = micVolume / 100;
+      gainNodeRef.current = gain;
       const source = ctx.createMediaStreamSource(stream);
-      source.connect(analyser);
+      source.connect(gain);
+      gain.connect(analyser);
       const data = new Uint8Array(analyser.frequencyBinCount);
       const tick = () => {
         analyser.getByteFrequencyData(data);
@@ -233,7 +255,7 @@ export default function VideoCreator({
       setError("Camera/microphone access denied. Please allow access to record your video.");
       console.error("Permission error:", err);
     }
-  }, [selectedCamera, selectedMic, room, connectToRoom]);
+  }, [selectedCamera, selectedMic, room, connectToRoom, micVolume]);
 
   useEffect(() => {
     // ONLY re-request if we are NOT recording and don't have a final video yet
@@ -287,7 +309,8 @@ export default function VideoCreator({
   }, [activePreset, studioReady]);
 
   // Branding Overlay Function - Burned into the video
-  const drawBranding = React.useCallback((ctx: CanvasRenderingContext2D, width: number, height: number, mirrored: boolean) => {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const drawBranding = React.useCallback((ctx: CanvasRenderingContext2D, width: number, _height: number, mirrored: boolean) => {
      const padding = 20;
      const logoWidth = 140;
      const logoHeight = 44;
@@ -333,10 +356,13 @@ export default function VideoCreator({
 
   const onAIResults = React.useCallback((results: ImageSegmenterResult) => {
     const canvas = canvasRef.current;
-    const ctx = canvas?.getContext("2d");
-    if (!canvas || !ctx || !videoRef.current) return;
-
     const video = videoRef.current;
+    const ctx = canvas?.getContext("2d", { willReadFrequently: true });
+    if (!canvas || !video || !ctx) return;
+
+    // Only draw if video has valid dimensions to avoid blank frames
+    if (video.videoWidth === 0 || video.videoHeight === 0) return;
+
     if (canvas.width !== video.videoWidth || canvas.height !== video.videoHeight) {
        canvas.width = video.videoWidth;
        canvas.height = video.videoHeight;
@@ -405,7 +431,7 @@ export default function VideoCreator({
          try {
            const vision = await import("@mediapipe/tasks-vision");
            const { FilesetResolver, ImageSegmenter } = vision;
-           const wasmFileset = await FilesetResolver.forVisionTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/wasm");
+           const wasmFileset = await FilesetResolver.forVisionTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.34/wasm");
            const segmenter = await ImageSegmenter.createFromOptions(wasmFileset, {
              baseOptions: {
                modelAssetPath: "https://storage.googleapis.com/mediapipe-models/image_segmenter/selfie_segmenter/float16/latest/selfie_segmenter.tflite",
@@ -459,9 +485,18 @@ export default function VideoCreator({
     return () => { loopActiveRef.current = false; };
   }, [hasPermission, activePreset, onAIResults]);
 
-  const startRecording = () => {
-    if (!streamRef.current) { requestPermissions(); return; }
+  const startRecording = async () => {
     try {
+      // If no stream or stream is inactive, try to re-acquire it
+      if (!streamRef.current || !streamRef.current.active || streamRef.current.getTracks().length === 0) {
+        await requestPermissions();
+      }
+
+      if (!streamRef.current || !streamRef.current.active) {
+        setError("Camera stream is inactive. Please ensure your camera is connected.");
+        return;
+      }
+
       chunksRef.current = [];
       setVideoUrl(null);
       setUploadSuccess(false);
@@ -474,10 +509,18 @@ export default function VideoCreator({
       };
       
       let recordStream = streamRef.current;
-      if (canvasRef.current) {
+      // Only use canvas capture for virtual backgrounds — natural preset records directly
+      // from the camera stream to avoid black frames from canvas readyState issues
+      if (canvasRef.current && activePreset.id !== "natural") {
          const canvasStream = canvasRef.current.captureStream(30);
-         recordStream = new MediaStream([...canvasStream.getVideoTracks(), ...streamRef.current.getAudioTracks()]);
+         // Ensure we have audio tracks from original stream
+         const audioTracks = streamRef.current.getAudioTracks();
+         recordStream = new MediaStream([...canvasStream.getVideoTracks(), ...audioTracks]);
          compositionStreamRef.current = recordStream;
+      }
+
+      if (!recordStream.active) {
+        throw new Error("Recording stream is inactive after initialization.");
       }
 
       const mediaRecorder = new MediaRecorder(recordStream, options);
@@ -501,7 +544,10 @@ export default function VideoCreator({
           return prev + 1;
         });
       }, 1000);
-    } catch (err) { setError("Failed to start recording."); console.error(err); }
+    } catch (err) { 
+      setError("Failed to start recording. Please try again."); 
+      console.error("Recording error:", err); 
+    }
   };
 
   const stopRecording = () => {
@@ -534,6 +580,25 @@ export default function VideoCreator({
       streamRef.current.getAudioTracks().forEach(track => { track.enabled = !track.enabled; });
       setIsMuted(!isMuted);
     }
+  };
+
+  const handleMicVolume = (val: number) => {
+    setMicVolume(val);
+    if (gainNodeRef.current) gainNodeRef.current.gain.value = val / 100;
+  };
+
+  const restartRecording = () => {
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.stop();
+      setIsRecording(false);
+      setIsPaused(false);
+      setRecordedBlob(null);
+      setPreviewUrl("");
+      setDuration(0);
+      if (timerRef.current) clearInterval(timerRef.current);
+    }
+    // brief delay so stop fires before restart
+    setTimeout(() => startRecording(), 150);
   };
 
   const resetRecording = () => {
@@ -621,38 +686,40 @@ export default function VideoCreator({
   return (
     <div className="w-full max-w-4xl mx-auto space-y-6">
       <div className="relative bg-black rounded-[32px] overflow-hidden aspect-video border-4 border-white shadow-2xl group">
-        <video ref={videoRef} autoPlay muted playsInline className={`w-full h-full object-cover ${activePreset.id !== "natural" ? "hidden" : ""}`} />
-        <canvas ref={canvasRef} width={1280} height={720} className="w-full h-full object-cover bg-black" />
+        <video
+          ref={videoRef}
+          autoPlay muted playsInline
+          className={`w-full h-full object-cover ${activePreset.id !== "natural" ? "hidden" : ""}`}
+          style={{ filter: `brightness(${brightness}%) ${FILTERS.find(f => f.id === activeFilter)?.css || ""}` }}
+        />
+        <canvas
+          ref={canvasRef}
+          width={1280} height={720}
+          className={`w-full h-full object-cover bg-black ${activePreset.id === "natural" ? "hidden" : ""}`}
+          style={{ filter: `brightness(${brightness}%) ${FILTERS.find(f => f.id === activeFilter)?.css || ""}` }}
+        />
         
         {recordedBlob && previewUrl && (
-          <div className="absolute inset-0 z-10 bg-black">
-            <ReactPlayer
+          <div className="absolute inset-0 z-50 bg-black">
+            <video
               src={previewUrl}
-              playing
               controls
-              width="100%"
-              height="100%"
-              config={{
-                html: {
-                  forceVideo: true,
-                  attributes: {
-                    style: { objectFit: "cover", width: "100%", height: "100%" }
-                  }
-                }
-              }}
+              autoPlay
+              playsInline
+              className="w-full h-full object-contain"
             />
           </div>
         )}
         
         {isRecording && !isPaused && (
-          <div className="absolute top-4 left-4 flex items-center gap-2 bg-red-500 px-3 py-2 rounded-full shadow-lg z-20">
+          <div className="absolute top-4 left-4 flex items-center gap-2 bg-red-500 px-3 py-2 rounded-full shadow-lg z-20 pointer-events-none">
             <div className="w-3 h-3 bg-white rounded-full animate-pulse" />
             <span className="text-white font-black text-[10px] uppercase tracking-widest">RECORDING</span>
           </div>
         )}
 
         {/* LiveKit Connection Status */}
-        <div className="absolute top-4 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/10 z-20 transition-all">
+        <div className="absolute top-4 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/10 z-20 transition-all pointer-events-none">
           {room ? (
             <>
               <Wifi className={`w-3 h-3 ${connectionQuality === "excellent" ? "text-green-400" : "text-yellow-400"}`} />
@@ -684,98 +751,209 @@ export default function VideoCreator({
         )}
 
         {isRecording && !recordedBlob && (
-          <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex flex-col items-center gap-4 z-40 w-full px-8 pointer-events-none">
-             <div className="flex items-center gap-3 bg-black/80 backdrop-blur-xl px-5 py-2 rounded-2xl shadow-2xl border border-white/10 pointer-events-auto">
-               {/* Mic mute + VU meter */}
-               <button onClick={toggleMute} className={`p-2.5 rounded-xl transition-all cursor-pointer ${isMuted ? "bg-red-500 text-white" : "bg-white/10 text-white hover:bg-white/20"}`}>
-                 {isMuted ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
-               </button>
-               {/* Live audio level bars */}
-               <div className="flex items-end gap-[2px] h-5" title={isMuted ? "Microphone muted" : "Microphone active"}>
-                 {Array.from({ length: 8 }).map((_, i) => {
-                   const threshold = (i + 1) * 12.5;
-                   const active = !isMuted && audioLevel >= threshold;
-                   return (
-                     <div
-                       key={i}
-                       className="w-1 rounded-full transition-all duration-75"
-                       style={{
-                         height: `${40 + i * 8}%`,
-                         background: active
-                           ? i < 5 ? "#4ade80" : i < 7 ? "#facc15" : "#f87171"
-                           : "rgba(255,255,255,0.15)",
-                       }}
-                     />
-                   );
-                 })}
-               </div>
+          <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 z-40 w-full px-4 pointer-events-none">
 
-               <button 
-                 onClick={() => !isRecording && setShowSettings(!showSettings)} 
-                 disabled={isRecording}
-                 className={`p-2.5 rounded-xl transition-all cursor-pointer ${
-                   showSettings 
-                     ? "bg-primary-500 text-white" 
-                     : isRecording ? "bg-white/5 opacity-50 text-white/40 cursor-not-allowed" : "bg-white/10 text-white hover:bg-white/20"
-                 }`}
-                 title={isRecording ? "Settings locked while recording" : "Studio Settings"}
-               >
-                 <Settings className="h-4 w-4" />
-               </button>
-
-               <div className="h-4 w-px bg-white/20 mx-1" />
-               
-               <div className="flex gap-2 py-1 px-2">
-                 {studioPresets.filter(p => p.id === "natural").map((p) => (
-                   <button key={p.id} onClick={() => setActivePreset(p)} className="px-3 py-1.5 rounded-xl text-[9px] font-black uppercase bg-white text-slate-900 border border-white cursor-pointer">
-                     {p.name}
-                   </button>
-                 ))}
-               </div>
-             </div>
-
-             {showSettings && (
-                <div className="absolute bottom-16 left-1/2 transform -translate-x-1/2 w-80 bg-slate-900/95 backdrop-blur-2xl rounded-3xl border border-white/10 p-6 shadow-2xl z-50 pointer-events-auto text-white">
-                   <div className="space-y-6">
-                      <div className="flex items-center justify-between">
-                         <span className="text-[10px] font-black uppercase tracking-widest text-white/40">Studio Settings</span>
-                         <button onClick={() => setShowSettings(false)} className="text-white/40 hover:text-white cursor-pointer"><RotateCcw className="w-3 h-3 rotate-45" /></button>
-                      </div>
-
-                      <div className="flex items-center justify-between p-3 bg-white/5 rounded-2xl border border-white/10 px-4">
-                         <div className="flex items-center gap-3">
-                            <FlipHorizontal className="w-4 h-4 text-primary-400" />
-                            <span className="text-xs font-bold">Mirror Video</span>
-                         </div>
-                         <button onClick={() => setIsMirrored(!isMirrored)} className={`w-10 h-5 rounded-full relative transition-colors cursor-pointer ${isMirrored ? "bg-primary-500" : "bg-white/10"}`}>
-                            <div className={`absolute top-1 w-3 h-3 bg-white rounded-full transition-all ${isMirrored ? "left-6" : "left-1"}`} />
-                         </button>
-                      </div>
-
-                      <div className="space-y-2">
-                         <label className="text-[9px] font-black uppercase text-white/40 ml-1">Camera input</label>
-                         <div className="space-y-1 max-h-32 overflow-y-auto scrollbar-hide">
-                            {devices.filter(d => d.kind === "videoinput").map(d => (
-                               <button key={d.deviceId} onClick={() => setSelectedCamera(d.deviceId)} className={`w-full flex items-center gap-3 p-3 rounded-xl border text-[10px] font-bold text-left cursor-pointer transition-all ${selectedCamera === d.deviceId ? "bg-primary-500/20 border-primary-500/40" : "bg-white/5 border-transparent opacity-60 hover:opacity-100"}`}>
-                                  <Camera className="w-3.5 h-3.5" /> <span className="truncate">{d.label || "Camera"}</span>
-                               </button>
-                            ))}
-                         </div>
-                      </div>
-
-                      <div className="space-y-2">
-                         <label className="text-[9px] font-black uppercase text-white/40 ml-1">Microphone input</label>
-                         <div className="space-y-1 max-h-32 overflow-y-auto scrollbar-hide">
-                            {devices.filter(d => d.kind === "audioinput").map(d => (
-                               <button key={d.deviceId} onClick={() => setSelectedMic(d.deviceId)} className={`w-full flex items-center gap-3 p-3 rounded-xl border text-[10px] font-bold text-left cursor-pointer transition-all ${selectedMic === d.deviceId ? "bg-primary-500/20 border-primary-500/40" : "bg-white/5 border-transparent opacity-60 hover:opacity-100"}`}>
-                                  <Mic className="w-3.5 h-3.5" /> <span className="truncate">{d.label || "Mic"}</span>
-                                </button>
-                            ))}
-                         </div>
-                      </div>
-                   </div>
+            {/* Expandable control panel */}
+            {showControlPanel && (
+              <div className="pointer-events-auto w-full max-w-sm bg-black/90 backdrop-blur-2xl rounded-2xl border border-white/10 shadow-2xl overflow-hidden">
+                {/* Tabs */}
+                <div className="flex border-b border-white/10">
+                  {([
+                    { id: "brightness", icon: <Sun className="w-3.5 h-3.5" />, label: "Brightness" },
+                    { id: "volume",     icon: <Volume2 className="w-3.5 h-3.5" />, label: "Volume" },
+                    { id: "filters",    icon: <Sliders className="w-3.5 h-3.5" />, label: "Filters" },
+                    { id: "settings",   icon: <Settings className="w-3.5 h-3.5" />, label: "Settings" },
+                  ] as const).map(tab => (
+                    <button
+                      key={tab.id}
+                      onClick={() => setActiveControlTab(tab.id)}
+                      className={`flex-1 flex flex-col items-center gap-0.5 py-2 text-[9px] font-black uppercase tracking-wider transition-colors cursor-pointer ${activeControlTab === tab.id ? "text-[#F7B980] border-b-2 border-[#F7B980]" : "text-white/40 hover:text-white/70"}`}
+                    >
+                      {tab.icon}
+                      {tab.label}
+                    </button>
+                  ))}
                 </div>
-             )}
+
+                {/* Panel content */}
+                <div className="p-4">
+                  {activeControlTab === "brightness" && (
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-white/60 text-xs font-bold flex items-center gap-2"><Sun className="w-3.5 h-3.5 text-yellow-400" /> Brightness</span>
+                        <span className="text-white font-mono text-xs font-bold">{brightness}%</span>
+                      </div>
+                      <input type="range" min={40} max={180} value={brightness}
+                        onChange={e => setBrightness(Number(e.target.value))}
+                        className="w-full h-1.5 rounded-full appearance-none cursor-pointer"
+                        style={{ accentColor: "#F7B980" }}
+                      />
+                      <div className="flex justify-between text-[9px] text-white/30 font-bold uppercase">
+                        <span>Dark</span><span>Normal</span><span>Bright</span>
+                      </div>
+                    </div>
+                  )}
+
+                  {activeControlTab === "volume" && (
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-white/60 text-xs font-bold flex items-center gap-2">
+                            {isMuted ? <VolumeX className="w-3.5 h-3.5 text-red-400" /> : <Volume2 className="w-3.5 h-3.5 text-green-400" />}
+                            Mic Volume
+                          </span>
+                          <span className="text-white font-mono text-xs font-bold">{micVolume}%</span>
+                        </div>
+                        <input type="range" min={0} max={200} value={micVolume}
+                          onChange={e => handleMicVolume(Number(e.target.value))}
+                          className="w-full h-1.5 rounded-full appearance-none cursor-pointer"
+                          style={{ accentColor: "#4ade80" }}
+                        />
+                      </div>
+                      {/* VU meter */}
+                      <div className="flex items-end justify-center gap-[3px] h-8 bg-white/5 rounded-xl px-3 py-2">
+                        {Array.from({ length: 16 }).map((_, i) => {
+                          const threshold = (i + 1) * 6.25;
+                          const active = !isMuted && audioLevel >= threshold;
+                          return (
+                            <div key={i} className="flex-1 rounded-full transition-all duration-75"
+                              style={{
+                                height: `${30 + i * 4.5}%`,
+                                background: active ? (i < 10 ? "#4ade80" : i < 14 ? "#facc15" : "#f87171") : "rgba(255,255,255,0.1)",
+                              }}
+                            />
+                          );
+                        })}
+                      </div>
+                      <button onClick={toggleMute}
+                        className={`w-full py-2 rounded-xl text-xs font-black uppercase tracking-wider cursor-pointer transition-all ${isMuted ? "bg-red-500/20 text-red-400 border border-red-500/30" : "bg-white/5 text-white/60 border border-white/10 hover:bg-white/10"}`}>
+                        {isMuted ? "Unmute Microphone" : "Mute Microphone"}
+                      </button>
+                    </div>
+                  )}
+
+                  {activeControlTab === "filters" && (
+                    <div className="space-y-3">
+                      <p className="text-[9px] font-black uppercase text-white/30">Color Filter</p>
+                      <div className="grid grid-cols-4 gap-2">
+                        {FILTERS.map(f => (
+                          <button key={f.id} onClick={() => setActiveFilter(f.id)}
+                            className={`py-2 rounded-xl text-[9px] font-black uppercase tracking-wider cursor-pointer transition-all border ${activeFilter === f.id ? "bg-[#F7B980]/20 border-[#F7B980]/50 text-[#F7B980]" : "bg-white/5 border-white/10 text-white/50 hover:text-white hover:bg-white/10"}`}>
+                            {f.label}
+                          </button>
+                        ))}
+                      </div>
+                      <p className="text-[9px] font-black uppercase text-white/30 pt-1">Background</p>
+                      <div className="grid grid-cols-3 gap-1.5 max-h-28 overflow-y-auto">
+                        {studioPresets.map(p => (
+                          <button key={p.id} onClick={() => setActivePreset(p)}
+                            className={`py-1.5 px-2 rounded-lg text-[9px] font-black uppercase tracking-wide cursor-pointer transition-all border truncate ${activePreset.id === p.id ? "bg-[#F7B980]/20 border-[#F7B980]/50 text-[#F7B980]" : "bg-white/5 border-white/10 text-white/50 hover:text-white hover:bg-white/10"}`}>
+                            {p.name}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {activeControlTab === "settings" && (
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between p-3 bg-white/5 rounded-xl border border-white/10">
+                        <div className="flex items-center gap-2 text-white text-xs font-bold">
+                          <FlipHorizontal className="w-3.5 h-3.5 text-[#F7B980]" /> Mirror Video
+                        </div>
+                        <button onClick={() => setIsMirrored(!isMirrored)} className={`w-9 h-5 rounded-full relative transition-colors cursor-pointer ${isMirrored ? "bg-[#F7B980]" : "bg-white/10"}`}>
+                          <div className={`absolute top-1 w-3 h-3 bg-white rounded-full transition-all ${isMirrored ? "left-5" : "left-1"}`} />
+                        </button>
+                      </div>
+                      <div className="space-y-1 max-h-28 overflow-y-auto">
+                        <p className="text-[9px] font-black uppercase text-white/30 mb-1">Camera</p>
+                        {devices.filter(d => d.kind === "videoinput").map(d => (
+                          <button key={d.deviceId} onClick={() => setSelectedCamera(d.deviceId)}
+                            className={`w-full flex items-center gap-2 p-2 rounded-lg text-[10px] font-bold text-left cursor-pointer transition-all ${selectedCamera === d.deviceId ? "bg-[#F7B980]/20 text-[#F7B980]" : "text-white/50 hover:text-white hover:bg-white/5"}`}>
+                            <Camera className="w-3 h-3 shrink-0" /><span className="truncate">{d.label || "Camera"}</span>
+                          </button>
+                        ))}
+                        <p className="text-[9px] font-black uppercase text-white/30 mt-2 mb-1">Microphone</p>
+                        {devices.filter(d => d.kind === "audioinput").map(d => (
+                          <button key={d.deviceId} onClick={() => setSelectedMic(d.deviceId)}
+                            className={`w-full flex items-center gap-2 p-2 rounded-lg text-[10px] font-bold text-left cursor-pointer transition-all ${selectedMic === d.deviceId ? "bg-[#F7B980]/20 text-[#F7B980]" : "text-white/50 hover:text-white hover:bg-white/5"}`}>
+                            <Mic className="w-3 h-3 shrink-0" /><span className="truncate">{d.label || "Mic"}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Main toolbar */}
+            <div className="pointer-events-auto flex items-center gap-2 bg-black/85 backdrop-blur-xl px-4 py-2.5 rounded-2xl shadow-2xl border border-white/10">
+              {/* Mic mute */}
+              <button onClick={toggleMute} title={isMuted ? "Unmute" : "Mute mic"}
+                className={`p-2.5 rounded-xl transition-all cursor-pointer ${isMuted ? "bg-red-500 text-white" : "bg-white/10 text-white hover:bg-white/20"}`}>
+                {isMuted ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+              </button>
+
+              {/* Mini VU meter */}
+              <div className="flex items-end gap-[2px] h-5">
+                {Array.from({ length: 8 }).map((_, i) => {
+                  const active = !isMuted && audioLevel >= (i + 1) * 12.5;
+                  return (
+                    <div key={i} className="w-1 rounded-full transition-all duration-75"
+                      style={{
+                        height: `${40 + i * 8}%`,
+                        background: active ? (i < 5 ? "#4ade80" : i < 7 ? "#facc15" : "#f87171") : "rgba(255,255,255,0.15)",
+                      }}
+                    />
+                  );
+                })}
+              </div>
+
+              <div className="h-4 w-px bg-white/15 mx-1" />
+
+              {/* Brightness shortcut */}
+              <button onClick={() => { setActiveControlTab("brightness"); setShowControlPanel(p => activeControlTab === "brightness" ? !p : true); }}
+                className={`p-2.5 rounded-xl transition-all cursor-pointer ${showControlPanel && activeControlTab === "brightness" ? "bg-yellow-500/30 text-yellow-300" : "bg-white/10 text-white hover:bg-white/20"}`}
+                title="Brightness">
+                <Sun className="h-4 w-4" />
+              </button>
+
+              {/* Volume shortcut */}
+              <button onClick={() => { setActiveControlTab("volume"); setShowControlPanel(p => activeControlTab === "volume" ? !p : true); }}
+                className={`p-2.5 rounded-xl transition-all cursor-pointer ${showControlPanel && activeControlTab === "volume" ? "bg-green-500/30 text-green-300" : "bg-white/10 text-white hover:bg-white/20"}`}
+                title="Mic Volume">
+                <Volume2 className="h-4 w-4" />
+              </button>
+
+              {/* Filters shortcut */}
+              <button onClick={() => { setActiveControlTab("filters"); setShowControlPanel(p => activeControlTab === "filters" ? !p : true); }}
+                className={`p-2.5 rounded-xl transition-all cursor-pointer ${showControlPanel && activeControlTab === "filters" ? "bg-[#F7B980]/30 text-[#F7B980]" : activeFilter !== "none" ? "bg-[#F7B980]/20 text-[#F7B980]" : "bg-white/10 text-white hover:bg-white/20"}`}
+                title="Filters">
+                <Sliders className="h-4 w-4" />
+              </button>
+
+              {/* Settings shortcut */}
+              <button onClick={() => { setActiveControlTab("settings"); setShowControlPanel(p => activeControlTab === "settings" ? !p : true); }}
+                className={`p-2.5 rounded-xl transition-all cursor-pointer ${showControlPanel && activeControlTab === "settings" ? "bg-white/20 text-white" : "bg-white/10 text-white hover:bg-white/20"}`}
+                title="Settings">
+                <Settings className="h-4 w-4" />
+              </button>
+
+              <div className="h-4 w-px bg-white/15 mx-1" />
+
+              {/* Restart */}
+              <button onClick={restartRecording} title="Restart recording"
+                className="p-2.5 rounded-xl bg-white/10 text-white hover:bg-orange-500/30 hover:text-orange-300 transition-all cursor-pointer">
+                <RefreshCw className="h-4 w-4" />
+              </button>
+
+              {/* Stop */}
+              <button onClick={stopRecording} title="Stop recording"
+                className="p-2.5 rounded-xl bg-red-500/80 text-white hover:bg-red-500 transition-all cursor-pointer">
+                <Square className="h-4 w-4 fill-white" />
+              </button>
+            </div>
           </div>
         )}
       </div>
@@ -788,14 +966,10 @@ export default function VideoCreator({
               Start Studio Recording
             </button>
           ) : (
-            <div className="flex gap-4">
-              <button onClick={pauseRecording} className="px-8 py-4 bg-white text-slate-900 rounded-2xl font-black uppercase tracking-widest shadow-xl cursor-pointer">
-                {isPaused ? <Play className="w-5 h-5 mr-2 inline" /> : <Pause className="w-5 h-5 mr-2 inline" />}
+            <div className="flex gap-3">
+              <button onClick={pauseRecording} className="flex items-center gap-2 px-6 py-3 bg-white text-slate-900 rounded-2xl font-black uppercase tracking-widest shadow-xl cursor-pointer hover:bg-slate-100 transition-all">
+                {isPaused ? <Play className="w-4 h-4" /> : <Pause className="w-4 h-4" />}
                 {isPaused ? "Resume" : "Pause"}
-              </button>
-              <button onClick={stopRecording} className="flex items-center gap-2 px-8 py-4 bg-red-600 hover:bg-red-700 text-white rounded-2xl font-black uppercase tracking-widest shadow-xl cursor-pointer transition-all hover:scale-105 active:scale-95">
-                <Square className="h-5 w-5 fill-white" />
-                Finish
               </button>
             </div>
           )

@@ -5,8 +5,10 @@ import { motion, AnimatePresence } from "framer-motion";
 import { 
   Settings, LogOut, Bell, Search, MapPin, Briefcase, Video, 
   Building2, UserCircle, Shield, Trash2, 
-  Mail, Lock, Plus, X, ChevronRight, Link as LinkIcon, ArrowRight
+  Mail, Lock, Plus, X, ChevronRight, Link as LinkIcon,
+  Calendar as CalendarIcon, Archive, LayoutDashboard, ArrowLeft, Calendar
 } from "lucide-react";
+import MobileBottomNav from "@/app/components/common/MobileBottomNav";
 
 // Helper components
 const PlayIcon = ({ className, style }: { className?: string; style?: React.CSSProperties }) => (
@@ -69,11 +71,15 @@ export default function CandidateDashboard() {
     id: string;
     company: string;
     sender: string;
+    email?: string;
     subject: string;
     preview: string;
     body: string;
     time: string;
     unread: boolean;
+    replied: boolean;
+    replyMessage?: string;
+    type?: "inquiry" | "direct";
   }
 
   // Define Application Interface
@@ -88,6 +94,47 @@ export default function CandidateDashboard() {
     timeline: { date: string; event: string }[];
   }
 
+  interface MessageRequest {
+    id: string;
+    requesterCompany?: string | null;
+    requesterName?: string | null;
+    requesterEmail: string;
+    message: string;
+    createdAt: string | Date;
+    status: string;
+    replyMessage?: string | null;
+    type?: "inquiry" | "direct";
+  }
+
+  interface Interview {
+    id: string;
+    company: string;
+    jobTitle: string;
+    date: string;
+    time: string;
+    type: string;
+    status: string;
+    notes? : string;
+  }
+
+  interface DirectMessage {
+    id: string;
+    senderId: string;
+    receiverId: string;
+    subject?: string | null;
+    body: string;
+    createdAt: string;
+    status: string;
+    receiver: { name: string; email: string };
+    sender: { name: string; email: string };
+  }
+
+  interface Employer {
+    id: string;
+    name: string;
+    email: string;
+  }
+
   const [activeTab, setActiveTab] = useState<Tab>("profile");
   const [activeVideoUrl, setActiveVideoUrl] = useState<string | null>(null);
   const [showVideoCreator, setShowVideoCreator] = useState(false);
@@ -100,7 +147,7 @@ export default function CandidateDashboard() {
     videoPublic: boolean;
     remoteOnly: boolean;
     openToRelocate: boolean;
-    expectedSalary: string;
+    expectedSalary: number;
   }
 
   // Detailed Settings States
@@ -111,7 +158,7 @@ export default function CandidateDashboard() {
     videoPublic: true,
     remoteOnly: false,
     openToRelocate: true,
-    expectedSalary: "120k - 150k"
+    expectedSalary: 150000
   });
 
   // Modal State
@@ -133,6 +180,9 @@ export default function CandidateDashboard() {
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
   const [selectedMessage, setSelectedMessage] = useState<Message | null>(null);
+  const [isReplying, setIsReplying] = useState(false);
+  const [replyText, setReplyText] = useState("");
+  const [isSendingReply, setIsSendingReply] = useState(false);
   const [selectedApplication, setSelectedApplication] = useState<Application | null>(null);
   const [applications] = useState<Application[]>([
     { 
@@ -164,38 +214,154 @@ export default function CandidateDashboard() {
       ]
     }
   ]);
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: "1",
-      company: "TechNova Solutions",
-      sender: "Sarah Jenkins (Senior Recruiter)",
-      subject: "Regarding your application for Senior React Developer",
-      preview: "Hello John, we were really impressed by your Video CV! We'd like to schedule a quick...",
-      body: `Hello John,\n\nWe were really impressed by your Video CV and your background in React and TypeScript! Your projects showcase a high level of expertise that aligns perfectly with what we're looking for at TechNova Solutions.\n\nWe would like to schedule a quick 15-minute introductory call to discuss the Senior React Developer role and learn more about your career goals.\n\nPlease let us know your availability for later this week.\n\nBest regards,\nSarah Jenkins\nSenior Recruiter @ TechNova`,
-      time: "2h ago",
-      unread: true
-    },
-    {
-      id: "2",
-      company: "Global Stream Inc.",
-      sender: "Mark Williams (Hiring Manager)",
-      subject: "Interview Invitation",
-      preview: "Hi John, we've reviewed your profile and would like to invite you for a first round interview...",
-      body: `Hi John,\n\nAfter reviewing your profile and Video CV, our team at Global Stream Inc. is excited to invite you for a first-round technical interview.\n\nThe interview will focus on your experience with system design and frontend performance optimization. It will be a 60-minute video call.\n\nAre you available on Monday next week at 10:00 AM PST?\n\nLooking forward to hearing from you,\nMark Williams\nHiring Manager`,
-      time: "Yesterday",
-      unread: false
-    },
-    {
-      id: "3",
-      company: "CreativeFlow",
-      sender: "Emily Chen (Lead Designer)",
-      subject: "Follow up on your recent inquiry",
-      preview: "Thanks for reaching out! Regarding the remote policy at CreativeFlow...",
-      body: `Hi John,\n\nThanks for reaching out and for your interest in CreativeFlow! \n\nRegarding the remote policy: Yes, we are a "Remote First" company. We have optional hub offices in London and New York, but there is no requirement for in-office presence. We also provide a stipend for your home office setup.\n\nLet me know if you have any other questions!\n\nCheers,\nEmily Chen\nLead Designer`,
-      time: "3 days ago",
-      unread: false
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [isLoadingMessages, setIsLoadingMessages] = useState(false);
+  
+  // Direct Messaging Strategy
+  const [messageSubTab, setMessageSubTab] = useState<"inbox" | "sent" | "compose">("inbox");
+  const [sentMessages, setSentMessages] = useState<DirectMessage[]>([]);
+  const [isLoadingSent, setIsLoadingSent] = useState(false);
+  const [employers, setEmployers] = useState<Employer[]>([]);
+  const [selectedRecipientId, setSelectedRecipientId] = useState<string>("");
+  const [composeSubject, setComposeSubject] = useState("");
+  const [composeBody, setComposeBody] = useState("");
+  const [isSendingDirect, setIsSendingDirect] = useState(false);
+
+  const [interviews, setInterviews] = useState<Interview[]>([]);
+  const [isLoadingInterviews, setIsLoadingInterviews] = useState(false);
+  const [dashboardStats, setDashboardStats] = useState({
+    profileViews: 0,
+    activeApplications: 0,
+    interviewInvites: 0
+  });
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        if (!token) return;
+
+        const response = await fetch("/api/candidates/dashboard/stats", {
+          headers: { "Authorization": `Bearer ${token}` }
+        });
+        const data = await response.json();
+        if (data.success) {
+          setDashboardStats(data.stats);
+        }
+      } catch (error) {
+        console.error("Failed to fetch stats:", error);
+      }
+    };
+    fetchStats();
+  }, [activeTab]);
+
+  useEffect(() => {
+    const fetchMessages = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        if (!token) return;
+
+        setIsLoadingMessages(true);
+        const response = await fetch("/api/messages/received", {
+          headers: { "Authorization": `Bearer ${token}` }
+        });
+        const data = await response.json();
+
+        if (data.success && data.messages) {
+          const formattedMessages = data.messages.map((req: MessageRequest) => ({
+            id: req.id,
+            company: req.requesterCompany || "Direct Message",
+            sender: req.requesterName || "Recruiter",
+            email: req.requesterEmail,
+            subject: req.type === "direct" ? "Direct Communication" : `New Inquiry from ${req.requesterCompany || "Employer"}`,
+            preview: req.message.substring(0, 50) + "...",
+            body: req.message,
+            time: new Date(req.createdAt).toLocaleDateString(),
+            unread: req.status === "pending",
+            replied: req.status === "replied",
+            replyMessage: req.replyMessage || undefined,
+            type: req.type || "inquiry"
+          }));
+          setMessages(formattedMessages);
+        }
+      } catch (error) {
+        console.error("Failed to fetch messages:", error);
+      } finally {
+        setIsLoadingMessages(false);
+      }
+    };
+    
+    if (activeTab === "messages") {
+      fetchMessages();
     }
-  ]);
+  }, [activeTab]);
+
+  useEffect(() => {
+    const fetchSentMessages = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        if (!token) return;
+        setIsLoadingSent(true);
+        const response = await fetch("/api/messages/direct?type=sent", {
+          headers: { "Authorization": `Bearer ${token}` }
+        });
+        const data = await response.json();
+        if (data.success) {
+          setSentMessages(data.messages || []);
+        }
+      } catch (error) {
+        console.error("Failed to fetch sent messages:", error);
+      } finally {
+        setIsLoadingSent(false);
+      }
+    };
+
+    const fetchEmployers = async () => {
+      try {
+        const response = await fetch("/api/employers", {
+           headers: { "Authorization": `Bearer ${localStorage.getItem("token")}` }
+        });
+        const data = await response.json();
+        if (data.success) {
+          setEmployers(data.employers || []);
+        }
+      } catch (error) {
+        console.error("Failed to fetch employers:", error);
+      }
+    };
+
+    if (activeTab === "messages") {
+      if (messageSubTab === "sent") fetchSentMessages();
+      if (messageSubTab === "compose") fetchEmployers();
+    }
+  }, [activeTab, messageSubTab]);
+
+  useEffect(() => {
+    const fetchInterviews = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        if (!token) return;
+
+        setIsLoadingInterviews(true);
+        const response = await fetch("/api/interview/candidate", {
+          headers: { "Authorization": `Bearer ${token}` }
+        });
+        const data = await response.json();
+
+        if (data.success && data.interviews) {
+          setInterviews(data.interviews);
+        }
+      } catch (error) {
+        console.error("Failed to fetch interviews:", error);
+      } finally {
+        setIsLoadingInterviews(false);
+      }
+    };
+
+    if (activeTab === "interviews") {
+      fetchInterviews();
+    }
+  }, [activeTab]);
   
   // Skills State
   const [skills, setSkills] = useState<string[]>(["React", "TypeScript", "Node.js", "GraphQL", "AWS", "Python", "TailwindCSS"]);
@@ -244,82 +410,266 @@ export default function CandidateDashboard() {
     fetchProfile();
   }, []);
 
-  const handleAddSkill = (e: React.KeyboardEvent<HTMLInputElement> | React.MouseEvent) => {
-    if ((e.type === 'click' || (e as React.KeyboardEvent).key === 'Enter') && newSkill.trim() && !skills.includes(newSkill.trim())) {
-      setSkills([...skills, newSkill.trim()]);
-      setNewSkill("");
+  const handleSendReply = async () => {
+    if (!selectedMessage || !replyText.trim()) return;
+
+    try {
+      setIsSendingReply(true);
+      const token = localStorage.getItem("token");
+      const response = await fetch("/api/messages/reply", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          messageId: selectedMessage.id,
+          replyMessage: replyText,
+          type: selectedMessage.type
+        })
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        setSuccessMessage({
+          title: "Reply Transmitted",
+          message: "Your response has been securely routed back to the employer's dashboard."
+        });
+        setSelectedMessage(null);
+        setIsReplying(false);
+        setReplyText("");
+        // Refresh messages
+        const response2 = await fetch("/api/messages/received", {
+          headers: { "Authorization": `Bearer ${token}` }
+        });
+        const data2 = await response2.json();
+        if (data2.success && data2.messages) {
+          const formattedMessages = data2.messages.map((req: MessageRequest) => ({
+            id: req.id,
+            company: req.requesterCompany || "Direct Message",
+            sender: req.requesterName || "Recruiter",
+            email: req.requesterEmail,
+            subject: req.type === "direct" ? "Direct Communication" : `New Inquiry from ${req.requesterCompany || "Employer"}`,
+            preview: req.message.substring(0, 50) + "...",
+            body: req.message,
+            time: req.createdAt ? new Date(req.createdAt).toLocaleDateString() : "Incoming",
+            unread: req.status === "pending",
+            replied: req.status === "replied",
+            replyMessage: req.replyMessage || undefined,
+            type: req.type || "inquiry"
+          }));
+          setMessages(formattedMessages);
+        }
+      } else {
+        setModalConfig({
+          isOpen: true,
+          title: "Transmission Failed",
+          message: data.message || "Unable to send reply at this time.",
+          type: "error"
+        });
+      }
+    } catch (error) {
+      console.error("Reply error:", error);
+    } finally {
+      setIsSendingReply(false);
     }
   };
 
-  const handleRemoveSkill = (skillToRemove: string) => {
-    setSkills(skills.filter(s => s !== skillToRemove));
+  const handleSendCompose = async () => {
+    if (!selectedRecipientId || !composeBody.trim()) return;
+
+    try {
+      setIsSendingDirect(true);
+      const token = localStorage.getItem("token");
+      const response = await fetch("/api/messages/direct", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          receiverId: selectedRecipientId,
+          subject: composeSubject,
+          body: composeBody
+        })
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        setSuccessMessage({
+          title: "Signal Dispatched",
+          message: "Your direct communication has been successfully routed to the employer's headquarters."
+        });
+        setComposeSubject("");
+        setComposeBody("");
+        setSelectedRecipientId("");
+        setMessageSubTab("sent");
+      }
+    } catch (error) {
+      console.error("Direct message error:", error);
+    } finally {
+      setIsSendingDirect(false);
+    }
+  };
+
+  const handleManageMessage = async (action: "archive" | "delete") => {
+    if (!selectedMessage) return;
+
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch("/api/messages/manage", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          messageId: selectedMessage.id,
+          action
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setSelectedMessage(null);
+        setSuccessMessage({
+          title: action === "delete" ? "Draft Vanished" : "Inbox Organized",
+          message: action === "delete" ? "The correspondence has been permanently deleted." : "Message has been safely archived away from your main feed."
+        });
+        
+        // Refresh messages
+        const response = await fetch("/api/messages/received", {
+          headers: { "Authorization": `Bearer ${token}` }
+        });
+        const d = await response.json();
+        if (d.success && d.messages) {
+          const formattedMessages = d.messages.map((req: MessageRequest) => ({
+            id: req.id,
+            company: req.requesterCompany || "Unknown Company",
+            sender: req.requesterName || "Recruiter",
+            email: req.requesterEmail,
+            subject: `New Inquiry from ${req.requesterCompany || "Employer"}`,
+            preview: req.message.substring(0, 50) + "...",
+            body: req.message,
+            time: new Date(req.createdAt).toLocaleDateString(),
+            unread: req.status === "pending",
+            replied: req.status === "replied",
+            replyMessage: req.replyMessage || undefined,
+          }));
+          setMessages(formattedMessages);
+        }
+      }
+    } catch (err) {
+      console.error("Failed to manage message:", err);
+    }
+  };
+
+  const syncProfile = async (skillsToSync: string[], experiencesToSync: Experience[], titleToSync: string) => {
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) return;
+
+      const response = await fetch("/api/profile/sync", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          title: titleToSync,
+          skills: skillsToSync,
+          experiences: experiencesToSync
+        })
+      });
+      const data = await response.json();
+      return data.success;
+    } catch (error) {
+      console.error("Profile sync failed:", error);
+      return false;
+    }
+  };
+
+  const handleAddSkill = async (e: React.KeyboardEvent<HTMLInputElement> | React.MouseEvent) => {
+    if ((e.type === 'click' || (e as React.KeyboardEvent).key === 'Enter') && newSkill.trim() && !skills.includes(newSkill.trim())) {
+      const updatedSkills = [...skills, newSkill.trim()];
+      setSkills(updatedSkills);
+      setNewSkill("");
+      // Real-time synchronization
+      await syncProfile(updatedSkills, experiences, userRole);
+    }
+  };
+
+  const handleRemoveSkill = async (skillToRemove: string) => {
+    const updatedSkills = skills.filter(s => s !== skillToRemove);
+    setSkills(updatedSkills);
+    // Real-time synchronization
+    await syncProfile(updatedSkills, experiences, userRole);
   };
 
   // Experience State
-  const [experiences, setExperiences] = useState<Experience[]>([
-    { id: "1", role: "Senior Developer", company: "TechNova Inc.", duration: "2021 - Present • 3 yrs" },
-    { id: "2", role: "Full Stack Developer", company: "StartUp Flow", duration: "2018 - 2021 • 3 yrs" }
-  ]);
+  const [experiences, setExperiences] = useState<Experience[]>([]);
   const [newExperience, setNewExperience] = useState({ role: "", company: "", duration: "" });
 
-  const handleAddExperience = () => {
+  const handleAddExperience = async () => {
     if (newExperience.role.trim() && newExperience.company.trim()) {
-      setExperiences([...experiences, { ...newExperience, id: Date.now().toString() }]);
+      const updatedExperiences = [...experiences, { ...newExperience, id: Date.now().toString() }];
+      setExperiences(updatedExperiences);
       setNewExperience({ role: "", company: "", duration: "" });
+      // Real-time synchronization
+      await syncProfile(skills, updatedExperiences, userRole);
     }
   };
 
-  const handleRemoveExperience = (idToRemove: string) => {
-    setExperiences(experiences.filter(exp => exp.id !== idToRemove));
+  const handleRemoveExperience = async (idToRemove: string) => {
+    const updatedExperiences = experiences.filter(exp => exp.id !== idToRemove);
+    setExperiences(updatedExperiences);
+    // Real-time synchronization
+    await syncProfile(skills, updatedExperiences, userRole);
   };
 
-  const mockJobs: Job[] = [
-    {
-      id: "1",
-      title: "Senior Full Stack Engineer",
-      company: "TechNova Solutions",
-      countryCode: "US",
-      location: "San Francisco, CA (Remote)",
-      type: "Full-time",
-      salary: "$140k - $180k",
-      description: "We are looking for an experienced Full Stack Engineer to lead the development of our core platform. You will be working with React, TypeScript, Node.js, and AWS to build highly scalable microservices.",
-    },
-    {
-      id: "2",
-      title: "Product Designer",
-      company: "CreativeFlow",
-      countryCode: "GB",
-      location: "London, UK",
-      type: "Full-time",
-      salary: "£70k - £90k",
-      description: "Join our dynamic design team to create stunning user experiences. You'll be responsible for end-to-end product design, wireframing, prototyping, and working closely with engineers.",
-    },
-    {
-      id: "3",
-      title: "Frontend Developer (React)",
-      company: "Pinnacle Software",
-      countryCode: "DE",
-      location: "Berlin, Germany",
-      type: "Contract",
-      salary: "€80k - €100k",
-      description: "We need a React specialist to help us revamp our main web application. Experience with Next.js, Framer Motion, and TailwindCSS is highly required for this 6-month contract role.",
-    },
-    {
-      id: "4",
-      title: "Backend Go Developer",
-      company: "ScaleTech",
-      countryCode: "CA",
-      location: "Toronto, Canada",
-      type: "Full-time",
-      salary: "$120k - $150k CAD",
-      description: "ScaleTech is migrating from Python to Go. We need strong Go developers to write performant microservices, handle concurrent data pipelines, and scale our cloud infrastructure on GCP.",
-    },
-  ];
+  const handleSyncGlobal = async () => {
+    const result = await syncProfile(skills, experiences, userRole);
+    if (result) {
+      setSuccessMessage({ 
+        title: "Workspace Synchronized", 
+        message: "All professional milestones and expertise narratives have been successfully localized to the global talent headquarters." 
+      });
+    } else {
+      setModalConfig({
+        isOpen: true,
+        title: "Synchronization Interrupted",
+        message: "We encountered a temporary protocol error while syncing your profile to the network. Please attempt a localized sync again.",
+        type: "error"
+      });
+    }
+  };
 
-  const filteredJobs = mockJobs.filter((job) => {
+  const [jobs, setJobs] = useState<Job[]>([]);
+  const [isLoadingJobs, setIsLoadingJobs] = useState(false);
+
+  useEffect(() => {
+    const fetchJobs = async () => {
+      try {
+        setIsLoadingJobs(true);
+        const response = await fetch("/api/job/all");
+        const data = await response.json();
+        
+        if (data.success && data.jobs) {
+          setJobs(data.jobs);
+        }
+      } catch (error) {
+        console.error("Failed to fetch jobs:", error);
+      } finally {
+        setIsLoadingJobs(false);
+      }
+    };
+
+    fetchJobs();
+  }, []);
+
+  const filteredJobs = jobs.filter((job) => {
     const matchesCountry = selectedCountry ? job.countryCode === selectedCountry.value : true;
-    const matchesQuery = job.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                         job.company.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesQuery = (job.title?.toLowerCase() || "").includes(searchQuery.toLowerCase()) || 
+                         (job.company?.toLowerCase() || "").includes(searchQuery.toLowerCase());
     return matchesCountry && matchesQuery;
   });
 
@@ -341,7 +691,7 @@ export default function CandidateDashboard() {
     <div 
       className="min-h-screen font-sans relative overflow-hidden"
       style={{
-        background: "linear-gradient(135deg, #F2F4F4 0%, #F9F9F9 45%, #F9F5F1 100%)",
+        background: "linear-gradient(135deg, #E2E8F0 0%, #F9F9F9 45%, #F9F5F1 100%)",
       }}
     >
       {/* Ambient orbs */}
@@ -376,71 +726,70 @@ export default function CandidateDashboard() {
           boxShadow: "0 2px 16px rgba(87,89,91,0.04)"
         }}
       >
-        <div className="max-w-7xl mx-auto px-6 py-2 flex justify-between items-center">
+        <div className="max-w-7xl mx-auto px-6 py-2.5 flex justify-between items-center relative gap-4">
           <div className="flex items-center gap-6">
-            <Link href="/" className="flex items-center gap-3 group cursor-pointer">
-              <NextImage 
-                src="/logo.png" 
-                alt="VidioCV Logo" 
-                width={140}
-                height={44}
-                className="object-contain group-hover:scale-105 transition-all"
-                priority
-              />
+            <Link href="/" className="flex items-center gap-2 cursor-pointer group shrink-0">
+               <NextImage 
+                 src="/logo.png" 
+                 alt="VidioCV Logo" 
+                 width={100}
+                 height={32}
+                 className="object-contain md:w-[120px] md:h-[38px]"
+                 priority
+               />
             </Link>
-            <Link 
-              href="/" 
-              className="hidden lg:flex items-center gap-2 px-4 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-[0.2em] text-[#ACBAC4] hover:text-[#57595B] hover:bg-[#F2F4F4]/50 transition-all group"
-            >
-              Go to homepage <ArrowRight className="w-3 h-3 group-hover:translate-x-1 transition-transform" />
-            </Link>
+            
+            {/* Back Context for Mobile */}
+            {activeTab !== "profile" && (
+              <div className="md:hidden flex items-center">
+                 <button 
+                   onClick={() => setActiveTab("profile")}
+                   className="flex items-center gap-2 text-[#64748B] font-bold text-xs uppercase tracking-widest"
+                 >
+                   <ArrowLeft className="w-4 h-4" />
+                   Back
+                 </button>
+              </div>
+            )}
           </div>
 
-          <div className="hidden md:flex absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
-             <span 
-               className="px-4 py-1.5 text-[10px] font-bold uppercase tracking-[0.2em] rounded-full border shadow-sm"
-               style={{ 
-                 background: "rgba(255,255,255,0.8)", 
-                 borderColor: "#E0E4E3", 
-                 color: "#ACBAC4" 
-               }}
-             >
-                 Candidate Workspace
-             </span>
+          <div className="hidden lg:flex absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
+              <span 
+                className="px-4 py-1.5 text-[10px] font-bold uppercase tracking-[0.2em] rounded-full border shadow-sm"
+                style={{ 
+                  background: "rgba(255,255,255,0.8)", 
+                  borderColor: "#E0E4E3", 
+                  color: "#64748B" 
+                }}
+              >
+                  Candidate Hub
+              </span>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 md:gap-3">
             <button 
               onClick={() => setActiveTab("notifications")} 
-              className="p-2.5 rounded-xl transition-all hover:bg-[#F2F4F4] group cursor-pointer"
-              style={{ color: "#ACBAC4" }}
+              className="p-2 md:p-2.5 rounded-xl transition-all hover:bg-[#E2E8F0] group cursor-pointer"
+              style={{ color: "#64748B" }}
             >
-              <Bell className="w-5 h-5 group-hover:text-[#57595B] transition-colors" />
+              <Bell className="w-5 h-5 group-hover:text-[#334155] transition-colors" />
             </button>
             <button 
               onClick={() => setActiveTab("settings")} 
-              className="p-2.5 rounded-xl transition-all hover:bg-[#F2F4F4] group cursor-pointer"
-              style={{ color: "#ACBAC4" }}
+              className="p-2 md:p-2.5 rounded-xl transition-all hover:bg-[#E2E8F0] group cursor-pointer"
+              style={{ color: "#64748B" }}
             >
-              <Settings className="w-5 h-5 group-hover:text-[#57595B] transition-colors" />
+              <Settings className="w-5 h-5 group-hover:text-[#334155] transition-colors" />
             </button>
-            <div className="h-6 w-px bg-[#E0E4E3] mx-1" />
+            <div className="hidden md:block h-6 w-px bg-[#E0E4E3] mx-1" />
             <button 
               onClick={() => setIsLogoutModalOpen(true)} 
-              className="flex items-center gap-2 px-4 py-2 rounded-xl transition-all font-semibold text-sm cursor-pointer"
+              className="flex items-center gap-2 px-3 md:px-4 py-2 rounded-xl transition-all font-semibold text-xs md:text-sm cursor-pointer"
               style={{ 
                 background: "#FFFFFF", 
                 border: "1px solid #E0E4E3", 
                 color: "#EF4444",
                 boxShadow: "0 2px 8px rgba(239,68,68,0.05)"
-              }}
-              onMouseOver={e => {
-                e.currentTarget.style.background = "#FEF2F2";
-                e.currentTarget.style.borderColor = "#FCA5A5";
-              }}
-              onMouseOut={e => {
-                e.currentTarget.style.background = "#FFFFFF";
-                e.currentTarget.style.borderColor = "#E0E4E3";
               }}
             >
               <LogOut className="w-4 h-4" /> 
@@ -481,18 +830,18 @@ export default function CandidateDashboard() {
                 <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/20 to-transparent group-hover:translate-x-full duration-700 transition-transform" />
               </div>
             </div>
-            <h2 className="text-2xl font-bold mb-1" style={{ color: "#57595B" }}>{userName}</h2>
-            <p className="font-semibold text-sm mb-6 px-4 py-1 rounded-full" style={{ background: "#F2F4F4", color: "#ACBAC4" }}>{userRole}</p>
+            <h2 className="text-2xl font-bold mb-1" style={{ color: "#334155" }}>{userName}</h2>
+            <p className="font-semibold text-sm mb-6 px-4 py-1 rounded-full" style={{ background: "#E2E8F0", color: "#64748B" }}>{userRole}</p>
             <div className="w-full space-y-4 text-sm text-left px-2">
-              <div className="flex items-center gap-4 py-3 border-b border-[#F2F4F4]">
+              <div className="flex items-center gap-4 py-3 border-b border-[#E2E8F0]">
                 <div className="p-2 rounded-xl" style={{ background: "rgba(172,186,196,0.1)" }}>
-                  <MapPin className="w-4 h-4" style={{ color: "#ACBAC4" }} />
+                  <MapPin className="w-4 h-4" style={{ color: "#64748B" }} />
                 </div>
                 <span className="font-medium" style={{ color: "#8A8C8E" }}>Global / Remote</span>
               </div>
               <div className="flex items-center gap-4 py-3">
                 <div className="p-2 rounded-xl" style={{ background: "rgba(172,186,196,0.1)" }}>
-                  <Briefcase className="w-4 h-4" style={{ color: "#ACBAC4" }} />
+                  <Briefcase className="w-4 h-4" style={{ color: "#64748B" }} />
                 </div>
                 <span className="font-medium" style={{ color: "#8A8C8E" }}>5+ years experience</span>
               </div>
@@ -502,9 +851,9 @@ export default function CandidateDashboard() {
           {/* KPI Stats */}
           <div className="lg:col-span-3 grid grid-cols-1 md:grid-cols-3 gap-6">
             {[
-              { label: "Profile Views", value: "342", color: "from-[#8A8C8E] to-[#ACBAC4]" },
-              { label: "Active Applications", value: "12", color: "from-[#F7B980] to-[#F0A060]" },
-              { label: "Interview Invites", value: "4", color: "from-[#57595B] to-[#8A8C8E]" },
+              { label: "Profile Views", value: dashboardStats.profileViews.toString(), color: "from-[#8A8C8E] to-[#64748B]" },
+              { label: "Active Applications", value: dashboardStats.activeApplications.toString(), color: "from-[#F7B980] to-[#F0A060]" },
+              { label: "Interview Invites", value: dashboardStats.interviewInvites.toString(), color: "from-[#334155] to-[#8A8C8E]" },
             ].map((stat, idx) => (
               <motion.div
                 key={stat.label}
@@ -519,13 +868,13 @@ export default function CandidateDashboard() {
                 }}
               >
                 <div className={`absolute -right-8 -top-8 w-32 h-32 bg-gradient-to-br ${stat.color} opacity-[0.03] group-hover:opacity-[0.08] transition-opacity rounded-full blur-2xl`} />
-                <p className="font-bold text-xs uppercase tracking-widest mb-4" style={{ color: "#ACBAC4" }}>{stat.label}</p>
+                <p className="font-bold text-xs uppercase tracking-widest mb-4" style={{ color: "#64748B" }}>{stat.label}</p>
                 <p className={`text-6xl font-black bg-clip-text text-transparent bg-gradient-to-r ${stat.color} tracking-tighter`}>
                   {stat.value}
                 </p>
                 <div className="mt-4 flex items-center gap-2 text-[10px] font-bold" style={{ color: "#10B981" }}>
                   <span className="w-1.5 h-1.5 rounded-full bg-[#10B981] animate-pulse" />
-                  +12% vs last month
+                  Live Sync
                 </div>
               </motion.div>
             ))}
@@ -542,19 +891,19 @@ export default function CandidateDashboard() {
               className="mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-6"
             >
               <div>
-                <div className="flex items-center gap-3 text-sm font-bold mb-3" style={{ color: "#ACBAC4" }}>
+                <div className="flex items-center gap-3 text-sm font-bold mb-3" style={{ color: "#64748B" }}>
                   <button onClick={() => setActiveTab("profile")} className="hover:text-[#F7B980] transition-colors cursor-pointer">Dashboard</button>
                   <ChevronRight className="w-4 h-4" />
-                  <span style={{ color: "#57595B" }}>Workspace Settings</span>
+                  <span style={{ color: "#334155" }}>Workspace Settings</span>
                 </div>
-                <h1 className="text-4xl font-black tracking-tight" style={{ color: "#57595B" }}>Account Workspace</h1>
+                <h1 className="text-4xl font-black tracking-tight" style={{ color: "#334155" }}>Account Workspace</h1>
               </div>
               <div className="flex items-center gap-4">
-                 <button onClick={() => setActiveTab("profile")} className="px-6 py-3 rounded-2xl border-2 font-bold text-sm transition-all hover:bg-[#F2F4F4] cursor-pointer" style={{ borderColor: "#E0E4E3", color: "#8A8C8E" }}>
+                 <button onClick={() => setActiveTab("profile")} className="px-6 py-3 rounded-2xl border-2 font-bold text-sm transition-all hover:bg-[#E2E8F0] cursor-pointer" style={{ borderColor: "#E0E4E3", color: "#8A8C8E" }}>
                    Discard Changes
                  </button>
-                 <Button onClick={() => setSuccessMessage({ title: "Workspace Synced", message: "All your global preferences and security protocols have been successfully localized." })} size="lg" className="px-10 shadow-lg shadow-[#F7B980]/20">
-                   Sync Global Preferences
+                 <Button onClick={handleSyncGlobal} size="lg" className="px-10 shadow-lg shadow-[#F7B980]/20">
+                   Sync Global Portfolio
                  </Button>
               </div>
             </motion.div>
@@ -562,36 +911,38 @@ export default function CandidateDashboard() {
         </AnimatePresence>
 
         {activeTab !== "settings" && (
-          <div className="flex gap-2 mb-10 p-1.5 rounded-2xl max-w-fit overflow-x-auto border border-white shadow-lg" style={{ background: "rgba(255, 255, 255, 0.6)", backdropFilter: "blur(10px)" }}>
-            {(["profile", "jobs", "applications", "interviews", "messages", "settings"] as Tab[]).map((tab) => (
-              <button
-                key={tab}
-                onClick={() => setActiveTab(tab)}
-                className="px-8 py-3 font-bold text-xs uppercase tracking-widest rounded-xl transition-all duration-500 cursor-pointer whitespace-nowrap"
-                style={activeTab === tab ? {
-                  background: "#57595B",
-                  color: "#FFFFFF",
-                  boxShadow: "0 8px 20px rgba(87,89,91,0.2)"
-                } : {
-                  color: "#ACBAC4"
-                }}
-                onMouseOver={e => {
-                  if(activeTab !== tab) {
-                    e.currentTarget.style.color = "#57595B";
-                    e.currentTarget.style.background = "rgba(255,255,255,0.5)";
-                  }
-                }}
-                onMouseOut={e => {
-                  if(activeTab !== tab) {
-                    e.currentTarget.style.color = "#ACBAC4";
-                    e.currentTarget.style.background = "transparent";
-                  }
-                }}
-              >
-                {tab === "jobs" ? "Global Search" : tab}
-              </button>
-            ))}
-          </div>
+          <>
+            <div className="hidden md:flex gap-2 mb-10 p-1.5 rounded-2xl max-w-fit overflow-x-auto border border-white shadow-lg" style={{ background: "rgba(255, 255, 255, 0.6)", backdropFilter: "blur(10px)" }}>
+              {(["profile", "jobs", "applications", "interviews", "messages", "settings"] as Tab[]).map((tab) => (
+                <button
+                  key={tab}
+                  onClick={() => setActiveTab(tab)}
+                  className="px-8 py-3 font-bold text-xs uppercase tracking-widest rounded-xl transition-all duration-500 cursor-pointer whitespace-nowrap"
+                  style={activeTab === tab ? {
+                    background: "#334155",
+                    color: "#FFFFFF",
+                    boxShadow: "0 8px 20px rgba(87,89,91,0.2)"
+                  } : {
+                    color: "#64748B"
+                  }}
+                >
+                  {tab === "jobs" ? "Global Search" : tab}
+                </button>
+              ))}
+            </div>
+
+            <MobileBottomNav 
+              activeTab={activeTab}
+              onTabChange={(id) => setActiveTab(id as Tab)}
+              items={[
+                { id: "profile", label: "Hub", icon: LayoutDashboard },
+                { id: "jobs", label: "Search", icon: Search },
+                { id: "messages", label: "Mail", icon: Mail },
+                { id: "interviews", label: "Sync", icon: Calendar },
+                { id: "settings", label: "Control", icon: Settings },
+              ]}
+            />
+          </>
         )}
 
         {/* Main Content Area */}
@@ -613,60 +964,182 @@ export default function CandidateDashboard() {
                     boxShadow: "0 24px 64px rgba(87,89,91,0.06)"
                   }}
                 >
-                  <div className="flex justify-between items-center mb-10 pb-6 border-b border-[#F2F4F4]">
-                    <h3 className="text-3xl font-bold flex items-center gap-4" style={{ color: "#57595B" }}>
+                  <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 pb-6 border-b border-[#E2E8F0] gap-6">
+                    <h3 className="text-3xl font-bold flex items-center gap-4" style={{ color: "#334155" }}>
                       <div className="p-2.5 rounded-2xl bg-[#F7B980]/10">
                         <Mail className="w-7 h-7 text-[#F7B980]" />
                       </div>
-                      Communications
+                      Communications Hub
                     </h3>
+                    
+                    <div className="flex p-1.5 bg-white/40 rounded-2xl border border-[#E2E8F0]">
+                      {(["inbox", "sent", "compose"] as const).map((sub) => (
+                        <button
+                          key={sub}
+                          onClick={() => setMessageSubTab(sub)}
+                          className={`px-6 py-2.5 rounded-xl font-bold text-[10px] uppercase tracking-widest transition-all cursor-pointer ${
+                            messageSubTab === sub 
+                              ? "bg-white text-[#F7B980] shadow-md border border-[#F7B980]/10" 
+                              : "text-[#64748B] hover:text-[#334155]"
+                          }`}
+                        >
+                          {sub}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                   
                   <div className="grid grid-cols-1 gap-4">
-                    {messages.map((msg) => (
-                      <div 
-                        key={msg.id} 
-                        onClick={() => {
-                          setSelectedMessage(msg);
-                          setMessages(prev => prev.map(m => m.id === msg.id ? { ...m, unread: false } : m));
-                        }}
-                        className="p-6 rounded-[24px] border transition-all cursor-pointer group flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4"
-                        style={msg.unread ? { 
-                          background: "#FFFFFF", 
-                          borderColor: "#F7B980",
-                          boxShadow: "0 12px 32px rgba(247,185,128,0.08)"
-                        } : {
-                          background: "rgba(255, 255, 255, 0.4)",
-                          borderColor: "#E0E4E3"
-                        }}
-                      >
-                        <div className="flex gap-4 items-center flex-1">
-                          <div 
-                            className="w-12 h-12 rounded-2xl flex items-center justify-center font-bold text-lg shrink-0"
-                            style={{ background: "#F2F4F4", color: "#F7B980" }}
-                          >
-                            {msg.company.charAt(0)}
+                    {messageSubTab === "inbox" && (
+                      <>
+                        {isLoadingMessages ? (
+                          <div className="flex flex-col items-center justify-center py-20 mt-10">
+                            <div className="w-10 h-10 border-4 border-[#E2E8F0] border-t-[#F7B980] rounded-full animate-spin mb-4" />
+                            <p className="text-[#64748B] font-bold text-sm tracking-wide">Decrypting inbound signals...</p>
                           </div>
-                          <div>
-                            <h4 className="font-bold text-base transition-colors group-hover:text-[#F7B980]" style={{ color: "#57595B" }}>
-                              {msg.company}
-                              {msg.unread && <span className="ml-3 inline-block w-2 h-2 rounded-full bg-[#F7B980]" />}
-                            </h4>
-                            <p className="text-sm font-medium" style={{ color: "#ACBAC4" }}>{msg.subject}</p>
+                        ) : messages.length > 0 ? (
+                          messages.map((msg) => (
+                            <div 
+                              key={msg.id} 
+                              onClick={() => {
+                                setSelectedMessage(msg);
+                                setMessages(prev => prev.map(m => m.id === msg.id ? { ...m, unread: false } : m));
+                              }}
+                              className="p-6 rounded-[24px] border transition-all cursor-pointer group flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4"
+                              style={msg.unread ? { 
+                                background: "#FFFFFF", 
+                                borderColor: "#F7B980",
+                                boxShadow: "0 12px 32px rgba(247,185,128,0.08)"
+                              } : {
+                                background: "rgba(255, 255, 255, 0.4)",
+                                borderColor: "#E0E4E3"
+                              }}
+                            >
+                              <div className="flex gap-4 items-center flex-1">
+                                <div 
+                                  className="w-12 h-12 rounded-2xl flex items-center justify-center font-bold text-lg shrink-0"
+                                  style={{ background: "#E2E8F0", color: "#F7B980" }}
+                                >
+                                  {msg.company.charAt(0)}
+                                </div>
+                                <div>
+                                  <h4 className="font-bold text-base transition-colors group-hover:text-[#F7B980] flex items-center gap-2" style={{ color: "#334155" }}>
+                                    {msg.company}
+                                    {msg.unread && <span className="inline-block w-2 h-2 rounded-full bg-[#F7B980]" />}
+                                    {msg.replied && <span className="px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest bg-[#10B981]/10 text-[#10B981] border border-[#10B981]/20">Replied</span>}
+                                  </h4>
+                                  <p className="text-sm font-medium" style={{ color: "#64748B" }}>{msg.subject}</p>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-6">
+                                <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: "#64748B" }}>{msg.time}</p>
+                                <ChevronRight className="w-5 h-5 opacity-40 group-hover:opacity-100 group-hover:translate-x-1 transition-all" style={{ color: "#334155" }} />
+                              </div>
+                            </div>
+                          ))
+                        ) : (
+                          <div className="text-center py-20 bg-[#F9F9F9]/50 rounded-[32px] border-2 border-dashed" style={{ borderColor: "#E0E4E3" }}>
+                            <p className="text-xl font-bold mb-2" style={{ color: "#334155" }}>No inbound signals</p>
+                            <p className="font-medium" style={{ color: "#64748B" }}>Your communication channels are currently quiet.</p>
                           </div>
+                        )}
+                        
+                        <div className="mt-10 pt-10 border-t border-[#E2E8F0] text-center">
+                          <button className="text-sm font-bold uppercase tracking-widest underline opacity-60 hover:opacity-100 transition-opacity cursor-pointer" style={{ color: "#334155" }}>
+                            Archive History
+                          </button>
                         </div>
-                        <div className="flex items-center gap-6">
-                          <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: "#ACBAC4" }}>{msg.time}</p>
-                          <ChevronRight className="w-5 h-5 opacity-40 group-hover:opacity-100 group-hover:translate-x-1 transition-all" style={{ color: "#57595B" }} />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                      </>
+                    )}
 
-                  <div className="mt-10 pt-10 border-t border-[#F2F4F4] text-center">
-                    <button className="text-sm font-bold uppercase tracking-widest underline opacity-60 hover:opacity-100 transition-opacity cursor-pointer" style={{ color: "#57595B" }}>
-                      Archive History
-                    </button>
+                    {messageSubTab === "sent" && (
+                      <>
+                        {isLoadingSent ? (
+                          <div className="flex flex-col items-center justify-center py-20">
+                            <div className="w-10 h-10 border-4 border-[#E2E8F0] border-t-[#F7B980] rounded-full animate-spin mb-4" />
+                            <p className="text-[#64748B] font-bold text-sm">Auditing outbound transit...</p>
+                          </div>
+                        ) : sentMessages.length > 0 ? (
+                          sentMessages.map((msg: DirectMessage) => (
+                            <div 
+                              key={msg.id}
+                              className="p-6 rounded-[24px] border border-[#E2E8F0] transition-all hover:bg-white flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4"
+                              style={{ background: "rgba(255, 255, 255, 0.4)" }}
+                            >
+                               <div className="flex gap-4 items-center">
+                                  <div className="w-12 h-12 rounded-2xl bg-[#334155]/5 flex items-center justify-center font-black text-[#334155] text-lg">
+                                    {msg.receiver.name.charAt(0)}
+                                  </div>
+                                  <div>
+                                    <h4 className="font-bold text-base" style={{ color: "#334155" }}>{msg.receiver.name}</h4>
+                                    <p className="text-sm italic opacity-60" style={{ color: "#64748B" }}>{msg.subject || "Direct Inquiry"}</p>
+                                  </div>
+                               </div>
+                               <p className="text-[10px] font-black uppercase tracking-widest opacity-40">
+                                 {msg.createdAt ? new Date(msg.createdAt).toLocaleDateString() : "Present"}
+                               </p>
+                            </div>
+                          ))
+                        ) : (
+                          <div className="text-center py-20 bg-[#F9F9F9]/50 rounded-[32px] border-2 border-dashed" style={{ borderColor: "#E0E4E3" }}>
+                            <p className="text-xl font-bold mb-2" style={{ color: "#334155" }}>No sent transmissions</p>
+                            <p className="font-medium" style={{ color: "#64748B" }}>You haven&apos;t initiated any direct contact yet.</p>
+                          </div>
+                        )}
+                      </>
+                    )}
+
+                    {messageSubTab === "compose" && (
+                      <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                            <div className="space-y-4">
+                               <label className="text-[10px] font-black uppercase tracking-[0.2em] ml-2" style={{ color: "#64748B" }}>Target Headquarters</label>
+                               <select 
+                                 value={selectedRecipientId}
+                                 onChange={(e) => setSelectedRecipientId(e.target.value)}
+                                 className="w-full px-8 py-5 bg-white border-2 rounded-[28px] outline-none transition-all font-bold text-base focus:border-[#F7B980] shadow-sm appearance-none cursor-pointer"
+                                 style={{ borderColor: "#E2E8F0", color: "#334155" }}
+                               >
+                                 <option value="">Select a Company...</option>
+                                 {employers.map((emp: Employer) => (
+                                   <option key={emp.id} value={emp.id}>{emp.name}</option>
+                                 ))}
+                               </select>
+                            </div>
+                            <div className="space-y-4">
+                               <label className="text-[10px] font-black uppercase tracking-[0.2em] ml-2" style={{ color: "#64748B" }}>Communication Pitch</label>
+                               <input 
+                                 type="text"
+                                 value={composeSubject}
+                                 onChange={(e) => setComposeSubject(e.target.value)}
+                                 placeholder="Subject (Optional)"
+                                 className="w-full px-8 py-5 bg-white border-2 rounded-[28px] outline-none transition-all font-bold text-base focus:border-[#F7B980] shadow-sm"
+                                 style={{ borderColor: "#E2E8F0", color: "#334155" }}
+                               />
+                            </div>
+                         </div>
+                         <div className="space-y-4">
+                            <label className="text-[10px] font-black uppercase tracking-[0.2em] ml-2" style={{ color: "#64748B" }}>Transmission Body</label>
+                            <textarea 
+                              value={composeBody}
+                              onChange={(e) => setComposeBody(e.target.value)}
+                              placeholder="Write your professional inquiries, follow-ups or proposals here..."
+                              className="w-full px-8 py-8 bg-white border-2 rounded-[40px] outline-none transition-all font-medium text-lg leading-relaxed focus:border-[#F7B980] shadow-inner min-h-[280px] resize-none"
+                              style={{ borderColor: "#E2E8F0", color: "#334155" }}
+                            />
+                         </div>
+                         <div className="flex justify-end pt-4">
+                            <Button 
+                              onClick={handleSendCompose}
+                              disabled={!selectedRecipientId || !composeBody.trim() || isSendingDirect}
+                              className="px-16 py-5 rounded-[28px]"
+                              size="lg"
+                            >
+                               {isSendingDirect ? "Transmitting..." : "Initiate Protocol"}
+                            </Button>
+                         </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -683,15 +1156,15 @@ export default function CandidateDashboard() {
                     boxShadow: "0 24px 64px rgba(87,89,91,0.06)"
                   }}
                 >
-                  <div className="flex flex-col md:flex-row justify-between items-start md:items-center pb-10 mb-10 border-b border-[#F2F4F4]">
+                  <div className="flex flex-col md:flex-row justify-between items-start md:items-center pb-10 mb-10 border-b border-[#E2E8F0]">
                     <div className="mb-6 md:mb-0">
-                      <h3 className="text-3xl font-bold mb-3 flex items-center gap-4" style={{ color: "#57595B" }}>
+                      <h3 className="text-3xl font-bold mb-3 flex items-center gap-4" style={{ color: "#334155" }}>
                         <div className="p-2.5 rounded-2xl bg-[#F7B980]/10">
                           <Video className="w-7 h-7 text-[#F7B980]" />
                         </div>
                         Video Portfolio
                       </h3>
-                      <p className="max-w-xl text-base font-medium" style={{ color: "#ACBAC4" }}>
+                      <p className="max-w-xl text-base font-medium" style={{ color: "#64748B" }}>
                         Record or upload a high-fidelity introduction. Your Video CV is your competitive edge, showcasing your personality directly to global hiring teams.
                       </p>
                     </div>
@@ -709,10 +1182,28 @@ export default function CandidateDashboard() {
                       <div className="bg-[#F9F9F9] rounded-[32px] p-6 md:p-10 border border-[#E0E4E3]">
                         <VideoCreator 
                            initialVideoUrl={activeVideoUrl || undefined}
-                           onVideoUpload={(file, url, streamingUrl) => {
+                           onVideoUpload={async (file, url, streamingUrl) => {
                              console.log("Uploaded:", file.name);
                              const finalUrl = streamingUrl || url;
-                             if (finalUrl) setActiveVideoUrl(finalUrl);
+                             if (finalUrl) {
+                               setActiveVideoUrl(finalUrl);
+                               // Call the save API to persist the video to the profile
+                               try {
+                                 const response = await fetch("/api/profile/video/save", {
+                                   method: "POST",
+                                   headers: {
+                                     "Content-Type": "application/json",
+                                     "Authorization": `Bearer ${localStorage.getItem("token")}`
+                                   },
+                                   body: JSON.stringify({ videoUrl: url, streamingUrl })
+                                 });
+                                 if (!response.ok) {
+                                   console.error("Failed to save video to profile database");
+                                 }
+                               } catch (err) {
+                                 console.error("Persistence error:", err);
+                               }
+                             }
                              setShowVideoCreator(false);
                            }} 
                            onVideoDelete={() => setActiveVideoUrl(null)}
@@ -720,12 +1211,12 @@ export default function CandidateDashboard() {
                       </div>
                     </motion.div>
                   ) : activeVideoUrl ? (
-                    <div className="w-full aspect-video md:aspect-[21/9] bg-[#57595B] rounded-[32px] border-4 border-white overflow-hidden relative shadow-2xl group">
+                    <div className="w-full aspect-video bg-[#334155] rounded-[32px] border-4 border-white overflow-hidden relative shadow-2xl group">
                         <LiveKitPlayer 
                           src={activeVideoUrl}
                           candidateName="Candidate"
                         />
-                        <div className="absolute inset-0 bg-gradient-to-t from-[#57595B]/40 to-transparent pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity" />
+                        <div className="absolute inset-0 bg-gradient-to-t from-[#334155]/40 to-transparent pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity" />
                         <button 
                           onClick={() => {
                             setModalConfig({
@@ -765,11 +1256,11 @@ export default function CandidateDashboard() {
                       <div className="w-24 h-24 rounded-full bg-white flex items-center justify-center mb-8 shadow-2xl group-hover:scale-110 transition-transform cursor-pointer border border-[#E0E4E3]">
                         <PlayIcon className="w-10 h-10 translate-x-1" style={{ color: "#F7B980" }} />
                       </div>
-                      <h4 className="text-2xl font-bold mb-3" style={{ color: "#57595B" }}>Bring your profile to life</h4>
-                      <p className="max-w-md font-medium" style={{ color: "#ACBAC4" }}>You haven&apos;t added a Video CV yet. Launch the studio to record your 60-second elevator pitch.</p>
+                      <h4 className="text-2xl font-bold mb-3" style={{ color: "#334155" }}>Bring your profile to life</h4>
+                      <p className="max-w-md font-medium" style={{ color: "#64748B" }}>You haven&apos;t added a Video CV yet. Launch the studio to record your 60-second elevator pitch.</p>
                       <button 
                         className="mt-8 px-8 py-3 rounded-full font-bold text-sm transition-all shadow-lg hover:shadow-xl active:scale-95 cursor-pointer"
-                        style={{ background: "#57595B", color: "white" }}
+                        style={{ background: "#334155", color: "white" }}
                       >
                         Launch Studio
                       </button>
@@ -787,7 +1278,7 @@ export default function CandidateDashboard() {
                       boxShadow: "0 24px 64px rgba(87,89,91,0.06)"
                     }}
                   >
-                    <h4 className="text-xl font-bold mb-8 flex items-center gap-3" style={{ color: "#57595B" }}>
+                    <h4 className="text-xl font-bold mb-8 flex items-center gap-3" style={{ color: "#334155" }}>
                       Professional Skills
                     </h4>
                     
@@ -799,13 +1290,13 @@ export default function CandidateDashboard() {
                         onKeyDown={handleAddSkill}
                         placeholder="Expertise (e.g. Next.js)..." 
                         className="flex-1 px-5 py-3 bg-white border rounded-2xl outline-none transition-all text-sm font-medium"
-                        style={{ borderColor: "#E0E4E3", color: "#57595B" }}
+                        style={{ borderColor: "#E0E4E3", color: "#334155" }}
                       />
                       <button 
                         onClick={handleAddSkill}
                         disabled={!newSkill.trim()}
                         className="p-3 rounded-2xl transition-all shadow-md active:scale-95 disabled:opacity-50 disabled:scale-100 cursor-pointer"
-                        style={{ background: "#57595B", color: "white" }}
+                        style={{ background: "#334155", color: "white" }}
                       >
                         <Plus className="w-5 h-5" />
                       </button>
@@ -829,7 +1320,7 @@ export default function CandidateDashboard() {
                             {skill}
                             <button 
                               onClick={() => handleRemoveSkill(skill)}
-                              className="p-1 hover:bg-[#F2F4F4] rounded-lg text-[#ACBAC4] hover:text-[#EF4444] transition-colors cursor-pointer"
+                              className="p-1 hover:bg-[#E2E8F0] rounded-lg text-[#64748B] hover:text-[#EF4444] transition-colors cursor-pointer"
                             >
                               <X className="w-3.5 h-3.5" />
                             </button>
@@ -837,7 +1328,7 @@ export default function CandidateDashboard() {
                         ))}
                       </AnimatePresence>
                       {skills.length === 0 && (
-                        <span className="text-sm font-medium italic" style={{ color: "#ACBAC4" }}>Define your stack...</span>
+                        <span className="text-sm font-medium italic" style={{ color: "#64748B" }}>Define your stack...</span>
                       )}
                     </div>
                   </div>
@@ -851,20 +1342,20 @@ export default function CandidateDashboard() {
                       boxShadow: "0 24px 64px rgba(87,89,91,0.06)"
                     }}
                   >
-                    <h4 className="text-xl font-bold mb-8 flex items-center gap-3" style={{ color: "#57595B" }}>
+                    <h4 className="text-xl font-bold mb-8 flex items-center gap-3" style={{ color: "#334155" }}>
                       Work Experience
                     </h4>
                     
                     {/* Add Experience Form */}
                     <div className="p-6 rounded-[24px] border border-dashed mb-10 space-y-4" style={{ background: "rgba(242, 244, 244, 0.4)", borderColor: "#E0E4E3" }}>
-                      <p className="text-xs font-bold uppercase tracking-widest mb-4" style={{ color: "#ACBAC4" }}>Add New Milestone</p>
+                      <p className="text-xs font-bold uppercase tracking-widest mb-4" style={{ color: "#64748B" }}>Add New Milestone</p>
                       <input 
                         type="text" 
                         value={newExperience.role}
                         onChange={(e) => setNewExperience({...newExperience, role: e.target.value})}
                         placeholder="Role / Position" 
                         className="w-full px-5 py-3 bg-white border rounded-2xl outline-none transition-all text-sm font-medium mb-2"
-                        style={{ borderColor: "#E0E4E3", color: "#57595B" }}
+                        style={{ borderColor: "#E0E4E3", color: "#334155" }}
                       />
                       <div className="flex gap-3">
                         <input 
@@ -873,7 +1364,7 @@ export default function CandidateDashboard() {
                           onChange={(e) => setNewExperience({...newExperience, company: e.target.value})}
                           placeholder="Company" 
                           className="flex-1 px-5 py-3 bg-white border rounded-2xl outline-none transition-all text-sm font-medium"
-                          style={{ borderColor: "#E0E4E3", color: "#57595B" }}
+                          style={{ borderColor: "#E0E4E3", color: "#334155" }}
                         />
                         <input 
                           type="text" 
@@ -881,14 +1372,14 @@ export default function CandidateDashboard() {
                           onChange={(e) => setNewExperience({...newExperience, duration: e.target.value})}
                           placeholder="Duration" 
                           className="flex-1 px-5 py-3 bg-white border rounded-2xl outline-none transition-all text-sm font-medium"
-                          style={{ borderColor: "#E0E4E3", color: "#57595B" }}
+                          style={{ borderColor: "#E0E4E3", color: "#334155" }}
                         />
                       </div>
                       <button 
                         onClick={handleAddExperience}
                         disabled={!newExperience.role.trim() || !newExperience.company.trim()}
                         className="w-full py-3.5 rounded-2xl font-bold text-xs uppercase tracking-[0.2em] shadow-lg transition-all hover:shadow-xl active:scale-95 disabled:opacity-50 mt-2 cursor-pointer"
-                        style={{ background: "#57595B", color: "white" }}
+                        style={{ background: "#334155", color: "white" }}
                       >
                         Add to Profile
                       </button>
@@ -907,7 +1398,7 @@ export default function CandidateDashboard() {
                             <div 
                               className="w-14 h-14 rounded-[20px] flex items-center justify-center font-bold text-lg shrink-0 shadow-lg"
                               style={{ 
-                                background: "linear-gradient(135deg, #F9F9F9, #F2F4F4)", 
+                                background: "linear-gradient(135deg, #F9F9F9, #E2E8F0)", 
                                 border: "1px solid #E0E4E3",
                                 color: "#F7B980" 
                               }}
@@ -915,16 +1406,16 @@ export default function CandidateDashboard() {
                               {exp.company.substring(0, 1).toUpperCase()}
                             </div>
                             <div className="flex-1 pr-10">
-                              <p className="font-bold text-lg leading-tight mb-1" style={{ color: "#57595B" }}>{exp.role}</p>
+                              <p className="font-bold text-lg leading-tight mb-1" style={{ color: "#334155" }}>{exp.role}</p>
                               <div className="flex items-center gap-2 mb-2">
                                 <span className="font-bold text-xs uppercase tracking-wider" style={{ color: "#F7B980" }}>{exp.company}</span>
                                 <span className="w-1 h-1 rounded-full bg-[#E0E4E3]" />
-                                <span className="text-xs font-semibold" style={{ color: "#ACBAC4" }}>{exp.duration}</span>
+                                <span className="text-xs font-semibold" style={{ color: "#64748B" }}>{exp.duration}</span>
                               </div>
                             </div>
                             <button 
                               onClick={() => handleRemoveExperience(exp.id)}
-                              className="absolute top-0 right-0 opacity-0 group-hover:opacity-100 p-2 text-[#ACBAC4] hover:text-[#EF4444] transition-all cursor-pointer"
+                              className="absolute top-0 right-0 opacity-0 group-hover:opacity-100 p-2 text-[#64748B] hover:text-[#EF4444] transition-all cursor-pointer"
                             >
                               <Trash2 className="w-5 h-5" />
                             </button>
@@ -948,14 +1439,14 @@ export default function CandidateDashboard() {
                   }}
                 >
                   <div className="mb-12">
-                    <h3 className="text-3xl font-bold mb-3" style={{ color: "#57595B" }}>Global Job Search</h3>
-                    <p className="font-medium text-base" style={{ color: "#ACBAC4" }}>Find your dream role and instantly apply using your verified Video Portfolio.</p>
+                    <h3 className="text-3xl font-bold mb-3" style={{ color: "#334155" }}>Global Job Search</h3>
+                    <p className="font-medium text-base" style={{ color: "#64748B" }}>Find your dream role and instantly apply using your verified Video Portfolio.</p>
                   </div>
                   
                   {/* Search and Filters */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-12">
                     <div className="relative group">
-                      <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none transition-colors group-focus-within:text-[#F7B980]" style={{ color: "#ACBAC4" }}>
+                      <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none transition-colors group-focus-within:text-[#F7B980]" style={{ color: "#64748B" }}>
                         <Search className="h-5 w-5" />
                       </div>
                       <input
@@ -964,7 +1455,7 @@ export default function CandidateDashboard() {
                         onChange={(e) => setSearchQuery(e.target.value)}
                         placeholder="Search roles or companies..."
                         className="w-full pl-14 pr-6 py-4 bg-white border rounded-[20px] outline-none transition-all font-medium"
-                        style={{ borderColor: "#E0E4E3", color: "#57595B" }}
+                        style={{ borderColor: "#E0E4E3", color: "#334155" }}
                       />
                     </div>
                     <div className="relative z-20">
@@ -1002,77 +1493,81 @@ export default function CandidateDashboard() {
                     </div>
                   </div>
 
-                  {/* Job List */}
-                  <div className="space-y-6">
-                    {filteredJobs.length > 0 ? (
-                      filteredJobs.map((job) => (
-                        <div 
-                          key={job.id} 
-                          className="group bg-white/40 border-2 rounded-[32px] p-8 transition-all hover:bg-white hover:border-[#F7B980]/30 hover:shadow-2xl flex flex-col md:flex-row justify-between items-start md:items-center gap-8 relative overflow-hidden"
-                          style={{ borderColor: "rgba(224, 228, 227, 0.5)" }}
-                        >
-                          <div className="flex gap-6 items-start z-10">
-                            <div 
-                              className="w-16 h-16 rounded-[24px] flex items-center justify-center shrink-0 shadow-lg"
-                              style={{ background: "#F9F9F9", border: "1px solid #E0E4E3" }}
-                            >
-                               <Building2 className="w-8 h-8" style={{ color: "#ACBAC4" }} />
-                            </div>
-                            <div>
-                              <h4 className="text-xl font-bold mb-1 transition-colors group-hover:text-[#F7B980]" style={{ color: "#57595B" }}>{job.title}</h4>
-                              <p className="font-bold text-sm tracking-wide mb-4" style={{ color: "#ACBAC4" }}>{job.company.toUpperCase()}</p>
-                              <div className="flex flex-wrap gap-4 text-xs font-bold uppercase tracking-wider" style={{ color: "#8A8C8E" }}>
-                                <span className="flex items-center gap-2 bg-[#F2F4F4] px-3 py-1.5 rounded-lg"><MapPin className="w-3.5 h-3.5" /> {job.location}</span>
-                                <span className="flex items-center gap-2 bg-[#F2F4F4] px-3 py-1.5 rounded-lg"><Briefcase className="w-3.5 h-3.5" /> {job.type}</span>
-                                <span className="bg-[#10B981]/10 text-[#10B981] px-3 py-1.5 rounded-lg">{job.salary}</span>
-                              </div>
-                            </div>
-                          </div>
-                          <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto z-10">
-                            <button 
-                              onClick={() => setSelectedJob(job)} 
-                              className="px-6 py-3 rounded-2xl font-bold text-xs uppercase tracking-widest transition-all hover:bg-[#F2F4F4] cursor-pointer"
-                              style={{ background: "transparent", color: "#57595B", border: "1px solid #E0E4E3" }}
-                            >
-                              Explore
-                            </button>
-                            <Button 
-                              onClick={() => handleApply(job.id)} 
-                              className="flex-1 shrink-0 flex items-center justify-center gap-3"
-                              size="md"
-                            >
-                              <Video className="w-4 h-4" /> 
-                              Submit Portfolio
-                            </Button>
-                          </div>
-                          {/* Subtle decorative element */}
-                          <div className="absolute right-0 bottom-0 w-32 h-32 bg-[#F7B980]/5 rounded-full blur-3xl -mr-16 -mb-16 pointer-events-none group-hover:bg-[#F7B980]/10 transition-all" />
-                        </div>
-                      ))
-                    ) : (
+            {isLoadingJobs ? (
+              <div className="flex flex-col items-center justify-center py-24 mt-10">
+                <div className="w-12 h-12 border-4 border-[#E2E8F0] border-t-[#F7B980] rounded-full animate-spin mb-6" />
+                <p className="text-[#64748B] font-bold text-sm tracking-widest uppercase">Syncing Live Opportunities...</p>
+              </div>
+            ) : filteredJobs.length > 0 ? (
+              <div className="space-y-6">
+                {filteredJobs.map((job) => (
+                  <div 
+                    key={job.id} 
+                    className="group bg-white/40 border-2 rounded-[32px] p-8 transition-all hover:bg-white hover:border-[#F7B980]/30 hover:shadow-2xl flex flex-col md:flex-row justify-between items-start md:items-center gap-8 relative overflow-hidden"
+                    style={{ borderColor: "rgba(224, 228, 227, 0.5)" }}
+                  >
+                    <div className="flex gap-6 items-start z-10">
                       <div 
-                        className="text-center py-24 rounded-[32px] border-2 border-dashed flex flex-col items-center" 
-                        style={{ borderColor: "#E0E4E3", background: "rgba(249, 249, 249, 0.4)" }}
-                        onClick={() => { setSearchQuery(""); setSelectedCountry(null); }}
+                        className="w-16 h-16 rounded-[24px] flex items-center justify-center shrink-0 shadow-lg"
+                        style={{ background: "#F9F9F9", border: "1px solid #E0E4E3" }}
                       >
-                        <div className="w-20 h-20 rounded-full bg-white flex items-center justify-center mb-6 shadow-xl border border-[#E0E4E3]">
-                          <Search className="w-10 h-10" style={{ color: "#ACBAC4" }} />
-                        </div>
-                        <p className="text-xl font-bold mb-2" style={{ color: "#57595B" }}>No matching opportunities</p>
-                        <p className="font-medium mb-8" style={{ color: "#ACBAC4" }}>Try adjusting your filters or search terms.</p>
-                        <button 
-                          onClick={() => { setSearchQuery(""); setSelectedCountry(null); }} 
-                          className="font-bold text-sm underline opacity-60 hover:opacity-100 transition-opacity cursor-pointer"
-                          style={{ color: "#57595B" }}
-                        >
-                          Clear all filters
-                        </button>
+                         <Building2 className="w-8 h-8" style={{ color: "#64748B" }} />
                       </div>
-                    )}
+                      <div>
+                        <h4 className="text-xl font-bold mb-1 transition-colors group-hover:text-[#F7B980]" style={{ color: "#334155" }}>{job.title}</h4>
+                        <p className="font-bold text-sm tracking-wide mb-4" style={{ color: "#64748B" }}>{job.company.toUpperCase()}</p>
+                        <div className="flex flex-wrap gap-4 text-xs font-bold uppercase tracking-wider" style={{ color: "#8A8C8E" }}>
+                          <span className="flex items-center gap-2 bg-[#E2E8F0] px-3 py-1.5 rounded-lg"><MapPin className="w-3.5 h-3.5" /> {job.location}</span>
+                          <span className="flex items-center gap-2 bg-[#E2E8F0] px-3 py-1.5 rounded-lg"><Briefcase className="w-3.5 h-3.5" /> {job.type}</span>
+                          <span className="bg-[#10B981]/10 text-[#10B981] px-3 py-1.5 rounded-lg">{job.salary}</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto z-10">
+                      <button 
+                        onClick={() => setSelectedJob(job)} 
+                        className="px-6 py-3 rounded-2xl font-bold text-xs uppercase tracking-widest transition-all hover:bg-[#E2E8F0] cursor-pointer"
+                        style={{ background: "transparent", color: "#334155", border: "1px solid #E0E4E3" }}
+                      >
+                        Explore
+                      </button>
+                      <Button 
+                        onClick={() => handleApply(job.id)} 
+                        className="flex-1 shrink-0 flex items-center justify-center gap-3"
+                        size="md"
+                      >
+                        <Video className="w-4 h-4" /> 
+                        Submit Portfolio
+                      </Button>
+                    </div>
+                    {/* Subtle decorative element */}
+                    <div className="absolute right-0 bottom-0 w-32 h-32 bg-[#F7B980]/5 rounded-full blur-3xl -mr-16 -mb-16 pointer-events-none group-hover:bg-[#F7B980]/10 transition-all" />
                   </div>
+                ))}
+              </div>
+            ) : (
+              <div 
+                className="text-center py-24 rounded-[32px] border-2 border-dashed flex flex-col items-center" 
+                style={{ borderColor: "#E0E4E3", background: "rgba(249, 249, 249, 0.4)" }}
+                onClick={() => { setSearchQuery(""); setSelectedCountry(null); }}
+              >
+                <div className="w-20 h-20 rounded-full bg-white flex items-center justify-center mb-6 shadow-xl border border-[#E0E4E3]">
+                  <Search className="w-10 h-10" style={{ color: "#64748B" }} />
                 </div>
+                <p className="text-xl font-bold mb-2" style={{ color: "#334155" }}>No matching opportunities</p>
+                <p className="font-medium mb-8" style={{ color: "#64748B" }}>Try adjusting your filters or search terms.</p>
+                <button 
+                  onClick={() => { setSearchQuery(""); setSelectedCountry(null); }} 
+                  className="font-bold text-sm underline opacity-60 hover:opacity-100 transition-opacity cursor-pointer"
+                  style={{ color: "#334155" }}
+                >
+                  Clear all filters
+                </button>
               </div>
             )}
+          </div>
+        </div>
+      )}
 
             {activeTab === "applications" && (
               <div 
@@ -1083,7 +1578,7 @@ export default function CandidateDashboard() {
                   boxShadow: "0 24px 64px rgba(87,89,91,0.06)"
                 }}
               >
-                <h3 className="text-3xl font-bold mb-10 flex items-center gap-4" style={{ color: "#57595B" }}>
+                <h3 className="text-3xl font-bold mb-10 flex items-center gap-4" style={{ color: "#334155" }}>
                   <div className="p-2.5 rounded-2xl bg-[#F7B980]/10">
                     <Briefcase className="w-7 h-7 text-[#F7B980]" />
                   </div>
@@ -1098,14 +1593,14 @@ export default function CandidateDashboard() {
                       style={{ background: "rgba(255, 255, 255, 0.4)", border: "1px solid #E0E4E3" }}
                     >
                       <div>
-                        <h4 className="text-xl font-bold mb-1 group-hover:text-[#F7B980] transition-colors" style={{ color: "#57595B" }}>{app.title}</h4>
-                        <p className="font-bold text-sm" style={{ color: "#ACBAC4" }}>{app.company} <span className="mx-2">•</span> {app.date}</p>
+                        <h4 className="text-xl font-bold mb-1 group-hover:text-[#F7B980] transition-colors" style={{ color: "#334155" }}>{app.title}</h4>
+                        <p className="font-bold text-sm" style={{ color: "#64748B" }}>{app.company} <span className="mx-2">•</span> {app.date}</p>
                       </div>
                       <div className="flex items-center gap-6">
                         <span className={`px-6 py-2 rounded-full text-[10px] font-black uppercase tracking-widest border transition-all ${app.color}`}>
                           {app.status}
                         </span>
-                        <ChevronRight className="w-5 h-5 opacity-40 group-hover:opacity-100 group-hover:translate-x-1 transition-all" style={{ color: "#57595B" }} />
+                        <ChevronRight className="w-5 h-5 opacity-40 group-hover:opacity-100 group-hover:translate-x-1 transition-all" style={{ color: "#334155" }} />
                       </div>
                     </div>
                   ))}
@@ -1115,21 +1610,64 @@ export default function CandidateDashboard() {
             
             {activeTab === "interviews" && (
               <div 
-                className="border border-white rounded-[40px] p-8 lg:p-12 shadow-2xl relative overflow-hidden text-center py-32"
+                className="border border-white rounded-[40px] p-8 lg:p-12 shadow-2xl relative overflow-hidden"
                 style={{ 
                   background: "rgba(255, 255, 255, 0.7)", 
                   backdropFilter: "blur(24px)",
                   boxShadow: "0 24px 64px rgba(87,89,91,0.06)"
                 }}
               >
-                 <div className="w-24 h-24 bg-white rounded-full flex items-center justify-center mx-auto mb-10 shadow-2xl border border-[#F2F4F4]">
-                   <Bell className="w-10 h-10" style={{ color: "#F7B980" }} />
-                 </div>
-                 <h3 className="text-2xl font-bold mb-4" style={{ color: "#57595B" }}>Ready for the spotlight?</h3>
-                 <p className="max-w-md mx-auto font-medium" style={{ color: "#ACBAC4" }}>Your upcoming interview schedule is currently clear. Keep your portfolio updated to attract global hiring teams.</p>
-                 <button onClick={() => setActiveTab("jobs")} className="mt-10 px-10 py-4 rounded-full font-bold text-sm tracking-widest uppercase transition-all shadow-xl hover:-translate-y-1 active:scale-95" style={{ background: "#57595B", color: "white" }}>
-                   Browse Roles
-                 </button>
+                 <h3 className="text-3xl font-bold mb-10 flex items-center gap-4" style={{ color: "#334155" }}>
+                  <div className="p-2.5 rounded-2xl bg-[#F7B980]/10">
+                    <CalendarIcon className="w-7 h-7 text-[#F7B980]" />
+                  </div>
+                  Interview Schedule
+                 </h3>
+                 
+                 {isLoadingInterviews ? (
+                   <div className="flex flex-col items-center justify-center py-20">
+                      <div className="w-10 h-10 border-4 border-[#E2E8F0] border-t-[#F7B980] rounded-full animate-spin mb-4" />
+                      <p className="text-[#64748B] font-bold text-sm tracking-wide">Retrieving your schedule...</p>
+                   </div>
+                 ) : interviews.length > 0 ? (
+                   <div className="space-y-6">
+                     {interviews.map((interview) => (
+                       <div 
+                         key={interview.id} 
+                         className="bg-white/40 border-2 border-transparent rounded-[32px] p-8 transition-all hover:bg-white hover:border-[#F7B980]/30 hover:shadow-2xl flex flex-col md:flex-row justify-between md:items-center gap-6 cursor-pointer group"
+                         style={{ background: "rgba(255, 255, 255, 0.4)", border: "1px solid #E0E4E3" }}
+                       >
+                         <div>
+                            <p className="text-[10px] font-black uppercase tracking-widest mb-1" style={{ color: "#64748B" }}>{interview.jobTitle}</p>
+                            <h4 className="text-xl font-bold group-hover:text-[#F7B980] transition-colors" style={{ color: "#334155" }}>{interview.company}</h4>
+                            <div className="flex items-center gap-4 mt-2">
+                               <span className="text-sm font-bold" style={{ color: "#334155" }}>{interview.date}</span>
+                               <span className="text-sm font-semibold opacity-60" style={{ color: "#334155" }}>{interview.time}</span>
+                            </div>
+                         </div>
+                         <div className="flex items-center gap-6">
+                           <div className="text-right">
+                              <span className="px-5 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border bg-[#F7B980]/5 text-[#F7B980] border-[#F7B980]/20">
+                                {interview.type}
+                              </span>
+                           </div>
+                           <ChevronRight className="w-5 h-5 opacity-40 group-hover:opacity-100 group-hover:translate-x-1 transition-all" style={{ color: "#334155" }} />
+                         </div>
+                       </div>
+                     ))}
+                   </div>
+                 ) : (
+                   <div className="text-center py-20">
+                      <div className="w-24 h-24 bg-white rounded-full flex items-center justify-center mx-auto mb-10 shadow-2xl border border-[#E2E8F0]">
+                        <Bell className="w-10 h-10" style={{ color: "#F7B980" }} />
+                      </div>
+                      <h3 className="text-2xl font-bold mb-4" style={{ color: "#334155" }}>Ready for the spotlight?</h3>
+                      <p className="max-w-md mx-auto font-medium" style={{ color: "#64748B" }}>Your upcoming interview schedule is currently clear. Keep your portfolio updated to attract global hiring teams.</p>
+                      <button onClick={() => setActiveTab("jobs")} className="mt-10 px-10 py-4 rounded-full font-bold text-sm tracking-widest uppercase transition-all shadow-xl hover:-translate-y-1 active:scale-95" style={{ background: "#334155", color: "white" }}>
+                        Browse Roles
+                      </button>
+                   </div>
+                 )}
               </div>
             )}
             
@@ -1142,18 +1680,18 @@ export default function CandidateDashboard() {
                   boxShadow: "0 24px 64px rgba(87,89,91,0.06)"
                 }}
               >
-                <h3 className="text-3xl font-bold mb-10" style={{ color: "#57595B" }}>Alerts & Activity</h3>
+                <h3 className="text-3xl font-bold mb-10" style={{ color: "#334155" }}>Alerts & Activity</h3>
                 <div className="space-y-6">
                   <div className="bg-white/40 border border-[#E0E4E3] rounded-[32px] p-8 flex items-start gap-6 transition-all hover:bg-white cursor-pointer">
-                    <div className="w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 shadow-lg" style={{ background: "#F2F4F4" }}>
+                    <div className="w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 shadow-lg" style={{ background: "#E2E8F0" }}>
                       <Bell className="w-6 h-6 text-[#F7B980]" />
                     </div>
                     <div className="flex-1">
                       <div className="flex justify-between items-start mb-2">
-                        <h4 className="text-xl font-bold" style={{ color: "#57595B" }}>Welcome to VidioCV</h4>
-                        <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: "#ACBAC4" }}>Just now</span>
+                        <h4 className="text-xl font-bold" style={{ color: "#334155" }}>Welcome to VidioCV</h4>
+                        <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: "#64748B" }}>Just now</span>
                       </div>
-                      <p className="font-medium text-base" style={{ color: "#ACBAC4" }}>Your account is verified. Start by customizing your profile and recording your first intro.</p>
+                      <p className="font-medium text-base" style={{ color: "#64748B" }}>Your account is verified. Start by customizing your profile and recording your first intro.</p>
                     </div>
                   </div>
                 </div>
@@ -1170,10 +1708,10 @@ export default function CandidateDashboard() {
                 }}
               >
                 {/* Settings Sidebar */}
-                <div className="w-full lg:w-80 border-b lg:border-b-0 lg:border-r border-[#F2F4F4]/60 p-10 space-y-3">
+                <div className="w-full lg:w-80 border-b lg:border-b-0 lg:border-r border-[#E2E8F0]/60 p-10 space-y-3">
                    <div className="mb-10 px-4">
-                     <p className="text-[10px] font-black uppercase tracking-[0.2em]" style={{ color: "#ACBAC4" }}>Configuration</p>
-                     <h3 className="text-xl font-bold" style={{ color: "#57595B" }}>Workspace</h3>
+                     <p className="text-[10px] font-black uppercase tracking-[0.2em]" style={{ color: "#64748B" }}>Configuration</p>
+                     <h3 className="text-xl font-bold" style={{ color: "#334155" }}>Workspace</h3>
                    </div>
                    {[
                      { id: "general", label: "Identity & Profile", icon: UserCircle, desc: "Personal footprint" },
@@ -1191,10 +1729,10 @@ export default function CandidateDashboard() {
                          color: "#F7B980",
                          boxShadow: "0 12px 32px rgba(247,185,128,0.15)"
                        } : {
-                         color: "#ACBAC4",
+                         color: "#64748B",
                        }}
                      >
-                       <div className={`p-3 rounded-2xl transition-colors ${settingsSection === item.id ? "bg-[#F7B980]/10 text-[#F7B980]" : "bg-[#F2F4F4] text-[#ACBAC4] group-hover:text-[#57595B]"}`}>
+                       <div className={`p-3 rounded-2xl transition-colors ${settingsSection === item.id ? "bg-[#F7B980]/10 text-[#F7B980]" : "bg-[#E2E8F0] text-[#64748B] group-hover:text-[#334155]"}`}>
                          <item.icon className="w-5 h-5" />
                        </div>
                        <div>
@@ -1204,7 +1742,7 @@ export default function CandidateDashboard() {
                      </button>
                    ))}
 
-                   <div className="pt-10 mt-10 border-t border-[#F2F4F4] px-4">
+                   <div className="pt-10 mt-10 border-t border-[#E2E8F0] px-4">
                       <button onClick={() => setIsLogoutModalOpen(true)} className="flex items-center gap-3 text-red-400 hover:text-red-500 font-bold text-xs uppercase tracking-widest transition-all group cursor-pointer">
                         <LogOut className="w-4 h-4 group-hover:-translate-x-1 transition-transform" /> Sign Out Workspace
                       </button>
@@ -1224,14 +1762,14 @@ export default function CandidateDashboard() {
                       >
                         {settingsSection === "general" && (
                           <div className="space-y-12">
-                            <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-8 border-b border-[#F2F4F4]">
+                            <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-8 border-b border-[#E2E8F0]">
                                <div>
-                                 <h3 className="text-3xl font-black tracking-tight mb-2" style={{ color: "#57595B" }}>Identity & Presence</h3>
-                                 <p className="font-medium text-base leading-relaxed" style={{ color: "#ACBAC4" }}>Manage your global professional footprint and verified identifier.</p>
+                                 <h3 className="text-3xl font-black tracking-tight mb-2" style={{ color: "#334155" }}>Identity & Presence</h3>
+                                 <p className="font-medium text-base leading-relaxed" style={{ color: "#64748B" }}>Manage your global professional footprint and verified identifier.</p>
                                </div>
                                <div className="flex -space-x-3">
                                   {[1,2,3].map(i => (
-                                    <div key={i} className="w-10 h-10 rounded-full border-2 border-white bg-[#F2F4F4] flex items-center justify-center text-[10px] font-bold" style={{ color: "#ACBAC4" }}>
+                                    <div key={i} className="w-10 h-10 rounded-full border-2 border-white bg-[#E2E8F0] flex items-center justify-center text-[10px] font-bold" style={{ color: "#64748B" }}>
                                       {i===3 ? "+4" : "JD"}
                                     </div>
                                   ))}
@@ -1240,36 +1778,36 @@ export default function CandidateDashboard() {
                             
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
                               <div className="space-y-4">
-                                <label className="text-[10px] font-black uppercase tracking-[0.25em]" style={{ color: "#ACBAC4" }}>Legal Identifier</label>
-                                <input type="text" defaultValue={userName} className="w-full px-8 py-5 bg-white border-2 rounded-3xl outline-none transition-all font-bold focus:border-[#F7B980] shadow-sm" style={{ borderColor: "#F2F4F4", color: "#57595B" }} />
+                                <label className="text-[10px] font-black uppercase tracking-[0.25em]" style={{ color: "#64748B" }}>Legal Identifier</label>
+                                <input type="text" defaultValue={userName} className="w-full px-8 py-5 bg-white border-2 rounded-3xl outline-none transition-all font-bold focus:border-[#F7B980] shadow-sm" style={{ borderColor: "#E2E8F0", color: "#334155" }} />
                               </div>
                               <div className="space-y-4">
-                                <label className="text-[10px] font-black uppercase tracking-[0.25em]" style={{ color: "#ACBAC4" }}>Main Connection</label>
-                                <input type="tel" defaultValue="+1 (555) 782-0192" className="w-full px-8 py-5 bg-white border-2 rounded-3xl outline-none transition-all font-bold focus:border-[#F7B980] shadow-sm" style={{ borderColor: "#F2F4F4", color: "#57595B" }} />
+                                <label className="text-[10px] font-black uppercase tracking-[0.25em]" style={{ color: "#64748B" }}>Main Connection</label>
+                                <input type="tel" defaultValue="+1 (555) 782-0192" className="w-full px-8 py-5 bg-white border-2 rounded-3xl outline-none transition-all font-bold focus:border-[#F7B980] shadow-sm" style={{ borderColor: "#E2E8F0", color: "#334155" }} />
                               </div>
                               <div className="md:col-span-2 space-y-4">
-                                <label className="text-[10px] font-black uppercase tracking-[0.25em]" style={{ color: "#ACBAC4" }}>Professional Narrative</label>
-                                <textarea rows={5} defaultValue="Senior Software Engineer with a passion for high-fidelity UI/UX and scalable distributed systems. Currently optimizing video delivery at scale." className="w-full px-8 py-6 bg-white border-2 rounded-[32px] outline-none transition-all font-medium text-lg leading-relaxed focus:border-[#F7B980] shadow-sm resize-none" style={{ borderColor: "#F2F4F4", color: "#57595B" }} />
+                                <label className="text-[10px] font-black uppercase tracking-[0.25em]" style={{ color: "#64748B" }}>Professional Narrative</label>
+                                <textarea rows={5} defaultValue="Senior Software Engineer with a passion for high-fidelity UI/UX and scalable distributed systems. Currently optimizing video delivery at scale." className="w-full px-8 py-6 bg-white border-2 rounded-[32px] outline-none transition-all font-medium text-lg leading-relaxed focus:border-[#F7B980] shadow-sm resize-none" style={{ borderColor: "#E2E8F0", color: "#334155" }} />
                               </div>
                             </div>
 
                             <div className="pt-4 space-y-10">
                                 <div>
-                                  <h4 className="text-xl font-bold mb-2" style={{ color: "#57595B" }}>Ecosystem Hub</h4>
-                                  <p className="text-sm font-medium" style={{ color: "#ACBAC4" }}>Connect your external professional nodes for deeper verification.</p>
+                                  <h4 className="text-xl font-bold mb-2" style={{ color: "#334155" }}>Ecosystem Hub</h4>
+                                  <p className="text-sm font-medium" style={{ color: "#64748B" }}>Connect your external professional nodes for deeper verification.</p>
                                 </div>
                                 <div className="grid grid-cols-1 md:grid-cols-1 gap-6">
                                   {[
                                     { label: "LinkedIn Domain", val: "linkedin.com/in/johndoe", icon: LinkIcon },
                                     { label: "Architecture Portfolio", val: "johndoe.dev", icon: LinkIcon }
                                   ].map((hub, i) => (
-                                    <div key={i} className="flex items-center gap-6 p-6 rounded-[28px] bg-white border border-[#F2F4F4] shadow-sm group hover:border-[#F7B980] transition-all">
-                                      <div className="p-3 rounded-2xl bg-[#F2F4F4] text-[#ACBAC4] group-hover:bg-[#F7B980]/10 group-hover:text-[#F7B980] transition-colors">
+                                    <div key={i} className="flex items-center gap-6 p-6 rounded-[28px] bg-white border border-[#E2E8F0] shadow-sm group hover:border-[#F7B980] transition-all">
+                                      <div className="p-3 rounded-2xl bg-[#E2E8F0] text-[#64748B] group-hover:bg-[#F7B980]/10 group-hover:text-[#F7B980] transition-colors">
                                         <hub.icon className="w-5 h-5" />
                                       </div>
                                       <div className="flex-1">
-                                        <p className="text-[10px] font-black uppercase tracking-widest mb-1" style={{ color: "#ACBAC4" }}>{hub.label}</p>
-                                        <input type="text" defaultValue={hub.val} className="w-full bg-transparent outline-none font-bold text-sm" style={{ color: "#57595B" }} />
+                                        <p className="text-[10px] font-black uppercase tracking-widest mb-1" style={{ color: "#64748B" }}>{hub.label}</p>
+                                        <input type="text" defaultValue={hub.val} className="w-full bg-transparent outline-none font-bold text-sm" style={{ color: "#334155" }} />
                                       </div>
                                     </div>
                                   ))}
@@ -1280,15 +1818,15 @@ export default function CandidateDashboard() {
 
                         {settingsSection === "career" && (
                           <div className="space-y-12">
-                            <div className="pb-8 border-b border-[#F2F4F4]">
-                               <h3 className="text-3xl font-black tracking-tight mb-2" style={{ color: "#57595B" }}>Career Strategy</h3>
-                               <p className="font-medium text-base leading-relaxed" style={{ color: "#ACBAC4" }}>Configure your employment mobility and signal your availability to the network.</p>
+                            <div className="pb-8 border-b border-[#E2E8F0]">
+                               <h3 className="text-3xl font-black tracking-tight mb-2" style={{ color: "#334155" }}>Career Strategy</h3>
+                               <p className="font-medium text-base leading-relaxed" style={{ color: "#64748B" }}>Configure your employment mobility and signal your availability to the network.</p>
                             </div>
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
                                <div className="space-y-8">
                                   <div>
-                                    <label className="text-[10px] font-black uppercase tracking-[0.25em] mb-6 block" style={{ color: "#ACBAC4" }}>Mobility Protocols</label>
+                                    <label className="text-[10px] font-black uppercase tracking-[0.25em] mb-6 block" style={{ color: "#64748B" }}>Mobility Protocols</label>
                                     <div className="space-y-6">
                                       <Toggle 
                                         enabled={prefs.remoteOnly} 
@@ -1306,22 +1844,22 @@ export default function CandidateDashboard() {
                                   </div>
                                </div>
                                <div className="space-y-8">
-                                  <label className="text-[10px] font-black uppercase tracking-[0.25em]" style={{ color: "#ACBAC4" }}>Compensation Blueprint</label>
+                                  <label className="text-[10px] font-black uppercase tracking-[0.25em]" style={{ color: "#64748B" }}>Compensation Blueprint</label>
                                   <div className="p-8 rounded-[32px] bg-[#F7B980]/5 border border-[#F7B980]/10 space-y-6">
                                     <div className="flex justify-between items-end">
-                                      <p className="text-sm font-bold" style={{ color: "#57595B" }}>Target Range</p>
-                                      <p className="text-2xl font-black" style={{ color: "#F7B980" }}>{prefs.expectedSalary}</p>
+                                      <p className="text-sm font-bold" style={{ color: "#334155" }}>Target Range</p>
+                                      <p className="text-2xl font-black" style={{ color: "#F7B980" }}>${(prefs.expectedSalary / 1000).toFixed(0)}k+ USD</p>
                                     </div>
                                     <input 
                                       type="range" 
                                       min="50000" 
                                       max="300000" 
                                       step="5000"
-                                      value={parseInt(prefs.expectedSalary.replace(/[^0-9]/g, "")) || 150000} 
-                                      onChange={(e) => setPrefs({...prefs, expectedSalary: `$${(parseInt(e.target.value)/1000).toFixed(0)}k+ USD`})} 
+                                      value={prefs.expectedSalary} 
+                                      onChange={(e) => setPrefs({...prefs, expectedSalary: parseInt(e.target.value)})} 
                                       className="w-full accent-[#F7B980] cursor-pointer" 
                                     />
-                                    <div className="flex justify-between text-[10px] font-bold" style={{ color: "#ACBAC4" }}>
+                                    <div className="flex justify-between text-[10px] font-bold" style={{ color: "#64748B" }}>
                                       <span>$50k</span>
                                       <span>$175k (Avg)</span>
                                       <span>$300k+</span>
@@ -1332,20 +1870,20 @@ export default function CandidateDashboard() {
 
                             <div className="pt-4 space-y-8">
                                <div>
-                                 <h4 className="text-xl font-bold mb-2" style={{ color: "#57595B" }}>Mission Targets</h4>
-                                 <p className="text-sm font-medium" style={{ color: "#ACBAC4" }}>Tag the sectors where you want to make the most professional impact.</p>
+                                 <h4 className="text-xl font-bold mb-2" style={{ color: "#334155" }}>Mission Targets</h4>
+                                 <p className="text-sm font-medium" style={{ color: "#64748B" }}>Tag the sectors where you want to make the most professional impact.</p>
                                </div>
                                <div className="flex flex-wrap gap-4">
                                   {["FinTech", "HealthTech", "AI / ML", "Cybersecurity", "E-commerce", "SaaS", "Web3"].map(tag => (
                                     <button 
                                       key={tag} 
                                       className="px-8 py-3.5 rounded-2xl border-2 font-bold text-sm transition-all hover:bg-[#F7B980] hover:text-white hover:border-[#F7B980] hover:shadow-lg hover:shadow-[#F7B980]/20 cursor-pointer"
-                                      style={{ borderColor: "#F2F4F4", color: "#8A8C8E", backgroundColor: "white" }}
+                                      style={{ borderColor: "#E2E8F0", color: "#8A8C8E", backgroundColor: "white" }}
                                     >
                                       {tag}
                                     </button>
                                   ))}
-                                  <button className="px-8 py-3.5 rounded-2xl border-2 border-dashed font-bold text-sm flex items-center gap-3 cursor-pointer group hover:bg-white transition-all" style={{ borderColor: "#E0E4E3", color: "#ACBAC4" }}>
+                                  <button className="px-8 py-3.5 rounded-2xl border-2 border-dashed font-bold text-sm flex items-center gap-3 cursor-pointer group hover:bg-white transition-all" style={{ borderColor: "#E0E4E3", color: "#64748B" }}>
                                     <Plus className="w-4 h-4 group-hover:rotate-90 transition-transform" /> New Target
                                   </button>
                                </div>
@@ -1354,14 +1892,14 @@ export default function CandidateDashboard() {
                         )}
                         {settingsSection === "notifications" && (
                           <div className="space-y-12">
-                            <div className="pb-8 border-b border-[#F2F4F4]">
-                               <h3 className="text-3xl font-black tracking-tight mb-2" style={{ color: "#57595B" }}>Alert Protocols</h3>
-                               <p className="font-medium text-base leading-relaxed" style={{ color: "#ACBAC4" }}>Configure your real-time signal preferences for the dashboard.</p>
+                            <div className="pb-8 border-b border-[#E2E8F0]">
+                               <h3 className="text-3xl font-black tracking-tight mb-2" style={{ color: "#334155" }}>Alert Protocols</h3>
+                               <p className="font-medium text-base leading-relaxed" style={{ color: "#64748B" }}>Configure your real-time signal preferences for the dashboard.</p>
                             </div>
 
                             <div className="space-y-6">
-                              <div className="bg-white border border-[#F2F4F4] rounded-[32px] p-8 flex items-start gap-8 shadow-sm group hover:shadow-md transition-all">
-                                <div className="p-4 rounded-2xl bg-[#F2F4F4] text-[#ACBAC4] group-hover:bg-[#F7B980]/10 group-hover:text-[#F7B980] transition-colors">
+                              <div className="bg-white border border-[#E2E8F0] rounded-[32px] p-8 flex items-start gap-8 shadow-sm group hover:shadow-md transition-all">
+                                <div className="p-4 rounded-2xl bg-[#E2E8F0] text-[#64748B] group-hover:bg-[#F7B980]/10 group-hover:text-[#F7B980] transition-colors">
                                   <Mail className="w-6 h-6" />
                                 </div>
                                 <div className="flex-1">
@@ -1374,8 +1912,8 @@ export default function CandidateDashboard() {
                                 </div>
                               </div>
 
-                              <div className="bg-white border border-[#F2F4F4] rounded-[32px] p-8 flex items-start gap-8 shadow-sm group hover:shadow-md transition-all">
-                                <div className="p-4 rounded-2xl bg-[#F2F4F4] text-[#ACBAC4] group-hover:bg-[#F7B980]/10 group-hover:text-[#F7B980] transition-colors">
+                              <div className="bg-white border border-[#E2E8F0] rounded-[32px] p-8 flex items-start gap-8 shadow-sm group hover:shadow-md transition-all">
+                                <div className="p-4 rounded-2xl bg-[#E2E8F0] text-[#64748B] group-hover:bg-[#F7B980]/10 group-hover:text-[#F7B980] transition-colors">
                                   <Bell className="w-6 h-6" />
                                 </div>
                                 <div className="flex-1">
@@ -1388,8 +1926,8 @@ export default function CandidateDashboard() {
                                 </div>
                               </div>
 
-                              <div className="bg-white border border-[#F2F4F4] rounded-[32px] p-8 flex items-start gap-8 shadow-sm group hover:shadow-md transition-all">
-                                <div className="p-4 rounded-2xl bg-[#F2F4F4] text-[#ACBAC4] group-hover:bg-[#F7B980]/10 group-hover:text-[#F7B980] transition-colors">
+                              <div className="bg-white border border-[#E2E8F0] rounded-[32px] p-8 flex items-start gap-8 shadow-sm group hover:shadow-md transition-all">
+                                <div className="p-4 rounded-2xl bg-[#E2E8F0] text-[#64748B] group-hover:bg-[#F7B980]/10 group-hover:text-[#F7B980] transition-colors">
                                   <Shield className="w-6 h-6" />
                                 </div>
                                 <div className="flex-1">
@@ -1407,13 +1945,13 @@ export default function CandidateDashboard() {
 
                         {settingsSection === "privacy" && (
                           <div className="space-y-12">
-                            <div className="pb-8 border-b border-[#F2F4F4]">
-                               <h3 className="text-3xl font-black tracking-tight mb-2" style={{ color: "#57595B" }}>Privacy Guard</h3>
-                               <p className="font-medium text-base leading-relaxed" style={{ color: "#ACBAC4" }}>Control your video resume discoverability and narrative data.</p>
+                            <div className="pb-8 border-b border-[#E2E8F0]">
+                               <h3 className="text-3xl font-black tracking-tight mb-2" style={{ color: "#334155" }}>Privacy Guard</h3>
+                               <p className="font-medium text-base leading-relaxed" style={{ color: "#64748B" }}>Control your video resume discoverability and narrative data.</p>
                             </div>
 
                             <div className="grid grid-cols-1 gap-8">
-                                <div className="bg-[#57595B] rounded-[40px] p-10 text-white relative overflow-hidden shadow-2xl">
+                                <div className="bg-[#334155] rounded-[40px] p-10 text-white relative overflow-hidden shadow-2xl">
                                     <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-10">
                                       <div className="max-w-md space-y-4">
                                          <h4 className="text-2xl font-black">Spotlight Visibility</h4>
@@ -1436,14 +1974,14 @@ export default function CandidateDashboard() {
                                     <div className="absolute top-0 right-0 w-96 h-96 bg-[#F7B980]/10 rounded-full blur-[120px] -mr-48 -mt-48" />
                                 </div>
 
-                                <div className="p-8 rounded-[32px] border-2 border-dashed border-[#F2F4F4] flex items-center justify-between">
+                                <div className="p-8 rounded-[32px] border-2 border-dashed border-[#E2E8F0] flex items-center justify-between">
                                    <div className="flex items-center gap-6">
-                                      <div className="p-4 rounded-2xl bg-[#F2F4F4] text-[#ACBAC4]">
+                                      <div className="p-4 rounded-2xl bg-[#E2E8F0] text-[#64748B]">
                                         <Trash2 className="w-6 h-6" />
                                       </div>
                                       <div>
-                                        <p className="font-bold text-sm" style={{ color: "#57595B" }}>Narrative Data Wipe</p>
-                                        <p className="text-xs font-medium" style={{ color: "#ACBAC4" }}>Irreversibly delete your active Video CV and local metadata.</p>
+                                        <p className="font-bold text-sm" style={{ color: "#334155" }}>Narrative Data Wipe</p>
+                                        <p className="text-xs font-medium" style={{ color: "#64748B" }}>Irreversibly delete your active Video CV and local metadata.</p>
                                       </div>
                                    </div>
                                    <button className="px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest text-red-400 hover:bg-red-50 hover:text-red-500 transition-all cursor-pointer">Execute Wipe</button>
@@ -1454,23 +1992,23 @@ export default function CandidateDashboard() {
 
                         {settingsSection === "security" && (
                           <div className="space-y-12">
-                            <div className="pb-8 border-b border-[#F2F4F4]">
-                               <h3 className="text-3xl font-black tracking-tight mb-2" style={{ color: "#57595B" }}>Security Hub</h3>
-                               <p className="font-medium text-base leading-relaxed" style={{ color: "#ACBAC4" }}>Manage authentication hardware and active workspace sessions.</p>
+                            <div className="pb-8 border-b border-[#E2E8F0]">
+                               <h3 className="text-3xl font-black tracking-tight mb-2" style={{ color: "#334155" }}>Security Hub</h3>
+                               <p className="font-medium text-base leading-relaxed" style={{ color: "#64748B" }}>Manage authentication hardware and active workspace sessions.</p>
                             </div>
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                               <div className="space-y-4">
-                                <label className="text-[10px] font-black uppercase tracking-[0.25em]" style={{ color: "#ACBAC4" }}>Access Key</label>
+                                <label className="text-[10px] font-black uppercase tracking-[0.25em]" style={{ color: "#64748B" }}>Access Key</label>
                                 <div className="relative group">
-                                  <input type="password" defaultValue="********" disabled className="w-full px-8 py-5 bg-white border-2 rounded-3xl transition-all font-bold" style={{ borderColor: "#F2F4F4", color: "#ACBAC4" }} />
+                                  <input type="password" defaultValue="********" disabled className="w-full px-8 py-5 bg-white border-2 rounded-3xl transition-all font-bold" style={{ borderColor: "#E2E8F0", color: "#64748B" }} />
                                   <button className="absolute right-6 top-1/2 -translate-y-1/2 font-black text-[10px] uppercase tracking-widest text-[#F7B980] hover:scale-105 transition-transform cursor-pointer">Rotate Key</button>
                                 </div>
                               </div>
                               <div className="space-y-4">
-                                <label className="text-[10px] font-black uppercase tracking-[0.25em]" style={{ color: "#ACBAC4" }}>Verified Terminal</label>
+                                <label className="text-[10px] font-black uppercase tracking-[0.25em]" style={{ color: "#64748B" }}>Verified Terminal</label>
                                 <div className="relative group">
-                                  <input type="email" defaultValue="johndoe@example.com" disabled className="w-full px-8 py-5 bg-white border-2 rounded-3xl transition-all font-bold" style={{ borderColor: "#F2F4F4", color: "#ACBAC4" }} />
+                                  <input type="email" defaultValue="johndoe@example.com" disabled className="w-full px-8 py-5 bg-white border-2 rounded-3xl transition-all font-bold" style={{ borderColor: "#E2E8F0", color: "#64748B" }} />
                                   <button className="absolute right-6 top-1/2 -translate-y-1/2 font-black text-[10px] uppercase tracking-widest text-[#F7B980] hover:scale-105 transition-transform cursor-pointer">Update</button>
                                 </div>
                               </div>
@@ -1478,7 +2016,7 @@ export default function CandidateDashboard() {
 
                             <div className="space-y-8">
                                <div className="flex items-center justify-between">
-                                 <h4 className="text-xl font-bold" style={{ color: "#57595B" }}>Active Terminals</h4>
+                                 <h4 className="text-xl font-bold" style={{ color: "#334155" }}>Active Terminals</h4>
                                  <button className="text-[10px] font-black uppercase tracking-widest text-[#F7B980] hover:underline cursor-pointer">Disconnect All</button>
                                </div>
                                <div className="grid grid-cols-1 gap-4">
@@ -1486,16 +2024,16 @@ export default function CandidateDashboard() {
                                     { device: "MacBook Pro M2 - San Francisco, US", time: "Active Workspace", current: true, icon: "💻" },
                                     { device: "iPhone 15 Pro - Austin, TX", time: "Last check-in 2h ago", current: false, icon: "📱" }
                                   ].map((session, i) => (
-                                    <div key={i} className="flex justify-between items-center p-6 rounded-[32px] bg-white border border-[#F2F4F4] shadow-sm hover:shadow-md transition-all">
+                                    <div key={i} className="flex justify-between items-center p-6 rounded-[32px] bg-white border border-[#E2E8F0] shadow-sm hover:shadow-md transition-all">
                                       <div className="flex items-center gap-6">
-                                        <div className="w-14 h-14 rounded-2xl bg-[#F2F4F4] flex items-center justify-center text-2xl shadow-inner">
+                                        <div className="w-14 h-14 rounded-2xl bg-[#E2E8F0] flex items-center justify-center text-2xl shadow-inner">
                                           {session.icon}
                                         </div>
                                         <div>
-                                          <p className="font-bold text-base" style={{ color: "#57595B" }}>{session.device}</p>
+                                          <p className="font-bold text-base" style={{ color: "#334155" }}>{session.device}</p>
                                           <div className="flex items-center gap-2 mt-1">
-                                            <div className={`w-2 h-2 rounded-full ${session.current ? "bg-[#10B981] shadow-[0_0_8px_rgba(16,185,129,0.5)]" : "bg-[#ACBAC4]"}`} />
-                                            <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: "#ACBAC4" }}>{session.time}</p>
+                                            <div className={`w-2 h-2 rounded-full ${session.current ? "bg-[#10B981] shadow-[0_0_8px_rgba(16,185,129,0.5)]" : "bg-[#64748B]"}`} />
+                                            <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: "#64748B" }}>{session.time}</p>
                                           </div>
                                         </div>
                                       </div>
@@ -1505,7 +2043,7 @@ export default function CandidateDashboard() {
                                </div>
                             </div>
 
-                            <div className="pt-10 border-t border-[#F2F4F4]">
+                            <div className="pt-10 border-t border-[#E2E8F0]">
                                <div className="p-10 rounded-[40px] bg-red-50 border border-red-100 flex flex-col md:flex-row items-center justify-between gap-10">
                                   <div className="max-w-md text-center md:text-left">
                                      <h5 className="text-xl font-black text-red-500 mb-2">Danger Zone</h5>
@@ -1587,14 +2125,14 @@ export default function CandidateDashboard() {
       >
         {selectedJob && (
           <div className="space-y-8 py-4">
-            <div className="flex flex-col sm:flex-row justify-between border-b border-[#F2F4F4] pb-8 gap-6">
+            <div className="flex flex-col sm:flex-row justify-between border-b border-[#E2E8F0] pb-8 gap-6">
                <div className="flex gap-4 items-center">
-                  <div className="w-16 h-16 rounded-2xl bg-[#F2F4F4] flex items-center justify-center">
-                    <Building2 className="w-8 h-8 text-[#57595B]" />
+                  <div className="w-16 h-16 rounded-2xl bg-[#E2E8F0] flex items-center justify-center">
+                    <Building2 className="w-8 h-8 text-[#334155]" />
                   </div>
                   <div>
-                    <p className="text-2xl font-bold" style={{ color: "#57595B" }}>{selectedJob.company}</p>
-                    <div className="flex items-center gap-3 text-sm font-bold" style={{ color: "#ACBAC4" }}>
+                    <p className="text-2xl font-bold" style={{ color: "#334155" }}>{selectedJob.company}</p>
+                    <div className="flex items-center gap-3 text-sm font-bold" style={{ color: "#64748B" }}>
                       <MapPin className="w-4 h-4" /> {selectedJob.location}
                     </div>
                   </div>
@@ -1606,19 +2144,19 @@ export default function CandidateDashboard() {
             </div>
             
             <div className="space-y-6">
-               <h4 className="text-xl font-bold" style={{ color: "#57595B" }}>Opportunity Blueprint</h4>
+               <h4 className="text-xl font-bold" style={{ color: "#334155" }}>Opportunity Blueprint</h4>
                <p className="text-lg leading-relaxed font-medium" style={{ color: "#8A8C8E" }}>
                  {selectedJob.description}
                </p>
             </div>
 
-            <div className="p-6 rounded-3xl flex items-start gap-5 border border-[#F2F4F4]" style={{ background: "rgba(242, 244, 244, 0.3)" }}>
+            <div className="p-6 rounded-3xl flex items-start gap-5 border border-[#E2E8F0]" style={{ background: "rgba(242, 244, 244, 0.3)" }}>
                <div className="p-3 rounded-2xl bg-white shadow-sm">
                  <Shield className="w-6 h-6 text-[#10B981]" />
                </div>
                <div>
-                  <p className="font-bold text-sm mb-1" style={{ color: "#57595B" }}>Verified Selection Process</p>
-                  <p className="text-xs font-medium" style={{ color: "#ACBAC4" }}>Applying will securely transmit your active Video Resume. Your data is protected by global encryption standards.</p>
+                  <p className="font-bold text-sm mb-1" style={{ color: "#334155" }}>Verified Selection Process</p>
+                  <p className="text-xs font-medium" style={{ color: "#64748B" }}>Applying will securely transmit your active Video Resume. Your data is protected by global encryption standards.</p>
                </div>
             </div>
           </div>
@@ -1641,15 +2179,19 @@ export default function CandidateDashboard() {
       {/* Read Email Modal */}
       <Modal
         isOpen={!!selectedMessage}
-        onClose={() => setSelectedMessage(null)}
+        onClose={() => {
+          setSelectedMessage(null);
+          setIsReplying(false);
+          setReplyText("");
+        }}
         type="info"
-        closeActionLabel="Back to Inbox"
+        closeActionLabel={isReplying ? "Cancel Reply" : "Back to Inbox"}
         maxWidth="max-w-3xl"
         align="left"
       >
         {selectedMessage && (
           <div className="space-y-4 -mt-2">
-            <div className="flex justify-between items-center border-b border-[#F2F4F4] pb-5">
+            <div className="flex justify-between items-center border-b border-[#E2E8F0] pb-5">
               <div className="flex gap-3 items-center">
                 <div 
                   className="w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm shadow-sm"
@@ -1658,8 +2200,8 @@ export default function CandidateDashboard() {
                   {selectedMessage.company.charAt(0)}
                 </div>
                 <div>
-                  <p className="text-base font-black leading-tight" style={{ color: "#57595B" }}>{selectedMessage.company}</p>
-                  <p className="text-[10px] font-black uppercase tracking-widest mt-0.5" style={{ color: "#ACBAC4" }}>{selectedMessage.sender}</p>
+                  <p className="text-base font-black leading-tight" style={{ color: "#334155" }}>{selectedMessage.company}</p>
+                  <p className="text-[10px] font-black uppercase tracking-widest mt-0.5" style={{ color: "#64748B" }}>{selectedMessage.sender}</p>
                 </div>
               </div>
               <div className="text-right">
@@ -1668,25 +2210,82 @@ export default function CandidateDashboard() {
               </div>
             </div>
             
-            <div className="p-6 rounded-[24px] border border-[#F2F4F4] relative overflow-hidden group shadow-inner" style={{ background: "rgba(249, 249, 249, 0.4)" }}>
-              <div className="text-sm font-medium whitespace-pre-wrap relative z-10 leading-relaxed" style={{ color: "#57595B" }}>
-                {selectedMessage.body}
+            {isReplying ? (
+              <div className="space-y-6 pt-2">
+                <div className="p-4 rounded-2xl bg-[#F7B980]/5 border border-[#F7B980]/10">
+                   <p className="text-[10px] font-black uppercase tracking-widest mb-2" style={{ color: "#F7B980" }}>Replying to message</p>
+                   <p className="text-sm font-medium italic opacity-60 line-clamp-2" style={{ color: "#334155" }}>&quot;{selectedMessage.body}&quot;</p>
+                </div>
+                <div className="space-y-4">
+                  <label className="text-[10px] font-black uppercase tracking-widest" style={{ color: "#64748B" }}>Your Narrative Response</label>
+                  <textarea
+                    value={replyText}
+                    onChange={(e) => setReplyText(e.target.value)}
+                    placeholder="Draft your professional response..."
+                    className="w-full px-6 py-5 bg-white border-2 rounded-[28px] outline-none transition-all font-medium text-base leading-relaxed focus:border-[#F7B980] shadow-inner resize-none min-h-[200px]"
+                    style={{ borderColor: "#E2E8F0", color: "#334155" }}
+                  />
+                </div>
+                <Button
+                  onClick={handleSendReply}
+                  disabled={!replyText.trim() || isSendingReply}
+                  className="w-full py-4 text-xs font-black uppercase tracking-[0.2em]"
+                >
+                  {isSendingReply ? "Transmitting..." : "Send Response to Headquarters"}
+                </Button>
               </div>
-              <div className="absolute top-0 right-0 w-32 h-32 bg-[#F7B980]/5 rounded-full blur-[60px] -mr-16 -mt-16 pointer-events-none" />
-            </div>
- 
-            <div className="flex flex-col sm:flex-row gap-2 pt-1">
-              <Button className="flex-[2] py-3.5" size="lg">
-                Quick Reply
-              </Button>
-              <button 
-                onClick={() => setSelectedMessage(null)} 
-                className="flex-1 py-3.5 rounded-2xl font-bold text-[9px] tracking-[0.2em] uppercase transition-all border-2 border-[#F2F4F4] hover:bg-white hover:border-[#F7B980]/20 hover:text-[#F7B980] cursor-pointer"
-                style={{ color: "#ACBAC4" }}
-              >
-                Archive
-              </button>
-            </div>
+            ) : (
+              <>
+                <div className="p-6 rounded-[24px] border border-[#E2E8F0] relative overflow-hidden group shadow-inner" style={{ background: "rgba(249, 249, 249, 0.4)" }}>
+                  <div className="text-sm font-medium whitespace-pre-wrap relative z-10 leading-relaxed" style={{ color: "#334155" }}>
+                    {selectedMessage.body}
+                  </div>
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-[#F7B980]/5 rounded-full blur-[60px] -mr-16 -mt-16 pointer-events-none" />
+                </div>
+
+                {selectedMessage.replied && selectedMessage.replyMessage && (
+                  <div className="p-5 rounded-[20px] border border-[#10B981]/20 bg-[#10B981]/5">
+                    <p className="text-[10px] font-black uppercase tracking-widest mb-2" style={{ color: "#10B981" }}>Your Reply (Sent)</p>
+                    <p className="text-sm font-medium whitespace-pre-wrap leading-relaxed" style={{ color: "#334155" }}>{selectedMessage.replyMessage}</p>
+                  </div>
+                )}
+
+                <div className="flex flex-col sm:flex-row gap-2 pt-1">
+                  {!selectedMessage.replied && (
+                    <Button
+                      onClick={() => setIsReplying(true)}
+                      className="flex-[2] py-3.5 text-[9px] font-black tracking-[0.2em] uppercase"
+                      size="lg"
+                    >
+                      Initiate Internal Reply
+                    </Button>
+                  )}
+                  <div className="flex-1 flex gap-2">
+                    <button
+                      onClick={() => handleManageMessage("archive")}
+                      title="Archive Correspondence"
+                      className="flex-1 p-3 rounded-2xl transition-all border-2 border-[#E2E8F0] hover:bg-white hover:border-[#64748B]/20 hover:text-[#334155] flex justify-center items-center cursor-pointer"
+                    >
+                      <Archive className="w-5 h-5 text-[#64748B]" />
+                    </button>
+                    <button
+                      onClick={() => handleManageMessage("delete")}
+                      title="Delete Permanently"
+                      className="flex-1 p-3 rounded-2xl transition-all border-2 border-[#E2E8F0] hover:bg-white hover:border-red-500/10 hover:text-red-500 flex justify-center items-center cursor-pointer"
+                    >
+                      <Trash2 className="w-5 h-5 opacity-40 text-red-500" />
+                    </button>
+                  </div>
+                  <button
+                    onClick={() => setSelectedMessage(null)}
+                    className="flex-1 py-3.5 rounded-2xl font-bold text-[9px] tracking-[0.2em] uppercase transition-all border-2 border-[#E2E8F0] hover:bg-white hover:border-[#F7B980]/20 hover:text-[#F7B980] cursor-pointer"
+                    style={{ color: "#64748B" }}
+                  >
+                    Close
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         )}
       </Modal>
@@ -1702,13 +2301,13 @@ export default function CandidateDashboard() {
       >
         {selectedApplication && (
           <div className="space-y-8 pb-4">
-            <div className="flex justify-between items-start border-b border-[#F2F4F4] pb-8 -mt-2">
+            <div className="flex justify-between items-start border-b border-[#E2E8F0] pb-8 -mt-2">
                <div className="flex gap-5 items-center">
-                  <div className="w-16 h-16 rounded-[24px] bg-[#F2F4F4] flex items-center justify-center shadow-inner">
-                    <Building2 className="w-8 h-8 text-[#ACBAC4]" />
+                  <div className="w-16 h-16 rounded-[24px] bg-[#E2E8F0] flex items-center justify-center shadow-inner">
+                    <Building2 className="w-8 h-8 text-[#64748B]" />
                   </div>
                   <div>
-                    <h3 className="text-2xl font-black tracking-tight" style={{ color: "#57595B" }}>{selectedApplication.company}</h3>
+                    <h3 className="text-2xl font-black tracking-tight" style={{ color: "#334155" }}>{selectedApplication.company}</h3>
                     <p className="text-sm font-bold opacity-60 uppercase tracking-[0.15em]">{selectedApplication.title}</p>
                   </div>
                </div>
@@ -1720,28 +2319,28 @@ export default function CandidateDashboard() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                <div className="md:col-span-2 space-y-6">
                   <div>
-                    <h4 className="text-xs font-black uppercase tracking-[0.2em] mb-4" style={{ color: "#ACBAC4" }}>Role Blueprint</h4>
-                    <p className="text-base font-medium leading-relaxed" style={{ color: "#57595B" }}>{selectedApplication.description}</p>
+                    <h4 className="text-xs font-black uppercase tracking-[0.2em] mb-4" style={{ color: "#64748B" }}>Role Blueprint</h4>
+                    <p className="text-base font-medium leading-relaxed" style={{ color: "#334155" }}>{selectedApplication.description}</p>
                   </div>
                   
-                  <div className="p-8 rounded-[32px] bg-[#F2F4F4]/30 border border-[#F2F4F4] flex items-center justify-between">
+                  <div className="p-8 rounded-[32px] bg-[#E2E8F0]/30 border border-[#E2E8F0] flex items-center justify-between">
                      <div className="flex items-center gap-4">
                         <Video className="w-6 h-6 text-[#F7B980]" />
-                        <p className="text-sm font-bold" style={{ color: "#57595B" }}>Video Portfolio Linked</p>
+                        <p className="text-sm font-bold" style={{ color: "#334155" }}>Video Portfolio Linked</p>
                      </div>
                      <button className="text-[10px] font-black uppercase tracking-widest text-[#F7B980] hover:underline cursor-pointer">Preview Reel</button>
                   </div>
                </div>
 
                <div className="space-y-6">
-                  <h4 className="text-xs font-black uppercase tracking-[0.2em]" style={{ color: "#ACBAC4" }}>Life Cycle</h4>
+                  <h4 className="text-xs font-black uppercase tracking-[0.2em]" style={{ color: "#64748B" }}>Life Cycle</h4>
                   <div className="relative pl-6 space-y-6">
-                     <div className="absolute left-[7px] top-2 bottom-2 w-0.5 bg-[#F2F4F4]" />
+                     <div className="absolute left-[7px] top-2 bottom-2 w-0.5 bg-[#E2E8F0]" />
                      {selectedApplication.timeline.map((item, i) => (
                        <div key={i} className="relative">
-                         <div className="absolute -left-[23px] top-1 w-2.5 h-2.5 rounded-full border-2 border-white" style={{ background: i === 0 ? "#F7B980" : "#ACBAC4" }} />
+                         <div className="absolute -left-[23px] top-1 w-2.5 h-2.5 rounded-full border-2 border-white" style={{ background: i === 0 ? "#F7B980" : "#64748B" }} />
                          <p className="text-[10px] font-black uppercase tracking-widest opacity-40 mb-1">{item.date}</p>
-                         <p className="text-xs font-bold" style={{ color: "#57595B" }}>{item.event}</p>
+                         <p className="text-xs font-bold" style={{ color: "#334155" }}>{item.event}</p>
                        </div>
                      ))}
                   </div>
@@ -1753,8 +2352,8 @@ export default function CandidateDashboard() {
                 Recruiter Workspace
               </Button>
               <button 
-                className="flex-1 py-4 rounded-2xl font-bold text-[10px] tracking-[0.2em] uppercase transition-all border-2 border-[#F2F4F4] hover:bg-white hover:border-red-500/20 hover:text-red-500 cursor-pointer"
-                style={{ color: "#ACBAC4" }}
+                className="flex-1 py-4 rounded-2xl font-bold text-[10px] tracking-[0.2em] uppercase transition-all border-2 border-[#E2E8F0] hover:bg-white hover:border-red-500/20 hover:text-red-500 cursor-pointer"
+                style={{ color: "#64748B" }}
               >
                 Withdraw Intent
               </button>
@@ -1763,23 +2362,24 @@ export default function CandidateDashboard() {
         )}
       </Modal>
 
+      <div className="h-32 md:hidden" />
     </div>
   );
 }
 
 // Helpers System
-const CustomOption = (props: OptionProps<{ value: string; label: string }>) => {
+const CustomOption = (props: OptionProps<{ value: string; label: string }, false>) => {
   return (
-    <div {...props.innerProps} className="flex items-center gap-3 px-4 py-3 hover:bg-[#F2F4F4] cursor-pointer transition-colors group">
+    <div {...props.innerProps} className="flex items-center gap-3 px-4 py-3 hover:bg-[#E2E8F0] cursor-pointer transition-colors group">
       <ReactCountryFlag countryCode={props.data.value} svg style={{ width: "1.5rem", height: "1.5rem" }} className="rounded-sm shadow-sm" />
-      <span className="font-bold text-sm group-hover:text-[#57595B]" style={{ color: "#8A8C8E" }}>{props.data.label}</span>
+      <span className="font-bold text-sm group-hover:text-[#334155]" style={{ color: "#8A8C8E" }}>{props.data.label}</span>
     </div>
   );
 };
 
-const CustomSingleValue = (props: SingleValueProps<{ value: string; label: string }>) => {
+const CustomSingleValue = (props: SingleValueProps<{ value: string; label: string }, false>) => {
   return (
-    <div {...props.innerProps} className="flex items-center gap-3 font-bold text-sm" style={{ color: "#57595B" }}>
+    <div {...props.innerProps} className="flex items-center gap-3 font-bold text-sm" style={{ color: "#334155" }}>
       <ReactCountryFlag countryCode={props.data.value} svg style={{ width: "1.5rem", height: "1.5rem" }} className="rounded-sm shadow-sm" />
       <span>{props.data.label}</span>
     </div>

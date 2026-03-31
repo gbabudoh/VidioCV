@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, startTransition } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { motion } from "framer-motion";
@@ -22,12 +22,16 @@ export function Navbar() {
     const token = localStorage.getItem("token");
     const role = localStorage.getItem("userRole");
     if (token && role) {
-      setIsLoggedIn(true);
-      setDashboardUrl(
-        role === "employer" ? "/dashboard/employer" : "/dashboard/candidate"
-      );
+      startTransition(() => {
+        setIsLoggedIn(true);
+        setDashboardUrl(
+          role === "employer" ? "/dashboard/employer" : "/dashboard/candidate"
+        );
+      });
     } else {
-      setIsLoggedIn(false);
+      startTransition(() => {
+        setIsLoggedIn(false);
+      });
     }
 
     return () => window.removeEventListener("scroll", handleScroll);
@@ -63,19 +67,12 @@ export function Navbar() {
 
         {/* Desktop Nav Links */}
         <div className="hidden md:flex items-center gap-7">
-          {!isLoggedIn && (
-            <>
-              <a href="#how-it-works" className="text-sm font-medium transition-colors" style={{ color: "#ACBAC4" }} onMouseOver={e => (e.currentTarget.style.color = "#57595B")} onMouseOut={e => (e.currentTarget.style.color = "#ACBAC4")}>
-                How It Works
-              </a>
-              <a href="#features" className="text-sm font-medium transition-colors" style={{ color: "#ACBAC4" }} onMouseOver={e => (e.currentTarget.style.color = "#57595B")} onMouseOut={e => (e.currentTarget.style.color = "#ACBAC4")}>
-                Features
-              </a>
-              <a href="/auth/signup?role=employer" className="text-sm font-medium transition-colors" style={{ color: "#ACBAC4" }} onMouseOver={e => (e.currentTarget.style.color = "#57595B")} onMouseOut={e => (e.currentTarget.style.color = "#ACBAC4")}>
-                For Employers
-              </a>
-            </>
-          )}
+          <a href="#how-it-works" className="text-sm font-medium transition-colors" style={{ color: "#ACBAC4" }} onMouseOver={e => (e.currentTarget.style.color = "#57595B")} onMouseOut={e => (e.currentTarget.style.color = "#ACBAC4")}>
+            How It Works
+          </a>
+          <a href="#features" className="text-sm font-medium transition-colors" style={{ color: "#ACBAC4" }} onMouseOver={e => (e.currentTarget.style.color = "#57595B")} onMouseOut={e => (e.currentTarget.style.color = "#ACBAC4")}>
+            Features
+          </a>
         </div>
 
         {/* Desktop Auth */}
@@ -129,16 +126,12 @@ export function Navbar() {
           className="absolute top-full left-0 w-full px-4 pb-4 md:hidden"
         >
           <div className="flex flex-col gap-1 p-3 rounded-2xl shadow-xl mt-2" style={{ background: "rgba(253,252,250,0.98)", border: "1px solid #E0E4E3" }}>
-            {!isLoggedIn && (
-              <>
-                <a href="#how-it-works" onClick={() => setMobileMenuOpen(false)} className="px-4 py-3 text-sm font-medium rounded-xl transition-all" style={{ color: "#ACBAC4" }}>
-                  How It Works
-                </a>
-                <a href="#features" onClick={() => setMobileMenuOpen(false)} className="px-4 py-3 text-sm font-medium rounded-xl transition-all" style={{ color: "#ACBAC4" }}>
-                  Features
-                </a>
-              </>
-            )}
+            <a href="#how-it-works" onClick={() => setMobileMenuOpen(false)} className="px-4 py-3 text-sm font-medium rounded-xl transition-all" style={{ color: "#ACBAC4" }}>
+              How It Works
+            </a>
+            <a href="#features" onClick={() => setMobileMenuOpen(false)} className="px-4 py-3 text-sm font-medium rounded-xl transition-all" style={{ color: "#ACBAC4" }}>
+              Features
+            </a>
             <div className="h-px my-1" style={{ background: "#E8ECED" }} />
             {isLoggedIn ? (
               <Link href={dashboardUrl} onClick={() => setMobileMenuOpen(false)} className="px-4 py-3 text-center rounded-xl font-semibold text-sm" style={{ background: "linear-gradient(135deg, #F7B980, #F0A060)", color: "#57595B" }}>

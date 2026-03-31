@@ -37,9 +37,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const jobData = jobSchema.parse(body);
 
-    // TODO: Remove (prisma as any) after running 'npx prisma generate' locally
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const job = await (prisma as any).job.create({
+    const job = await prisma.job.create({
       data: {
         title: jobData.title,
         description: jobData.description,

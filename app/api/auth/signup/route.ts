@@ -48,9 +48,7 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // TODO: Remove (prisma as any) after running 'npx prisma generate' locally
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (prisma as any).userProfile.update({
+    await prisma.userProfile.update({
       where: { userId: user.id },
       data: { ntfyTopic: `videocv-user-${user.id}` }
     });
@@ -71,7 +69,7 @@ export async function POST(request: NextRequest) {
       role: user.role as "candidate" | "employer" | "admin",
     });
 
-    return NextResponse.json(
+    const response = NextResponse.json(
       {
         success: true,
         message: "User created successfully",
@@ -86,6 +84,17 @@ export async function POST(request: NextRequest) {
       },
       { status: 201 }
     );
+
+    // Set persistent session cookie (7 days)
+    response.cookies.set("auth_token", token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 60 * 60 * 24 * 7, // 7 days
+      path: "/",
+    });
+
+    return response;
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(

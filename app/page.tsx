@@ -1,7 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect, startTransition } from "react";
 import { motion } from "framer-motion";
 import {
   Play,
@@ -41,17 +40,27 @@ const stagger = {
 };
 
 export default function Home() {
-  const router = useRouter();
+  const [authState, setAuthState] = useState({
+    isLoggedIn: false,
+    dashboardUrl: "/auth/login",
+  });
 
   useEffect(() => {
     const token = localStorage.getItem("token");
     const role = localStorage.getItem("userRole");
+
     if (token && role) {
-      router.push(
-        role === "candidate" ? "/dashboard/candidate" : "/dashboard/employer"
-      );
+      startTransition(() => {
+        setAuthState({
+          isLoggedIn: true,
+          dashboardUrl:
+            role === "employer" ? "/dashboard/employer" : "/dashboard/candidate",
+        });
+      });
     }
-  }, [router]);
+  }, []);
+
+  const { isLoggedIn, dashboardUrl } = authState;
 
   return (
     <div
@@ -165,33 +174,51 @@ export default function Home() {
                 transition={{ duration: 0.6, delay: 0.15, ease: [0.22, 1, 0.36, 1] }}
                 className="flex flex-col sm:flex-row gap-4"
               >
-                <Link
-                  href="/auth/signup?role=candidate"
-                  className="group inline-flex items-center justify-center gap-2 px-7 py-3.5 font-semibold rounded-xl transition-all duration-300 hover:-translate-y-0.5"
-                  style={{
-                    background:
-                      "linear-gradient(135deg, #F7B980 0%, #F0A060 100%)",
-                    color: "#57595B",
-                    boxShadow: "0 8px 24px rgba(247,185,128,0.35)",
-                  }}
-                >
-                  <Camera className="w-5 h-5" />
-                  Create Your Video CV
-                  <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                </Link>
-                <Link
-                  href="/auth/signup?role=employer"
-                  className="inline-flex items-center justify-center gap-2 px-7 py-3.5 font-semibold rounded-xl transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md"
-                  style={{
-                    background: "#FFFFFF",
-                    border: "1px solid #BFC6C4",
-                    color: "#57595B",
-                    boxShadow: "0 2px 8px rgba(87,89,91,0.08)",
-                  }}
-                >
-                  <Briefcase className="w-5 h-5" style={{ color: "#ACBAC4" }} />
-                  Hire Top Talent
-                </Link>
+                {isLoggedIn ? (
+                  <Link
+                    href={dashboardUrl}
+                    className="group inline-flex items-center justify-center gap-2 px-8 py-4 font-bold rounded-xl transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl"
+                    style={{
+                      background: "linear-gradient(135deg, #57595B 0%, #454749 100%)",
+                      color: "#FFFFFF",
+                      boxShadow: "0 12px 32px rgba(87,89,91,0.25)",
+                    }}
+                  >
+                    <Briefcase className="w-5 h-5 text-[#F7B980]" />
+                    Back to Dashboard
+                    <ArrowRight className="w-5 h-5 group-hover:translate-x-1.5 transition-transform" />
+                  </Link>
+                ) : (
+                  <>
+                    <Link
+                      href="/auth/signup?role=candidate"
+                      className="group inline-flex items-center justify-center gap-2 px-7 py-3.5 font-semibold rounded-xl transition-all duration-300 hover:-translate-y-0.5"
+                      style={{
+                        background:
+                          "linear-gradient(135deg, #F7B980 0%, #F0A060 100%)",
+                        color: "#57595B",
+                        boxShadow: "0 8px 24px rgba(247,185,128,0.35)",
+                      }}
+                    >
+                      <Camera className="w-5 h-5" />
+                      Create Your Video CV
+                      <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                    </Link>
+                    <Link
+                      href="/auth/signup?role=employer"
+                      className="inline-flex items-center justify-center gap-2 px-7 py-3.5 font-semibold rounded-xl transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md"
+                      style={{
+                        background: "#FFFFFF",
+                        border: "1px solid #BFC6C4",
+                        color: "#57595B",
+                        boxShadow: "0 2px 8px rgba(87,89,91,0.08)",
+                      }}
+                    >
+                      <Briefcase className="w-5 h-5" style={{ color: "#ACBAC4" }} />
+                      Hire Top Talent
+                    </Link>
+                  </>
+                )}
               </motion.div>
 
               <motion.div

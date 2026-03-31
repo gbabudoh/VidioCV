@@ -34,6 +34,7 @@ export default function LoginPage() {
       const data = await response.json();
       if (response.ok) {
         localStorage.setItem("token", data.token);
+        localStorage.setItem("userRole", "candidate");
         window.location.href = "/dashboard/candidate";
       } else {
         setErrors({ submit: data.message || "Invalid email or password" });
@@ -45,27 +46,6 @@ export default function LoginPage() {
     }
   };
 
-  const demoLogin = async () => {
-    setIsLoading(true);
-    try {
-      const response = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: "candidate@demo.com", password: "democa123", role: "candidate" }),
-      });
-      const data = await response.json();
-      if (response.ok) {
-        localStorage.setItem("token", data.token);
-        window.location.href = "/dashboard/candidate";
-      } else {
-        setErrors({ submit: data.message || "Demo login failed" });
-      }
-    } catch {
-      setErrors({ submit: "An error occurred. Please try again." });
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   return (
     <div
@@ -270,7 +250,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full group flex items-center justify-center gap-2 py-3.5 rounded-xl font-semibold text-sm transition-all disabled:opacity-60 disabled:cursor-not-allowed hover:-translate-y-0.5"
+              className="w-full group flex items-center justify-center gap-2 py-3.5 rounded-xl font-semibold text-sm transition-all disabled:opacity-60 disabled:cursor-not-allowed hover:-translate-y-0.5 cursor-pointer"
               style={{
                 background: "linear-gradient(135deg, #F7B980 0%, #F0A060 100%)",
                 color: "#57595B",
@@ -287,21 +267,6 @@ export default function LoginPage() {
               )}
             </button>
 
-            {/* Demo login */}
-            <button
-              type="button"
-              disabled={isLoading}
-              onClick={demoLogin}
-              className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl font-semibold text-sm transition-all disabled:opacity-60 hover:-translate-y-0.5"
-              style={{
-                background: "#FFFFFF",
-                border: "1px solid #BFC6C4",
-                color: "#57595B",
-                boxShadow: "0 2px 8px rgba(87,89,91,0.07)",
-              }}
-            >
-              Demo Candidate Login
-            </button>
           </form>
 
           {/* Footer */}

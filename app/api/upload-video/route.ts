@@ -57,7 +57,7 @@ export async function POST(request: NextRequest) {
         // PeerTube typically provides a URL to the video, but it takes time to transcode
         // You might want to save the PeerTube UUID or embed URL here.
         if (peertubeResponse?.video?.uuid) {
-          streamingUrl = `${process.env.PEERTUBE_URL}/videos/watch/${peertubeResponse.video.uuid}`;
+          streamingUrl = `${process.env.PEERTUBE_URL}/videos/embed/${peertubeResponse.video.uuid}`;
         }
       }
     } catch (ptError) {

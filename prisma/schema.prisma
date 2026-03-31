@@ -19,6 +19,8 @@ model User {
   interviews Interview[]  @relation("CandidateInterviews")
   jobs       Job[]
   profile    UserProfile?
+  sentDirectMessages     DirectMessage[] @relation("SentDirectMessages")
+  receivedDirectMessages DirectMessage[] @relation("ReceivedDirectMessages")
 
   @@map("users")
 }
@@ -274,6 +276,8 @@ model ContactRequest {
   requesterEmail   String    @map("requester_email")
   requesterCompany String?   @map("requester_company")
   message          String
+  replyMessage     String?   @map("reply_message")
+  repliedAt        DateTime? @map("replied_at") @db.Timestamptz(6)
   status           String?   @default("pending")
   createdAt        DateTime? @default(now()) @map("created_at") @db.Timestamptz(6)
   cvProfile        CvProfile @relation(fields: [cvProfileId], references: [id], onDelete: Cascade)
@@ -313,4 +317,21 @@ model Interview {
   job           Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
 
   @@map("interviews")
+}
+
+model DirectMessage {
+  id               String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  senderId         String    @map("sender_id") @db.Uuid
+  receiverId       String    @map("receiver_id") @db.Uuid
+  subject          String?
+  body             String
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  status           String    @default("unread") 
+  
+  sender           User      @relation("SentDirectMessages", fields: [senderId], references: [id], onDelete: Cascade)
+  receiver         User      @relation("ReceivedDirectMessages", fields: [receiverId], references: [id], onDelete: Cascade)
+
+  @@index([senderId], map: "idx_direct_msg_sender")
+  @@index([receiverId], map: "idx_direct_msg_receiver")
+  @@map("direct_messages")
 }

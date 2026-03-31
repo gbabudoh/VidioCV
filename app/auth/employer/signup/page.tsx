@@ -5,17 +5,21 @@ import { motion } from "framer-motion";
 import Link from "next/link";
 import NextImage from "next/image";
 import { Mail, Lock, Building2, ArrowRight, Globe } from "lucide-react";
-import Select, { components } from "react-select";
+import Select, { components, OptionProps, SingleValueProps } from "react-select";
 import ReactCountryFlag from "react-country-flag";
 import countryList from "country-list";
 
-const countryOptions = countryList.getData().map((country) => ({
+interface CountryOption {
+  value: string;
+  label: string;
+}
+
+const countryOptions: CountryOption[] = countryList.getData().map((country) => ({
   value: country.code,
   label: country.name,
 }));
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const Option = (props: any) => (
+const Option = (props: OptionProps<CountryOption, false>) => (
   <components.Option {...props}>
     <div className="flex items-center gap-2">
       <ReactCountryFlag countryCode={props.data.value} svg style={{ width: "1.2rem", height: "1.2rem" }} />
@@ -24,8 +28,7 @@ const Option = (props: any) => (
   </components.Option>
 );
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const SingleValue = (props: any) => (
+const SingleValue = (props: SingleValueProps<CountryOption, false>) => (
   <components.SingleValue {...props}>
     <div className="flex items-center gap-2">
       <ReactCountryFlag countryCode={props.data.value} svg style={{ width: "1.2rem", height: "1.2rem" }} />
@@ -83,6 +86,7 @@ export default function EmployerSignupPage() {
       if (response.ok) {
         const data = await response.json();
         localStorage.setItem("token", data.token);
+        localStorage.setItem("userRole", "employer");
         window.location.href = "/dashboard/employer";
       } else {
         const data = await response.json();
@@ -243,8 +247,7 @@ export default function EmployerSignupPage() {
                   instanceId="employer-country-select"
                   options={countryOptions}
                   components={{ Option, SingleValue }}
-                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                  onChange={(selectedOption: any) => {
+                  onChange={(selectedOption) => {
                     setFormData((prev) => ({ ...prev, country: selectedOption?.value || "" }));
                     if (errors.country) setErrors((prev) => ({ ...prev, country: "" }));
                   }}

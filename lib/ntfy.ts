@@ -16,6 +16,20 @@ interface NotificationOptions {
   }>;
 }
 
+interface NtfyPayload {
+  topic: string;
+  message: string;
+  title: string;
+  priority: string;
+  tags?: string[];
+  click?: string;
+  actions?: Array<{
+    action: 'view' | 'http';
+    label: string;
+    url: string;
+  }>;
+}
+
 /**
  * Sends a notification to a specific user topic
  */
@@ -41,8 +55,7 @@ export async function sendSystemNotification(options: NotificationOptions) {
 export async function sendNotification(topic: string, options: NotificationOptions) {
   try {
     const headers: Record<string, string> = {
-      'Title': options.title,
-      'Priority': options.priority || 'default',
+      'Content-Type': 'application/json',
     };
 
     // Add authentication
@@ -51,24 +64,23 @@ export async function sendNotification(topic: string, options: NotificationOptio
       headers['Authorization'] = `Basic ${auth}`;
     }
 
-    if (options.tags && options.tags.length > 0) {
-      headers['Tags'] = options.tags.join(',');
-    }
-
-    if (options.click) {
-      headers['Click'] = options.click;
-    }
+    const body: NtfyPayload = {
+      topic,
+      message: options.message,
+      title: options.title,
+      priority: options.priority || 'default',
+      tags: options.tags,
+      click: options.click,
+    };
 
     if (options.actions && options.actions.length > 0) {
-      headers['Actions'] = options.actions
-        .map(a => `${a.action}, ${a.label}, ${a.url}`)
-        .join('; ');
+      body.actions = options.actions;
     }
 
-    const response = await fetch(`${NTFY_URL}/${topic}`, {
+    const response = await fetch(NTFY_URL, {
       method: 'POST',
       headers,
-      body: options.message,
+      body: JSON.stringify(body),
     });
 
     if (!response.ok) {
@@ -120,7 +132,16 @@ export const Notifications = {
         message: 'Add your work experience and skills to get more views',
         tags: ['warning'],
         priority: 'low',
-        click: `${process.env.NEXT_PUBLIC_APP_URL || ''}/profile/edit`,
+        click: `${process.env.NEXT_PUBLIC_APP_URL || ""}/profile/edit`,
+      }),
+
+    interviewScheduled: (userId: string, companyName: string, jobTitle: string, dateTime: string) =>
+      sendUserNotification(userId, {
+        title: '📅 New Interview Scheduled',
+        message: `You have an interview with ${companyName} for ${jobTitle} on ${new Date(dateTime).toLocaleString()}`,
+        tags: ['calendar', 'tada'],
+        priority: 'urgent',
+        click: `${process.env.NEXT_PUBLIC_APP_URL || ""}/dashboard/candidate`,
       }),
   },
 

@@ -1,22 +1,41 @@
 "use client";
 
 import React from "react";
-import { Star, MessageSquare, Calendar, Video } from "lucide-react";
+import { Star, MessageSquare, Calendar, Video, Briefcase, Sparkles } from "lucide-react";
 import Button from "@/app/components/common/Button";
+
+interface Experience {
+  id: string;
+  role: string;
+  company: string;
+  duration: string;
+  description?: string;
+}
+
+interface ProfessionalSkill {
+  name: string;
+  level: string;
+  years: number | null;
+}
 
 interface Candidate {
   id: string;
+  userId: string;
   name: string;
   title: string;
   skills: string[];
-  videoUrl: string;
+  fullSkills?: ProfessionalSkill[];
+  videoUrl: string | null;
   rating: number;
+  experience?: Experience[];
 }
 
 interface CandidateListProps {
   candidates: Candidate[];
   onSelectCandidate?: (candidate: Candidate) => void;
   onViewVideo?: (candidate: Candidate) => void;
+  onViewExperience?: (candidate: Candidate) => void;
+  onViewSkills?: (candidate: Candidate) => void;
   onMessage?: (candidate: Candidate) => void;
   onSchedule?: (candidate: Candidate) => void;
 }
@@ -25,6 +44,8 @@ export default function CandidateList({
   candidates,
   onSelectCandidate,
   onViewVideo,
+  onViewExperience,
+  onViewSkills,
   onMessage,
   onSchedule,
 }: CandidateListProps) {
@@ -79,6 +100,22 @@ export default function CandidateList({
             >
               <span className="flex items-center gap-1.5">
                 <Video className="w-3.5 h-3.5" /> View Video
+              </span>
+            </Button>
+            <Button 
+               onClick={(e) => { e.stopPropagation(); onViewExperience?.(candidate); }}
+               className="bg-secondary-50 hover:bg-secondary-600 text-secondary-600 hover:text-white dark:bg-secondary-500/10 dark:hover:bg-secondary-500 dark:text-secondary-400 dark:hover:text-white font-semibold transition-all py-1.5 px-3 rounded-md text-xs border-transparent hover:shadow-md hover:shadow-secondary-500/20 cursor-pointer"
+            >
+              <span className="flex items-center gap-1.5">
+                <Briefcase className="w-3.5 h-3.5" /> Work Experience
+              </span>
+            </Button>
+            <Button 
+               onClick={(e) => { e.stopPropagation(); onViewSkills?.(candidate); }}
+               className="bg-accent-50 hover:bg-accent-600 text-accent-600 hover:text-white dark:bg-accent-500/10 dark:hover:bg-accent-500 dark:text-accent-400 dark:hover:text-white font-semibold transition-all py-1.5 px-3 rounded-md text-xs border-transparent hover:shadow-md hover:shadow-accent-500/20 cursor-pointer"
+            >
+              <span className="flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5" /> Professional Skills
               </span>
             </Button>
             <Button 

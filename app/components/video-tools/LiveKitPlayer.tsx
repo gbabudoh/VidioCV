@@ -1,236 +1,166 @@
 "use client";
 
-import React, { useState, useRef } from "react";
-import {
-  Play,
-  Pause,
-  Volume2,
-  VolumeX,
-  Maximize,
-  Minimize,
-  Settings,
-  Circle,
-  User
-} from "lucide-react";
-import dynamic from "next/dynamic";
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const ReactPlayer = dynamic<any>(() => import("react-player"), { ssr: false });
+import React, { useState, useRef, useEffect } from "react";
+import Hls from "hls.js";
 
 interface LiveKitPlayerProps {
   src: string;
   poster?: string;
   candidateName?: string;
+  showBranding?: boolean;
 }
 
 export default function LiveKitPlayer({
   src,
   poster,
   candidateName = "Candidate",
+  showBranding = true,
 }: LiveKitPlayerProps) {
   const [isPlaying, setIsPlaying] = useState(false);
-  const [progress, setProgress] = useState(0);
-  const [duration, setDuration] = useState(0);
-  const [volume, setVolume] = useState(1);
-  const [isMuted, setIsMuted] = useState(false);
-  const [isFullscreen, setIsFullscreen] = useState(false);
-  const [showControls, setShowControls] = useState(true);
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const playerRef = useRef<any>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const isEmbed = src.includes("/videos/embed/") || 
+                  src.includes("/videos/watch/") || 
+                  src.includes("/w/") || 
+                  src.includes("youtube.com");
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video || !src) return;
+
+    if (Hls.isSupported() && src.includes(".m3u8")) {
+      const hls = new Hls();
+      hls.loadSource(src);
+      hls.attachMedia(video);
+      hls.on(Hls.Events.MANIFEST_PARSED, () => {
+        video.play().catch(() => {});
+      });
+      return () => hls.destroy();
+    } else {
+      video.src = src;
+      video.load();
+    }
+  }, [src]);
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    let cancelled = false;
+    const handleCanPlay = () => {
+      if (!cancelled) {
+        video.play().catch(e => {
+          if (e.name !== "AbortError") console.error("Video play failed:", e);
+        });
+      }
+      video.removeEventListener("canplay", handleCanPlay);
+    };
+
+    if (isPlaying) {
+      if (video.readyState >= 2) {
+        video.play().catch(e => {
+          if (e.name !== "AbortError") console.error("Video play failed:", e);
+        });
+      } else {
+        video.addEventListener("canplay", handleCanPlay);
+      }
+    } else {
+      video.pause();
+    }
+
+    return () => {
+      cancelled = true;
+      video.removeEventListener("canplay", handleCanPlay);
+    };
+  }, [isPlaying]);
+
+  useEffect(() => {
+    // Sync with PeerTube Iframe (Standard API)
+    if (iframeRef.current && isEmbed) {
+      iframeRef.current.contentWindow?.postMessage({ method: 'setVolume', params: 1 }, "*");
+      iframeRef.current.contentWindow?.postMessage({ method: 'setMuted', params: false }, "*");
+    }
+  }, [src, isEmbed]);
 
   const togglePlay = () => {
-    setIsPlaying(!isPlaying);
-  };
-
-  const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = Number(e.target.value);
-    const seekTo = val / 100;
-    setProgress(val);
-    if (playerRef.current) {
-      playerRef.current.seekTo(seekTo, "fraction");
+    const newState = !isPlaying;
+    setIsPlaying(newState);
+    
+    // Sync with PeerTube Iframe (Standard API)
+    if (iframeRef.current && isEmbed) {
+      iframeRef.current.contentWindow?.postMessage({ method: newState ? 'play' : 'pause' }, "*");
     }
-  };
-
-  const toggleMute = () => {
-    setIsMuted(!isMuted);
-  };
-
-  const toggleFullscreen = () => {
-    if (!document.fullscreenElement) {
-      containerRef.current?.requestFullscreen();
-      setIsFullscreen(true);
-    } else {
-      document.exitFullscreen();
-      setIsFullscreen(false);
-    }
-  };
-
-  const handleMouseMove = () => {
-    setShowControls(true);
-    if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
-    controlsTimeoutRef.current = setTimeout(() => {
-      if (isPlaying) setShowControls(false);
-    }, 3000);
-  };
-
-  const formatTime = (time: number) => {
-    if (!time || isNaN(time)) return "0:00";
-    const mins = Math.floor(time / 60);
-    const secs = Math.floor(time % 60);
-    return `${mins}:${secs.toString().padStart(2, "0")}`;
   };
 
   return (
     <div
       ref={containerRef}
-      className="relative group bg-black rounded-2xl overflow-hidden shadow-2xl aspect-video select-none"
-      onMouseMove={handleMouseMove}
-      onMouseLeave={() => isPlaying && setShowControls(false)}
+      className="relative group bg-slate-950 rounded-[32px] overflow-hidden shadow-[0_32px_64px_-16px_rgba(0,0,0,0.5)] aspect-video select-none"
     >
       {/* Main Video Engine */}
       <div className="w-full h-full" onClick={togglePlay}>
         {src ? (
-          <ReactPlayer
-            ref={playerRef}
-            url={src}
-            playing={isPlaying}
-            muted={isMuted}
-            volume={volume}
-            width="100%"
-            height="100%"
-            playsInline
-            onProgress={(state: { played: number }) => setProgress(state.played * 100)}
-            onReady={() => {
-              if (playerRef.current) {
-                const d = playerRef.current.getDuration();
-                if (d) setDuration(d);
-              }
-            }}
-            onEnded={() => setIsPlaying(false)}
-            onPlay={() => setIsPlaying(true)}
-            onPause={() => setIsPlaying(false)}
-            onError={(e: unknown) => {
-              console.error("Playback Error:", e);
-            }}
-            config={{
-              file: {
-                forceVideo: true,
-                attributes: {
-                  poster: poster,
-                  className: "w-full h-full object-contain cursor-pointer",
-                  style: { objectFit: "contain" }
-                }
-              }
-            }}
-          />
+          isEmbed ? (
+            <iframe
+              ref={iframeRef}
+              src={(() => {
+                let base = src;
+                if (src.includes("/videos/watch/")) base = src.replace("/videos/watch/", "/videos/embed/");
+                else if (src.includes("/w/")) base = src.replace("/w/", "/videos/embed/");
+                
+                base = base.split("?")[0];
+                const params = new URLSearchParams(src.split("?")[1] || "");
+                params.set("title", "0");
+                params.set("warningTitle", "0");
+                params.set("peertubeLink", "0");
+                params.set("p2p", "0");
+                params.set("logo", "0");
+                params.set("autoplay", "1");
+                params.set("muted", "1");
+                return `${base}?${params.toString()}`;
+              })()}
+              className="w-full h-full border-0 absolute inset-0"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen
+            />
+          ) : (
+            <video
+              ref={videoRef}
+              poster={poster}
+              playsInline
+              className="w-full h-full object-contain cursor-pointer"
+              onPlay={() => setIsPlaying(true)}
+              onPause={() => setIsPlaying(false)}
+              onEnded={() => setIsPlaying(false)}
+            />
+          )
         ) : (
           <div className="w-full h-full flex items-center justify-center bg-slate-900/50 backdrop-blur-sm">
-            <div className="text-white/40 text-sm font-medium animate-pulse">No video source</div>
+            <div className="text-white/40 text-sm font-bold uppercase tracking-[0.2em] animate-pulse">Waiting for Stream...</div>
           </div>
         )}
-      </div>
-
-      {/* Top HUD */}
-      <div className={`absolute top-4 left-4 right-4 flex justify-between items-start transition-opacity duration-500 pointer-events-none ${showControls ? "opacity-100" : "opacity-0"}`}>
-        <div className="flex items-center gap-3 bg-black/40 backdrop-blur-md px-4 py-2 rounded-xl border border-white/10">
-          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#F7B980] to-[#F0A060] flex items-center justify-center shadow-lg">
-            <User className="w-4 h-4 text-white" />
+      </div>      {/* Glassmorphic Branding Tag */}
+      {showBranding && (
+        <div className="absolute top-8 left-8 z-[60] flex items-center gap-4 pointer-events-none drop-shadow-2xl translate-y-0 opacity-100 transition-all duration-700">
+          <div className="w-12 h-12 rounded-2xl bg-white/10 backdrop-blur-2xl flex items-center justify-center border border-white/20 shadow-2xl">
+             <div className="w-6 h-6 bg-white rounded-lg flex items-center justify-center shadow-lg transform -rotate-12">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#0F172A" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M15 18l-6-6 6-6" />
+                </svg>
+             </div>
           </div>
           <div className="flex flex-col">
-            <span className="text-white text-xs font-bold tracking-tight uppercase opacity-60">Candidate</span>
-            <span className="text-white text-sm font-semibold leading-tight">{candidateName}</span>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2 bg-red-600/20 backdrop-blur-md px-3 py-1.5 rounded-lg border border-red-500/30">
-          <Circle className="w-2 h-2 fill-red-500 text-red-500 animate-pulse" />
-          <span className="text-red-500 text-[10px] font-black uppercase tracking-widest">Video CV</span>
-        </div>
-      </div>
-
-      {/* Center Play Button */}
-      {!isPlaying && (
-        <div
-          className="absolute inset-0 flex items-center justify-center bg-black/20 backdrop-blur-[2px] cursor-pointer group"
-          onClick={togglePlay}
-        >
-          <div className="w-20 h-20 bg-white/10 hover:bg-white/20 backdrop-blur-xl border border-white/20 rounded-full flex items-center justify-center transition-all duration-300 transform group-hover:scale-110 shadow-2xl">
-            <Play className="w-10 h-10 text-white fill-white ml-1" />
+            <span className="text-white font-[Inter] font-black text-2xl tracking-tighter drop-shadow-xl flex items-center gap-2">
+              VidioCV 
+              <span className="text-[10px] bg-sky-500/80 px-2 py-0.5 rounded-full uppercase tracking-widest font-black">Pro</span>
+            </span>
+            <span className="text-white/40 text-[9px] uppercase tracking-[0.3em] font-black">{candidateName} Cinematic Hub</span>
           </div>
         </div>
       )}
-
-      {/* Bottom Controls */}
-      <div className={`absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-black/80 via-black/40 to-transparent transition-all duration-500 transform ${showControls ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0 pointer-events-none"}`}>
-
-        {/* Seek Bar */}
-        <div className="relative mb-6 group/progress">
-          <input
-            type="range"
-            min="0"
-            max="100"
-            value={progress}
-            onChange={handleSeek}
-            className="w-full h-1.5 bg-white/20 rounded-full appearance-none cursor-pointer relative z-10 hover:h-2 transition-all"
-          />
-          <div
-            className="absolute top-0 left-0 h-1.5 rounded-full pointer-events-none group-hover/progress:h-2 transition-all"
-            style={{ width: `${progress}%`, background: "linear-gradient(to right, #F7B980, #F0A060)" }}
-          />
-        </div>
-
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-6">
-            <button onClick={togglePlay} className="text-white hover:text-[#F7B980] transition-colors drop-shadow-lg">
-              {isPlaying ? <Pause className="w-6 h-6 fill-current" /> : <Play className="w-6 h-6 fill-current" />}
-            </button>
-
-            <div className="flex items-center gap-3 group/volume">
-              <button onClick={toggleMute} className="text-white hover:text-[#F7B980] transition-colors">
-                {isMuted || volume === 0 ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
-              </button>
-              <input
-                type="range"
-                min="0"
-                max="1"
-                step="0.1"
-                value={isMuted ? 0 : volume}
-                onChange={(e) => {
-                  const val = Number(e.target.value);
-                  setVolume(val);
-                  setIsMuted(val === 0);
-                }}
-                className="w-0 group-hover/volume:w-20 transition-all duration-300 h-1 bg-white/20 rounded-full appearance-none opacity-0 group-hover/volume:opacity-100"
-              />
-            </div>
-
-            <div className="text-white/80 font-mono text-sm tracking-wider">
-              <span>{formatTime(duration * (progress / 100))}</span>
-              <span className="mx-2 opacity-30">/</span>
-              <span className="opacity-60">{formatTime(duration)}</span>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-4">
-            <button className="p-2 bg-white/5 hover:bg-white/10 rounded-lg transition-colors group">
-              <Settings className="w-5 h-5 text-white/60 group-hover:text-white group-hover:rotate-45 transition-all duration-500" />
-            </button>
-            <button
-              onClick={toggleFullscreen}
-              className="p-2 bg-white/5 hover:bg-white/10 rounded-lg transition-colors group"
-            >
-              {isFullscreen ? (
-                <Minimize className="w-5 h-5 text-white/60 group-hover:text-white" />
-              ) : (
-                <Maximize className="w-5 h-5 text-white/60 group-hover:text-white" />
-              )}
-            </button>
-          </div>
-        </div>
-      </div>
     </div>
   );
 }

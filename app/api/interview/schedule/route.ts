@@ -33,9 +33,19 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const scheduleData = scheduleSchema.parse(body);
 
-    // TODO: Remove (prisma as any) after running 'npx prisma generate' locally
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const interview = await (prisma as any).interview.create({
+    // Fetch candidate and job details for the notification
+    const [candidate, job] = await Promise.all([
+      prisma.user.findUnique({
+        where: { id: scheduleData.candidateId },
+        include: { profile: true },
+      }),
+      prisma.job.findUnique({
+        where: { id: scheduleData.jobId },
+        include: { employer: { include: { profile: true } } },
+      }),
+    ]);
+
+    const interview = await prisma.interview.create({
       data: {
         jobId: scheduleData.jobId,
         candidateId: scheduleData.candidateId,
@@ -46,12 +56,26 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // Send system notification
-    await Notifications.system.newInterviewScheduled(
-      scheduleData.candidateId, // Should ideally be name, but we have ID here
-      scheduleData.jobId,       // Should ideally be title
-      interview.dateTime.toISOString()
-    );
+    // Send notifications
+    const candidateName = candidate?.profile?.fullName || candidate?.name || "Candidate";
+    const jobTitle = job?.title || "Position";
+    const companyName = job?.employer?.profile?.fullName || job?.employer?.name || "The Employer";
+
+    await Promise.all([
+      // Notify the candidate specifically
+      Notifications.candidate.interviewScheduled(
+        scheduleData.candidateId,
+        companyName,
+        jobTitle,
+        interview.dateTime.toISOString()
+      ),
+      // Notify the system/admin
+      Notifications.system.newInterviewScheduled(
+        candidateName,
+        jobTitle,
+        interview.dateTime.toISOString()
+      ),
+    ]);
 
     return NextResponse.json(
       {
