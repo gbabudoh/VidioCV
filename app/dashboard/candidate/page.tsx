@@ -2,26 +2,16 @@
 
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { 
-  Settings, LogOut, Bell, Search, MapPin, Briefcase, Video, 
-  Building2, UserCircle, Shield, Trash2, 
+import {
+  Settings, LogOut, Bell, Search, MapPin, Briefcase, Video,
+  Building2, UserCircle, Shield, Trash2,
   Mail, Lock, Plus, X, ChevronRight, Link as LinkIcon,
-  Calendar as CalendarIcon, Archive, ArrowLeft, Calendar, CheckCircle2
+  Calendar as CalendarIcon, Archive, ArrowLeft, Calendar,
+  Monitor, Smartphone
 } from "lucide-react";
 import MobileBottomNav from "@/app/components/common/MobileBottomNav";
 
 // Helper components
-const PlayIcon = ({ className, style }: { className?: string; style?: React.CSSProperties }) => (
-  <svg 
-    className={className} 
-    style={style}
-    viewBox="0 0 24 24" 
-    fill="currentColor" 
-    xmlns="http://www.w3.org/2000/svg"
-  >
-    <path d="M8 5V19L19 12L8 5Z" />
-  </svg>
-);
 import Select, { OptionProps, SingleValueProps, SingleValue } from "react-select";
 import ReactCountryFlag from "react-country-flag";
 import countryList from "country-list";
@@ -133,6 +123,8 @@ export default function CandidateDashboard() {
     id: string;
     name: string;
     email: string;
+    country?: string | null;
+    companyType?: string | null;
   }
 
   const [activeTab, setActiveTab] = useState<Tab>("profile");
@@ -226,6 +218,18 @@ export default function CandidateDashboard() {
   const [composeSubject, setComposeSubject] = useState("");
   const [composeBody, setComposeBody] = useState("");
   const [isSendingDirect, setIsSendingDirect] = useState(false);
+
+  // Employer Filtering States
+  const [employerSearchQuery, setEmployerSearchQuery] = useState("");
+  const [employerFilterCountry, setEmployerFilterCountry] = useState("");
+  const [employerFilterType, setEmployerFilterType] = useState("");
+
+  const filteredEmployers = employers.filter((emp: Employer) => {
+    const matchesSearch = emp.name.toLowerCase().includes(employerSearchQuery.toLowerCase());
+    const matchesCountry = !employerFilterCountry || emp.country === employerFilterCountry;
+    const matchesType = !employerFilterType || emp.companyType === employerFilterType;
+    return matchesSearch && matchesCountry && matchesType;
+  });
 
   const [interviews, setInterviews] = useState<Interview[]>([]);
   const [isLoadingInterviews, setIsLoadingInterviews] = useState(false);
@@ -809,77 +813,42 @@ export default function CandidateDashboard() {
               exit={{ opacity: 0, y: -20 }}
               transition={{ duration: 0.3 }}
             >
-              <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 mb-12">
-          {/* Profile Card */}
-          <motion.div
-            initial={{ opacity: 0, y: 24 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-            className="lg:col-span-1 border border-white rounded-[32px] p-8 shadow-2xl flex flex-col items-center text-center group"
-            style={{ 
-              background: "rgba(255, 255, 255, 0.82)", 
-              backdropFilter: "blur(20px)",
-              boxShadow: "0 24px 64px rgba(87,89,91,0.08)"
-            }}
-          >
-            <div className="relative w-28 h-28 mb-6 p-1.5 rounded-full" style={{ background: "linear-gradient(135deg, #F7B980, #F0A060)" }}>
-              <div className="w-full h-full bg-white rounded-full flex items-center justify-center overflow-hidden">
-                <span className="text-3xl font-extrabold" style={{ color: "#F7B980" }}>
-                  {userName.split(" ").map(n => n[0]).join("")}
-                </span>
-                <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/20 to-transparent group-hover:translate-x-full duration-700 transition-transform" />
-              </div>
-            </div>
-            <h2 className="text-2xl font-bold mb-1" style={{ color: "#334155" }}>{userName}</h2>
-            <p className="font-semibold text-sm mb-6 px-4 py-1 rounded-full" style={{ background: "#E2E8F0", color: "#64748B" }}>{userRole}</p>
-            <div className="w-full space-y-4 text-sm text-left px-2">
-              <div className="flex items-center gap-4 py-3 border-b border-[#E2E8F0]">
-                <div className="p-2 rounded-xl" style={{ background: "rgba(172,186,196,0.1)" }}>
-                  <MapPin className="w-4 h-4" style={{ color: "#64748B" }} />
+              <div className="bg-white border border-[gainsboro] rounded-2xl p-6 mb-8 flex flex-col sm:flex-row sm:items-center gap-6">
+                {/* Avatar */}
+                <div className="w-16 h-16 rounded-2xl bg-white border border-[gainsboro] flex items-center justify-center text-black font-bold text-xl shrink-0">
+                  {userName.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase()}
                 </div>
-                <span className="font-medium" style={{ color: "#8A8C8E" }}>Global / Remote</span>
-              </div>
-              <div className="flex items-center gap-4 py-3">
-                <div className="p-2 rounded-xl" style={{ background: "rgba(172,186,196,0.1)" }}>
-                  <Briefcase className="w-4 h-4" style={{ color: "#64748B" }} />
-                </div>
-                <span className="font-medium" style={{ color: "#8A8C8E" }}>5+ years experience</span>
-              </div>
-            </div>
-          </motion.div>
 
-          {/* KPI Stats */}
-          <div className="lg:col-span-3 grid grid-cols-1 md:grid-cols-3 gap-6">
-            {[
-              { label: "Profile Views", value: dashboardStats.profileViews.toString(), color: "from-[#8A8C8E] to-[#64748B]" },
-              { label: "Active Applications", value: dashboardStats.activeApplications.toString(), color: "from-[#F7B980] to-[#F0A060]" },
-              { label: "Interview Invites", value: dashboardStats.interviewInvites.toString(), color: "from-[#334155] to-[#8A8C8E]" },
-            ].map((stat, idx) => (
-              <motion.div
-                key={stat.label}
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: 0.1 * (idx + 1), duration: 0.4 }}
-                className="border border-white rounded-[32px] p-8 shadow-xl flex flex-col justify-center relative overflow-hidden group hover:-translate-y-1 transition-all"
-                style={{ 
-                  background: "rgba(255, 255, 255, 0.75)", 
-                  backdropFilter: "blur(20px)",
-                  boxShadow: "0 16px 40px rgba(87,89,91,0.06)"
-                }}
-              >
-                <div className={`absolute -right-8 -top-8 w-32 h-32 bg-gradient-to-br ${stat.color} opacity-[0.03] group-hover:opacity-[0.08] transition-opacity rounded-full blur-2xl`} />
-                <p className="font-bold text-xs uppercase tracking-widest mb-4" style={{ color: "#64748B" }}>{stat.label}</p>
-                <p className={`text-6xl font-black bg-clip-text text-transparent bg-gradient-to-r ${stat.color} tracking-tighter`}>
-                  {stat.value}
-                </p>
-                <div className="mt-4 flex items-center gap-2 text-[10px] font-bold" style={{ color: "#10B981" }}>
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#10B981] animate-pulse" />
-                  Live Sync
+                {/* Identity */}
+                <div className="flex-1 min-w-0">
+                  <h2 className="text-lg font-semibold text-slate-800 leading-tight">{userName}</h2>
+                  <p className="text-sm text-slate-400 mt-0.5 truncate">{userRole}</p>
+                  <div className="flex flex-wrap gap-3 mt-3">
+                    <span className="flex items-center gap-1.5 text-xs text-slate-500">
+                      <Briefcase className="w-3.5 h-3.5" />
+                      {experiences.length > 0 ? `${experiences.length} role${experiences.length !== 1 ? "s" : ""}` : "No experience added"}
+                    </span>
+                    <span className="flex items-center gap-1.5 text-xs text-slate-500">
+                      <MapPin className="w-3.5 h-3.5" />
+                      Global / Remote
+                    </span>
+                  </div>
                 </div>
-              </motion.div>
-            ))}
-          </div>
-          </div>
+
+                {/* KPI Stats */}
+                <div className="flex gap-6 sm:gap-8 shrink-0">
+                  {[
+                    { label: "Views", value: dashboardStats.profileViews },
+                    { label: "Applications", value: dashboardStats.activeApplications },
+                    { label: "Interviews", value: dashboardStats.interviewInvites },
+                  ].map((stat) => (
+                    <div key={stat.label} className="text-center">
+                      <p className="text-2xl font-bold text-slate-800">{stat.value}</p>
+                      <p className="text-[11px] text-slate-400 mt-0.5">{stat.label}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </motion.div>
           )}
 
@@ -905,7 +874,7 @@ export default function CandidateDashboard() {
                    Discard Changes
                  </button>
                  <Button onClick={handleSyncGlobal} size="lg" className="px-10 shadow-lg shadow-[#F7B980]/20">
-                   Sync Global Portfolio
+                   Sync Global VidioCV
                  </Button>
               </div>
             </motion.div>
@@ -946,473 +915,453 @@ export default function CandidateDashboard() {
             transition={{ duration: 0.3 }}
           >
             {activeTab === "messages" && (
-              <div className="space-y-6">
-                <div 
-                  className="border border-white rounded-[40px] p-8 lg:p-12 shadow-2xl relative overflow-hidden"
-                  style={{ 
-                    background: "rgba(255, 255, 255, 0.7)", 
-                    backdropFilter: "blur(24px)",
-                    boxShadow: "0 24px 64px rgba(87,89,91,0.06)"
-                  }}
-                >
-                  <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 pb-6 border-b border-[#E2E8F0] gap-6">
-                    <h3 className="text-3xl font-bold flex items-center gap-4" style={{ color: "#334155" }}>
-                      <div className="p-2.5 rounded-2xl bg-[#F7B980]/10">
-                        <Mail className="w-7 h-7 text-[#F7B980]" />
-                      </div>
-                      Communications Hub
+              <div className="bg-white border border-[gainsboro] rounded-2xl p-6">
+                {/* Header + tabs */}
+                <div className="flex items-center justify-between mb-6">
+                  <div>
+                    <h3 className="text-sm font-semibold text-slate-800 flex items-center gap-2">
+                      <Mail className="w-4 h-4 text-[#F7B980]" />
+                      Messages
                     </h3>
-                    
-                    <div className="flex p-1.5 bg-white/40 rounded-2xl border border-[#E2E8F0]">
-                      {(["inbox", "sent", "compose"] as const).map((sub) => (
-                        <button
-                          key={sub}
-                          onClick={() => setMessageSubTab(sub)}
-                          className={`px-6 py-2.5 rounded-xl font-bold text-[10px] uppercase tracking-widest transition-all cursor-pointer ${
-                            messageSubTab === sub 
-                              ? "bg-white text-[#F7B980] shadow-md border border-[#F7B980]/10" 
-                              : "text-[#64748B] hover:text-[#334155]"
-                          }`}
-                        >
-                          {sub}
-                        </button>
-                      ))}
-                    </div>
+                    <p className="text-xs text-slate-400 mt-0.5">Employer inquiries and direct outreach</p>
                   </div>
-                  
-                  <div className="grid grid-cols-1 gap-4">
-                    {messageSubTab === "inbox" && (
-                      <>
-                        {isLoadingMessages ? (
-                          <div className="flex flex-col items-center justify-center py-20 mt-10">
-                            <div className="w-10 h-10 border-4 border-[#E2E8F0] border-t-[#F7B980] rounded-full animate-spin mb-4" />
-                            <p className="text-[#64748B] font-bold text-sm tracking-wide">Decrypting inbound signals...</p>
-                          </div>
-                        ) : messages.length > 0 ? (
-                          messages.map((msg) => (
-                            <div 
-                              key={msg.id} 
-                              onClick={() => {
-                                setSelectedMessage(msg);
-                                setMessages(prev => prev.map(m => m.id === msg.id ? { ...m, unread: false } : m));
-                              }}
-                              className="p-6 rounded-[24px] border transition-all cursor-pointer group flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4"
-                              style={msg.unread ? { 
-                                background: "#FFFFFF", 
-                                borderColor: "#F7B980",
-                                boxShadow: "0 12px 32px rgba(247,185,128,0.08)"
-                              } : {
-                                background: "rgba(255, 255, 255, 0.4)",
-                                borderColor: "#E0E4E3"
-                              }}
-                            >
-                              <div className="flex gap-4 items-center flex-1">
-                                <div 
-                                  className="w-12 h-12 rounded-2xl flex items-center justify-center font-bold text-lg shrink-0"
-                                  style={{ background: "#E2E8F0", color: "#F7B980" }}
-                                >
-                                  {msg.company.charAt(0)}
-                                </div>
-                                <div>
-                                  <h4 className="font-bold text-base transition-colors group-hover:text-[#F7B980] flex items-center gap-2" style={{ color: "#334155" }}>
-                                    {msg.company}
-                                    {msg.unread && <span className="inline-block w-2 h-2 rounded-full bg-[#F7B980]" />}
-                                    {msg.replied && <span className="px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest bg-[#10B981]/10 text-[#10B981] border border-[#10B981]/20">Replied</span>}
-                                  </h4>
-                                  <p className="text-sm font-medium" style={{ color: "#64748B" }}>{msg.subject}</p>
-                                </div>
-                              </div>
-                              <div className="flex items-center gap-6">
-                                <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: "#64748B" }}>{msg.time}</p>
-                                <ChevronRight className="w-5 h-5 opacity-40 group-hover:opacity-100 group-hover:translate-x-1 transition-all" style={{ color: "#334155" }} />
-                              </div>
-                            </div>
-                          ))
-                        ) : (
-                          <div className="text-center py-20 bg-[#F9F9F9]/50 rounded-[32px] border-2 border-dashed" style={{ borderColor: "#E0E4E3" }}>
-                            <p className="text-xl font-bold mb-2" style={{ color: "#334155" }}>No inbound signals</p>
-                            <p className="font-medium" style={{ color: "#64748B" }}>Your communication channels are currently quiet.</p>
-                          </div>
-                        )}
-                        
-                        <div className="mt-10 pt-10 border-t border-[#E2E8F0] text-center">
-                          <button className="text-sm font-bold uppercase tracking-widest underline opacity-60 hover:opacity-100 transition-opacity cursor-pointer" style={{ color: "#334155" }}>
-                            Archive History
-                          </button>
-                        </div>
-                      </>
-                    )}
-
-                    {messageSubTab === "sent" && (
-                      <>
-                        {isLoadingSent ? (
-                          <div className="flex flex-col items-center justify-center py-20">
-                            <div className="w-10 h-10 border-4 border-[#E2E8F0] border-t-[#F7B980] rounded-full animate-spin mb-4" />
-                            <p className="text-[#64748B] font-bold text-sm">Auditing outbound transit...</p>
-                          </div>
-                        ) : sentMessages.length > 0 ? (
-                          sentMessages.map((msg: DirectMessage) => (
-                            <div 
-                              key={msg.id}
-                              className="p-6 rounded-[24px] border border-[#E2E8F0] transition-all hover:bg-white flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4"
-                              style={{ background: "rgba(255, 255, 255, 0.4)" }}
-                            >
-                               <div className="flex gap-4 items-center">
-                                  <div className="w-12 h-12 rounded-2xl bg-[#334155]/5 flex items-center justify-center font-black text-[#334155] text-lg">
-                                    {msg.receiver.name.charAt(0)}
-                                  </div>
-                                  <div>
-                                    <h4 className="font-bold text-base" style={{ color: "#334155" }}>{msg.receiver.name}</h4>
-                                    <p className="text-sm italic opacity-60" style={{ color: "#64748B" }}>{msg.subject || "Direct Inquiry"}</p>
-                                  </div>
-                               </div>
-                               <p className="text-[10px] font-black uppercase tracking-widest opacity-40">
-                                 {msg.createdAt ? new Date(msg.createdAt).toLocaleDateString() : "Present"}
-                               </p>
-                            </div>
-                          ))
-                        ) : (
-                          <div className="text-center py-20 bg-[#F9F9F9]/50 rounded-[32px] border-2 border-dashed" style={{ borderColor: "#E0E4E3" }}>
-                            <p className="text-xl font-bold mb-2" style={{ color: "#334155" }}>No sent transmissions</p>
-                            <p className="font-medium" style={{ color: "#64748B" }}>You haven&apos;t initiated any direct contact yet.</p>
-                          </div>
-                        )}
-                      </>
-                    )}
-
-                    {messageSubTab === "compose" && (
-                      <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                            <div className="space-y-4">
-                               <label className="text-[10px] font-black uppercase tracking-[0.2em] ml-2" style={{ color: "#64748B" }}>Target Headquarters</label>
-                               <select 
-                                 value={selectedRecipientId}
-                                 onChange={(e) => setSelectedRecipientId(e.target.value)}
-                                 className="w-full px-8 py-5 bg-white border-2 rounded-[28px] outline-none transition-all font-bold text-base focus:border-[#F7B980] shadow-sm appearance-none cursor-pointer"
-                                 style={{ borderColor: "#E2E8F0", color: "#334155" }}
-                               >
-                                 <option value="">Select a Company...</option>
-                                 {employers.map((emp: Employer) => (
-                                   <option key={emp.id} value={emp.id}>{emp.name}</option>
-                                 ))}
-                               </select>
-                            </div>
-                            <div className="space-y-4">
-                               <label className="text-[10px] font-black uppercase tracking-[0.2em] ml-2" style={{ color: "#64748B" }}>Communication Pitch</label>
-                               <input 
-                                 type="text"
-                                 value={composeSubject}
-                                 onChange={(e) => setComposeSubject(e.target.value)}
-                                 placeholder="Subject (Optional)"
-                                 className="w-full px-8 py-5 bg-white border-2 rounded-[28px] outline-none transition-all font-bold text-base focus:border-[#F7B980] shadow-sm"
-                                 style={{ borderColor: "#E2E8F0", color: "#334155" }}
-                               />
-                            </div>
-                         </div>
-                         <div className="space-y-4">
-                            <label className="text-[10px] font-black uppercase tracking-[0.2em] ml-2" style={{ color: "#64748B" }}>Transmission Body</label>
-                            <textarea 
-                              value={composeBody}
-                              onChange={(e) => setComposeBody(e.target.value)}
-                              placeholder="Write your professional inquiries, follow-ups or proposals here..."
-                              className="w-full px-8 py-8 bg-white border-2 rounded-[40px] outline-none transition-all font-medium text-lg leading-relaxed focus:border-[#F7B980] shadow-inner min-h-[280px] resize-none"
-                              style={{ borderColor: "#E2E8F0", color: "#334155" }}
-                            />
-                         </div>
-                         <div className="flex justify-center md:justify-end pt-4">
-                            <Button 
-                              onClick={handleSendCompose}
-                              disabled={!selectedRecipientId || !composeBody.trim() || isSendingDirect}
-                              className="px-16 py-5 rounded-[28px]"
-                              size="lg"
-                            >
-                               {isSendingDirect ? "Transmitting..." : "Initiate Protocol"}
-                            </Button>
-                         </div>
-                      </div>
-                    )}
+                  <div className="flex items-center gap-1 bg-slate-100 rounded-xl p-1">
+                    {(["inbox", "sent", "compose"] as const).map((sub) => (
+                      <button
+                        key={sub}
+                        onClick={() => setMessageSubTab(sub)}
+                        className={`px-4 py-1.5 rounded-lg text-xs font-semibold capitalize transition-all cursor-pointer ${
+                          messageSubTab === sub
+                            ? "bg-white text-slate-800 shadow-sm"
+                            : "text-slate-500 hover:text-slate-700"
+                        }`}
+                      >
+                        {sub}
+                      </button>
+                    ))}
                   </div>
                 </div>
+
+                {/* Inbox */}
+                {messageSubTab === "inbox" && (
+                  <div className="space-y-3">
+                    {isLoadingMessages ? (
+                      <div className="flex flex-col items-center justify-center py-20">
+                        <div className="w-8 h-8 border-4 border-[#E2E8F0] border-t-[#F7B980] rounded-full animate-spin mb-3" />
+                        <p className="text-slate-400 text-sm">Loading messages…</p>
+                      </div>
+                    ) : messages.length > 0 ? (
+                      messages.map((msg) => (
+                        <div
+                          key={msg.id}
+                          onClick={() => {
+                            setSelectedMessage(msg);
+                            setMessages(prev => prev.map(m => m.id === msg.id ? { ...m, unread: false } : m));
+                          }}
+                          className={`group flex items-center gap-4 rounded-2xl px-5 py-4 border transition-all duration-200 cursor-pointer hover:shadow-md ${
+                            msg.unread
+                              ? "bg-white border-[#F7B980]/40 hover:border-[#F7B980]/60"
+                              : "bg-white border-[gainsboro] hover:border-slate-300"
+                          }`}
+                        >
+                          <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-500 font-semibold text-sm shrink-0">
+                            {msg.company.charAt(0).toUpperCase()}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <h4 className="text-sm font-semibold text-slate-800 truncate group-hover:text-[#F7B980] transition-colors">
+                                {msg.company}
+                              </h4>
+                              {msg.unread && <span className="w-2 h-2 rounded-full bg-[#F7B980] shrink-0" />}
+                              {msg.replied && (
+                                <span className="px-2 py-0.5 rounded-lg text-[11px] font-medium bg-emerald-50 text-emerald-600 border border-emerald-100 shrink-0">
+                                  Replied
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-xs text-slate-400 mt-0.5 truncate">{msg.subject}</p>
+                          </div>
+                          <div className="flex items-center gap-3 shrink-0">
+                            <span className="text-[11px] text-slate-400">{msg.time}</span>
+                            <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-slate-500 group-hover:translate-x-0.5 transition-all" />
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="text-center py-20 rounded-2xl border border-dashed border-[gainsboro] bg-slate-50/50">
+                        <Mail className="w-8 h-8 text-slate-300 mx-auto mb-3" />
+                        <p className="text-sm font-semibold text-slate-600 mb-1">No messages yet</p>
+                        <p className="text-xs text-slate-400">Employer inquiries will appear here.</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Sent */}
+                {messageSubTab === "sent" && (
+                  <div className="space-y-3">
+                    {isLoadingSent ? (
+                      <div className="flex flex-col items-center justify-center py-20">
+                        <div className="w-8 h-8 border-4 border-[#E2E8F0] border-t-[#F7B980] rounded-full animate-spin mb-3" />
+                        <p className="text-slate-400 text-sm">Loading sent messages…</p>
+                      </div>
+                    ) : sentMessages.length > 0 ? (
+                      sentMessages.map((msg: DirectMessage) => (
+                        <div
+                          key={msg.id}
+                          className="flex items-center gap-4 bg-white border border-[gainsboro] rounded-2xl px-5 py-4 hover:border-slate-300 hover:shadow-md transition-all duration-200"
+                        >
+                          <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-500 font-semibold text-sm shrink-0">
+                            {msg.receiver.name.charAt(0).toUpperCase()}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <h4 className="text-sm font-semibold text-slate-800 truncate">{msg.receiver.name}</h4>
+                            <p className="text-xs text-slate-400 mt-0.5 truncate">{msg.subject || "No subject"}</p>
+                          </div>
+                          <span className="text-[11px] text-slate-400 shrink-0">
+                            {msg.createdAt ? new Date(msg.createdAt).toLocaleDateString() : "—"}
+                          </span>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="text-center py-20 rounded-2xl border border-dashed border-[gainsboro] bg-slate-50/50">
+                        <Mail className="w-8 h-8 text-slate-300 mx-auto mb-3" />
+                        <p className="text-sm font-semibold text-slate-600 mb-1">No sent messages</p>
+                        <p className="text-xs text-slate-400">Messages you send will appear here.</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Compose */}
+                {messageSubTab === "compose" && (
+                  <div className="space-y-5">
+                    {/* Employer filter row */}
+                    <div className="flex flex-col sm:flex-row gap-3">
+                      <div className="relative flex-1">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                        <input
+                          type="text"
+                          value={employerSearchQuery}
+                          onChange={(e) => setEmployerSearchQuery(e.target.value)}
+                          placeholder="Search companies…"
+                          className="w-full pl-10 pr-4 py-2.5 bg-white border border-[gainsboro] rounded-xl outline-none text-sm text-slate-700 placeholder-slate-400 focus:ring-2 focus:ring-slate-200 transition-all"
+                        />
+                      </div>
+                      <div className="relative sm:w-44">
+                        <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                        <input
+                          type="text"
+                          value={employerFilterCountry}
+                          onChange={(e) => setEmployerFilterCountry(e.target.value)}
+                          placeholder="Country…"
+                          className="w-full pl-10 pr-4 py-2.5 bg-white border border-[gainsboro] rounded-xl outline-none text-sm text-slate-700 placeholder-slate-400 focus:ring-2 focus:ring-slate-200 transition-all"
+                        />
+                      </div>
+                      <select
+                        value={employerFilterType}
+                        onChange={(e) => setEmployerFilterType(e.target.value)}
+                        className="sm:w-44 px-3 py-2.5 bg-white border border-[gainsboro] rounded-xl outline-none text-sm text-slate-700 focus:ring-2 focus:ring-slate-200 transition-all cursor-pointer"
+                      >
+                        <option value="">All industries</option>
+                        <option value="Software & SaaS">Software & SaaS</option>
+                        <option value="Fintech">Fintech</option>
+                        <option value="Healthcare">Healthcare</option>
+                        <option value="AI & Machine Learning">AI & ML</option>
+                        <option value="E-commerce">E-commerce</option>
+                        <option value="Cybersecurity">Cybersecurity</option>
+                      </select>
+                      {(employerSearchQuery || employerFilterCountry || employerFilterType) && (
+                        <button
+                          onClick={() => { setEmployerSearchQuery(""); setEmployerFilterCountry(""); setEmployerFilterType(""); }}
+                          className="px-3 py-2.5 text-xs font-medium text-slate-500 hover:text-slate-800 border border-[gainsboro] rounded-xl bg-white transition-all cursor-pointer shrink-0"
+                        >
+                          Clear
+                        </button>
+                      )}
+                    </div>
+
+                    {/* To + Subject row */}
+                    <div className="flex flex-col sm:flex-row gap-3">
+                      <div className="flex-1">
+                        <label className="text-xs font-medium text-slate-500 mb-1.5 block">To</label>
+                        <select
+                          value={selectedRecipientId}
+                          onChange={(e) => setSelectedRecipientId(e.target.value)}
+                          className="w-full px-3 py-2.5 bg-white border border-[gainsboro] rounded-xl outline-none text-sm text-slate-700 focus:ring-2 focus:ring-slate-200 transition-all cursor-pointer"
+                        >
+                          <option value="">{filteredEmployers.length > 0 ? "Select a company…" : "No matches found"}</option>
+                          {filteredEmployers.map((emp: Employer) => (
+                            <option key={emp.id} value={emp.id}>
+                              {emp.name}{emp.country ? ` · ${emp.country}` : ""}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="flex-1">
+                        <label className="text-xs font-medium text-slate-500 mb-1.5 block">Subject <span className="text-slate-400">(optional)</span></label>
+                        <input
+                          type="text"
+                          value={composeSubject}
+                          onChange={(e) => setComposeSubject(e.target.value)}
+                          placeholder="e.g. Inquiry about open roles"
+                          className="w-full px-3 py-2.5 bg-white border border-[gainsboro] rounded-xl outline-none text-sm text-slate-700 placeholder-slate-400 focus:ring-2 focus:ring-slate-200 transition-all"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Message body */}
+                    <div>
+                      <label className="text-xs font-medium text-slate-500 mb-1.5 block">Message</label>
+                      <textarea
+                        value={composeBody}
+                        onChange={(e) => setComposeBody(e.target.value)}
+                        placeholder="Write your message here…"
+                        className="w-full px-4 py-3 bg-white border border-[gainsboro] rounded-xl outline-none text-sm text-slate-700 placeholder-slate-400 focus:ring-2 focus:ring-slate-200 transition-all min-h-[180px] resize-none leading-relaxed"
+                      />
+                    </div>
+
+                    <div className="flex justify-end">
+                      <button
+                        onClick={handleSendCompose}
+                        disabled={!selectedRecipientId || !composeBody.trim() || isSendingDirect}
+                        className="px-6 py-2.5 bg-slate-800 hover:bg-slate-900 text-white text-xs font-semibold rounded-xl transition-all active:scale-95 disabled:opacity-40 cursor-pointer flex items-center gap-2"
+                      >
+                        <Mail className="w-3.5 h-3.5" />
+                        {isSendingDirect ? "Sending…" : "Send Message"}
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
             
             {activeTab === "profile" && (
-              <div className="space-y-8">
-                {/* Video CV Section */}
-                <div 
-                  className="border border-white md:rounded-[40px] rounded-[32px] p-4 md:p-8 lg:p-12 shadow-2xl relative overflow-hidden"
-                  style={{ 
-                    background: "rgba(255, 255, 255, 0.7)", 
-                    backdropFilter: "blur(24px)",
-                    boxShadow: "0 24px 64px rgba(87,89,91,0.06)"
-                  }}
-                >
-                  <div className="flex flex-col md:flex-row justify-between items-start md:items-center pb-6 md:pb-10 mb-6 md:mb-10 border-b border-[#E2E8F0] px-1 md:px-0">
-                    <div className="mb-6 md:mb-0">
-                      <h3 className="text-3xl font-bold mb-3 flex items-center gap-4" style={{ color: "#334155" }}>
-                        <div className="p-2.5 rounded-2xl bg-[#F7B980]/10">
-                          <Video className="w-7 h-7 text-[#F7B980]" />
-                        </div>
-                        Video Portfolio
+              <div className="space-y-6">
+
+                {/* VidioCV Section */}
+                <div className="bg-white border border-[gainsboro] rounded-2xl p-6">
+                  <div className="flex items-center justify-between mb-5">
+                    <div>
+                      <h3 className="text-sm font-semibold text-slate-800 flex items-center gap-2">
+                        <Video className="w-4 h-4 text-[#F7B980]" />
+                        VidioCV
                       </h3>
-                      <p className="max-w-xl text-base font-medium" style={{ color: "#64748B" }}>
-                        Record or upload a high-fidelity introduction. Your Video CV is your competitive edge, showcasing your personality directly to global hiring teams.
-                      </p>
+                      <p className="text-xs text-slate-400 mt-0.5">Your 60-second video introduction shown to employers.</p>
                     </div>
-                    <Button
+                    <button
                       onClick={() => setShowVideoCreator(!showVideoCreator)}
-                      variant={showVideoCreator ? "outline" : "primary"}
-                      size="lg"
+                      className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${showVideoCreator ? "border border-[gainsboro] text-slate-600 hover:bg-slate-50" : "bg-[#F7B980] hover:bg-[#F0A060] text-black"}`}
                     >
-                      {showVideoCreator ? "Close Studio" : "Open Video Studio"}
-                    </Button>
+                      {showVideoCreator ? "Close Studio" : "Open Studio"}
+                    </button>
                   </div>
 
                   {showVideoCreator ? (
-                    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="pt-4">
-                      <div className="bg-[#F9F9F9] rounded-[32px] p-6 md:p-10 border border-[#E0E4E3]">
-                        <VideoCreator 
-                           initialVideoUrl={activeVideoUrl || undefined}
-                           onVideoUpload={async (file, url, streamingUrl) => {
-                             console.log("Uploaded:", file.name);
-                             const finalUrl = streamingUrl || url;
-                             if (finalUrl) {
-                               setActiveVideoUrl(finalUrl);
-                               // Call the save API to persist the video to the profile
-                               try {
-                                 const response = await fetch("/api/profile/video/save", {
-                                   method: "POST",
-                                   headers: {
-                                     "Content-Type": "application/json",
-                                     "Authorization": `Bearer ${localStorage.getItem("token")}`
-                                   },
-                                   body: JSON.stringify({ videoUrl: url, streamingUrl })
-                                 });
-                                 if (!response.ok) {
-                                   console.error("Failed to save video to profile database");
-                                 }
-                               } catch (err) {
-                                 console.error("Persistence error:", err);
-                               }
-                             }
-                             setShowVideoCreator(false);
-                           }} 
-                           onVideoDelete={() => setActiveVideoUrl(null)}
+                    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+                      <div className="bg-slate-50 rounded-xl p-4 border border-[gainsboro]">
+                        <VideoCreator
+                          initialVideoUrl={activeVideoUrl || undefined}
+                          onVideoUpload={async (_file, url, streamingUrl) => {
+                            const finalUrl = streamingUrl || url;
+                            if (finalUrl) {
+                              setActiveVideoUrl(finalUrl);
+                              try {
+                                const response = await fetch("/api/profile/video/save", {
+                                  method: "POST",
+                                  headers: {
+                                    "Content-Type": "application/json",
+                                    "Authorization": `Bearer ${localStorage.getItem("token")}`
+                                  },
+                                  body: JSON.stringify({ videoUrl: url, streamingUrl })
+                                });
+                                if (!response.ok) console.error("Failed to save video to profile database");
+                              } catch (err) {
+                                console.error("Persistence error:", err);
+                              }
+                            }
+                            setShowVideoCreator(false);
+                          }}
+                          onVideoDelete={() => setActiveVideoUrl(null)}
                         />
                       </div>
                     </motion.div>
                   ) : activeVideoUrl ? (
-                    <div className="w-full aspect-video bg-[#334155] rounded-[24px] md:rounded-[32px] border-2 md:border-4 border-white overflow-hidden relative shadow-2xl group">
-                        <LiveKitPlayer 
-                          src={activeVideoUrl}
-                          candidateName="Candidate"
-                        />
-                        <div className="absolute inset-0 bg-gradient-to-t from-[#334155]/40 to-transparent pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity" />
-                        <button 
-                          onClick={() => {
-                            setModalConfig({
-                              isOpen: true,
-                              title: "Delete Portfolio Video?",
-                              message: "This will permanently remove your active Video CV from your profile. Are you sure?",
-                              type: "confirm",
-                              onConfirm: async () => {
-                                try {
-                                  const response = await fetch("/api/profile/video/delete", { 
-                                    method: "DELETE",
-                                    headers: { "Authorization": `Bearer ${localStorage.getItem("token")}` }
-                                  });
-                                  if (response.ok) {
-                                    setActiveVideoUrl(null);
-                                    setModalConfig({ isOpen: true, title: "Success", message: "Video deleted.", type: "success" });
-                                  } else {
-                                    setModalConfig({ isOpen: true, title: "Failed", message: "Failed to delete video.", type: "error" });
-                                  }
-                                } catch (error) {
-                                  console.error("Deletion error:", error);
+                    <div className="relative w-full aspect-video rounded-xl overflow-hidden bg-slate-900 group">
+                      <LiveKitPlayer src={activeVideoUrl} candidateName="Candidate" />
+                      <button
+                        onClick={() => {
+                          setModalConfig({
+                            isOpen: true,
+                            title: "Delete VidioCV?",
+                            message: "This will permanently remove your active Video CV from your profile. Are you sure?",
+                            type: "confirm",
+                            onConfirm: async () => {
+                              try {
+                                const response = await fetch("/api/profile/video/delete", {
+                                  method: "DELETE",
+                                  headers: { "Authorization": `Bearer ${localStorage.getItem("token")}` }
+                                });
+                                if (response.ok) {
+                                  setActiveVideoUrl(null);
+                                  setModalConfig({ isOpen: true, title: "Success", message: "Video deleted.", type: "success" });
+                                } else {
+                                  setModalConfig({ isOpen: true, title: "Failed", message: "Failed to delete video.", type: "error" });
                                 }
+                              } catch (error) {
+                                console.error("Deletion error:", error);
                               }
-                            });
-                          }}
-                          className="absolute md:top-6 md:right-6 top-3 right-3 bg-red-500/90 hover:bg-red-600 text-white p-2 md:p-3.5 rounded-xl md:rounded-2xl backdrop-blur-md transition-all cursor-pointer shadow-xl md:opacity-0 md:group-hover:opacity-100 opacity-100 scale-90 md:group-hover:scale-100"
-                        >
-                          <Trash2 className="w-4 h-4 md:w-6 md:h-6" />
-                        </button>
+                            }
+                          });
+                        }}
+                        className="absolute top-3 right-3 bg-red-500/90 hover:bg-red-600 text-white p-2 rounded-lg transition-all cursor-pointer opacity-0 group-hover:opacity-100"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
                     </div>
                   ) : (
-                    <div 
-                      className="w-full aspect-video md:aspect-[21/9] rounded-[24px] md:rounded-[32px] border-2 border-dashed flex flex-col items-center justify-center text-center p-6 md:p-12 group transition-all cursor-pointer" 
-                      style={{ background: "#F9F9F9", borderColor: "#E0E4E3" }}
+                    <div
                       onClick={() => setShowVideoCreator(true)}
+                      className="w-full aspect-video rounded-xl border border-dashed border-[gainsboro] bg-slate-50 flex flex-col items-center justify-center gap-3 cursor-pointer hover:bg-slate-100 transition-all group"
                     >
-                      <div className="w-24 h-24 rounded-full bg-white flex items-center justify-center mb-8 shadow-2xl group-hover:scale-110 transition-transform cursor-pointer border border-[#E0E4E3]">
-                        <PlayIcon className="w-10 h-10 translate-x-1" style={{ color: "#F7B980" }} />
+                      <div className="w-12 h-12 rounded-xl bg-white border border-[gainsboro] flex items-center justify-center group-hover:scale-105 transition-transform">
+                        <Video className="w-5 h-5 text-slate-400" />
                       </div>
-                      <h4 className="text-2xl font-bold mb-3" style={{ color: "#334155" }}>Bring your profile to life</h4>
-                      <p className="max-w-md font-medium" style={{ color: "#64748B" }}>You haven&apos;t added a Video CV yet. Launch the studio to record your 60-second elevator pitch.</p>
-                      <button 
-                        className="mt-8 px-8 py-3 rounded-full font-bold text-sm transition-all shadow-lg hover:shadow-xl active:scale-95 cursor-pointer"
-                        style={{ background: "#334155", color: "white" }}
-                      >
-                        Launch Studio
-                      </button>
+                      <div className="text-center">
+                        <p className="text-sm font-semibold text-slate-600">No VidioCV yet</p>
+                        <p className="text-xs text-slate-400 mt-0.5">Click to open the studio and record your introduction</p>
+                      </div>
                     </div>
                   )}
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                  {/* Skills Section */}
-                  <div 
-                    className="border border-white rounded-[40px] p-8 lg:p-10 shadow-xl"
-                    style={{ 
-                      background: "rgba(255, 255, 255, 0.7)", 
-                      backdropFilter: "blur(24px)",
-                      boxShadow: "0 24px 64px rgba(87,89,91,0.06)"
-                    }}
-                  >
-                    <h4 className="text-xl font-bold mb-8 flex items-center gap-3" style={{ color: "#334155" }}>
-                      Professional Skills
-                    </h4>
-                    
-                    <div className="flex gap-3 mb-8">
-                      <input 
-                        type="text" 
+                {/* Skills + Experience side by side */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+                  {/* Skills */}
+                  <div className="bg-white border border-[gainsboro] rounded-2xl p-6 flex flex-col gap-5">
+                    <div>
+                      <h4 className="text-sm font-semibold text-slate-800">Skills</h4>
+                      <p className="text-xs text-slate-400 mt-0.5">Press Enter or click + to add</p>
+                    </div>
+
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
                         value={newSkill}
                         onChange={(e) => setNewSkill(e.target.value)}
                         onKeyDown={handleAddSkill}
-                        placeholder="Expertise (e.g. Next.js)..." 
-                        className="flex-1 px-5 py-3 bg-white border rounded-2xl outline-none transition-all text-sm font-medium"
-                        style={{ borderColor: "#E0E4E3", color: "#334155" }}
+                        placeholder="e.g. Next.js"
+                        className="flex-1 px-3 py-2.5 bg-white border border-[gainsboro] rounded-xl outline-none text-sm text-slate-700 placeholder-slate-400 focus:ring-2 focus:ring-slate-200 transition-all"
                       />
-                      <button 
+                      <button
                         onClick={handleAddSkill}
                         disabled={!newSkill.trim()}
-                        className="p-3 rounded-2xl transition-all shadow-md active:scale-95 disabled:opacity-50 disabled:scale-100 cursor-pointer"
-                        style={{ background: "#334155", color: "white" }}
+                        className="px-3 py-2.5 bg-slate-800 hover:bg-slate-900 text-white rounded-xl transition-all active:scale-95 disabled:opacity-40 cursor-pointer"
                       >
-                        <Plus className="w-5 h-5" />
+                        <Plus className="w-4 h-4" />
                       </button>
                     </div>
 
-                    <div className="flex flex-wrap gap-2.5">
+                    <div className="flex flex-wrap gap-2">
                       <AnimatePresence>
                         {skills.map((skill) => (
-                          <motion.span 
+                          <motion.span
                             key={skill}
                             initial={{ opacity: 0, scale: 0.9 }}
                             animate={{ opacity: 1, scale: 1 }}
                             exit={{ opacity: 0, scale: 0.9 }}
-                            className="group flex items-center gap-2 pl-4 pr-3 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all border group"
-                            style={{ 
-                              background: "#FFFFFF", 
-                              borderColor: "#E0E4E3", 
-                              color: "#8A8C8E" 
-                            }}
+                            className="flex items-center gap-1.5 pl-3 pr-2 py-1.5 bg-slate-50 border border-[gainsboro] rounded-lg text-xs font-medium text-slate-600"
                           >
                             {skill}
-                            <button 
+                            <button
                               onClick={() => handleRemoveSkill(skill)}
-                              className="p-1 hover:bg-[#E2E8F0] rounded-lg text-[#64748B] hover:text-[#EF4444] transition-colors cursor-pointer"
+                              className="text-slate-400 hover:text-red-500 transition-colors cursor-pointer"
                             >
-                              <X className="w-3.5 h-3.5" />
+                              <X className="w-3 h-3" />
                             </button>
                           </motion.span>
                         ))}
                       </AnimatePresence>
                       {skills.length === 0 && (
-                        <span className="text-sm font-medium italic" style={{ color: "#64748B" }}>Define your stack...</span>
+                        <p className="text-xs text-slate-400 italic">No skills added yet</p>
                       )}
                     </div>
                   </div>
 
-                  {/* Experience Section */}
-                  <div 
-                    className="border border-white rounded-[40px] p-8 lg:p-10 shadow-xl"
-                    style={{ 
-                      background: "rgba(255, 255, 255, 0.7)", 
-                      backdropFilter: "blur(24px)",
-                      boxShadow: "0 24px 64px rgba(87,89,91,0.06)"
-                    }}
-                  >
-                    <h4 className="text-xl font-bold mb-8 flex items-center gap-3" style={{ color: "#334155" }}>
-                      Work Experience
-                    </h4>
-                    
-                    {/* Add Experience Form */}
-                    <div className="p-6 rounded-[24px] border border-dashed mb-10 space-y-4" style={{ background: "rgba(242, 244, 244, 0.4)", borderColor: "#E0E4E3" }}>
-                      <p className="text-xs font-bold uppercase tracking-widest mb-4" style={{ color: "#64748B" }}>Add New Milestone</p>
-                      <input 
-                        type="text" 
+                  {/* Experience */}
+                  <div className="bg-white border border-[gainsboro] rounded-2xl p-6 flex flex-col gap-5">
+                    <div>
+                      <h4 className="text-sm font-semibold text-slate-800">Work Experience</h4>
+                      <p className="text-xs text-slate-400 mt-0.5">Add roles to your professional timeline</p>
+                    </div>
+
+                    {/* Add form */}
+                    <div className="space-y-2">
+                      <input
+                        type="text"
                         value={newExperience.role}
                         onChange={(e) => setNewExperience({...newExperience, role: e.target.value})}
-                        placeholder="Role / Position" 
-                        className="w-full px-5 py-3 bg-white border rounded-2xl outline-none transition-all text-sm font-medium mb-2"
-                        style={{ borderColor: "#E0E4E3", color: "#334155" }}
+                        placeholder="Role / Position"
+                        className="w-full px-3 py-2.5 bg-white border border-[gainsboro] rounded-xl outline-none text-sm text-slate-700 placeholder-slate-400 focus:ring-2 focus:ring-slate-200 transition-all"
                       />
-                      <div className="flex flex-col md:flex-row gap-3">
-                        <input 
-                          type="text" 
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
                           value={newExperience.company}
                           onChange={(e) => setNewExperience({...newExperience, company: e.target.value})}
-                          placeholder="Company" 
-                          className="flex-1 px-5 py-3 bg-white border rounded-2xl outline-none transition-all text-sm font-medium"
-                          style={{ borderColor: "#E0E4E3", color: "#334155" }}
+                          placeholder="Company"
+                          className="flex-1 px-3 py-2.5 bg-white border border-[gainsboro] rounded-xl outline-none text-sm text-slate-700 placeholder-slate-400 focus:ring-2 focus:ring-slate-200 transition-all"
                         />
-                        <input 
-                          type="text" 
+                        <input
+                          type="text"
                           value={newExperience.duration}
                           onChange={(e) => setNewExperience({...newExperience, duration: e.target.value})}
-                          placeholder="Duration" 
-                          className="flex-1 px-5 py-3 bg-white border rounded-2xl outline-none transition-all text-sm font-medium"
-                          style={{ borderColor: "#E0E4E3", color: "#334155" }}
+                          placeholder="Duration"
+                          className="flex-1 px-3 py-2.5 bg-white border border-[gainsboro] rounded-xl outline-none text-sm text-slate-700 placeholder-slate-400 focus:ring-2 focus:ring-slate-200 transition-all"
                         />
                       </div>
-                      <button 
+                      <button
                         onClick={handleAddExperience}
                         disabled={!newExperience.role.trim() || !newExperience.company.trim()}
-                        className="w-full py-3.5 rounded-2xl font-bold text-xs uppercase tracking-[0.2em] shadow-lg transition-all hover:shadow-xl active:scale-95 disabled:opacity-50 mt-2 cursor-pointer"
-                        style={{ background: "#334155", color: "white" }}
+                        className="w-full py-2.5 rounded-xl text-xs font-semibold bg-slate-800 hover:bg-slate-900 text-white transition-all active:scale-95 disabled:opacity-40 cursor-pointer"
                       >
                         Add to Profile
                       </button>
                     </div>
 
-                    <div className="space-y-8">
+                    {/* Experience list */}
+                    <div className="space-y-3">
                       <AnimatePresence>
                         {experiences.map((exp) => (
-                          <motion.div 
+                          <motion.div
                             key={exp.id}
-                            initial={{ opacity: 0, x: -10 }}
+                            initial={{ opacity: 0, x: -8 }}
                             animate={{ opacity: 1, x: 0 }}
                             exit={{ opacity: 0, height: 0 }}
-                            className="flex gap-5 group relative"
+                            className="flex items-center gap-3 group"
                           >
-                            <div 
-                              className="w-14 h-14 rounded-[20px] flex items-center justify-center font-bold text-lg shrink-0 shadow-lg"
-                              style={{ 
-                                background: "linear-gradient(135deg, #F9F9F9, #E2E8F0)", 
-                                border: "1px solid #E0E4E3",
-                                color: "#F7B980" 
-                              }}
-                            >
-                              {exp.company.substring(0, 1).toUpperCase()}
+                            <div className="w-9 h-9 rounded-lg bg-slate-100 flex items-center justify-center text-slate-500 font-semibold text-sm shrink-0">
+                              {exp.company.charAt(0).toUpperCase()}
                             </div>
-                            <div className="flex-1 pr-10">
-                              <p className="font-bold text-lg leading-tight mb-1" style={{ color: "#334155" }}>{exp.role}</p>
-                              <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 mb-2">
-                                <span className="font-bold text-xs uppercase tracking-wider" style={{ color: "#F7B980" }}>{exp.company}</span>
-                                <span className="hidden sm:block w-1 h-1 rounded-full bg-[#E0E4E3]" />
-                                <span className="text-xs font-semibold" style={{ color: "#64748B" }}>{exp.duration}</span>
-                              </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-semibold text-slate-800 truncate leading-tight">{exp.role}</p>
+                              <p className="text-xs text-slate-400 truncate">
+                                {exp.company}{exp.duration ? ` · ${exp.duration}` : ""}
+                              </p>
                             </div>
-                            <button 
+                            <button
                               onClick={() => handleRemoveExperience(exp.id)}
-                              className="absolute top-0 right-0 md:opacity-0 md:group-hover:opacity-100 p-2 text-[#64748B] hover:text-[#EF4444] transition-all cursor-pointer opacity-100"
+                              className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-red-500 transition-all cursor-pointer p-1"
                             >
-                              <Trash2 className="w-5 h-5" />
+                              <Trash2 className="w-4 h-4" />
                             </button>
                           </motion.div>
                         ))}
                       </AnimatePresence>
+                      {experiences.length === 0 && (
+                        <p className="text-xs text-slate-400 italic">No experience added yet</p>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -1429,318 +1378,321 @@ export default function CandidateDashboard() {
                     boxShadow: "0 32px 80px rgba(87,89,91,0.07)"
                   }}
                 >
-                  <div className="mb-10 md:mb-12">
-                    <h3 className="text-3xl md:text-4xl font-extrabold mb-3 tracking-tight" style={{ color: "#334155" }}>Global Job Search</h3>
-                    <p className="font-bold text-base md:text-lg leading-relaxed opacity-70" style={{ color: "#64748B" }}>Find your dream role and instantly apply using your verified Video Portfolio.</p>
+                  {/* Header */}
+                  <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8">
+                    <div>
+                      <h3 className="text-2xl font-bold tracking-tight text-slate-800">Global Job Search</h3>
+                      <p className="text-sm text-slate-400 mt-1">Find your next role and apply instantly with your verified VidioCV.</p>
+                    </div>
+                    {!isLoadingJobs && (
+                      <p className="text-xs font-semibold text-slate-400 shrink-0">
+                        {filteredJobs.length} opportunit{filteredJobs.length !== 1 ? "ies" : "y"} found
+                      </p>
+                    )}
                   </div>
-                  
-                  {/* Search and Filters */}
-                  <div className="flex flex-col lg:flex-row items-stretch lg:items-center gap-6 mb-12">
-                    <div className="flex-1 relative group transition-all duration-300">
-                      <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none transition-colors group-focus-within:text-[#F7B980]" style={{ color: "#64748B" }}>
-                        <Search className="h-5 w-5" />
-                      </div>
+
+                  {/* Search + Filter row */}
+                  <div className="flex flex-col sm:flex-row gap-3 mb-8">
+                    <div className="relative flex-1">
+                      <Search className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
                       <input
                         type="text"
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        placeholder="Search roles or companies..."
-                        className="w-full pl-12 pr-6 py-4 md:py-5 bg-white border-2 rounded-[24px] outline-none transition-all font-bold placeholder:text-[#94A3B8] focus:border-[#F7B980]/60 shadow-sm"
-                        style={{ borderColor: "#E0E4E3", color: "#334155" }}
+                        placeholder="Search roles or companies…"
+                        className="w-full pl-11 pr-4 py-3 bg-white border border-[gainsboro] rounded-2xl text-sm text-slate-700 placeholder-slate-400 outline-none focus:ring-2 focus:ring-[#F7B980]/30 focus:border-[#F7B980]/60 transition-all"
                       />
                     </div>
-                    
-                    <div className="flex-1 relative z-20">
+                    <div className="relative sm:w-56 z-20">
                       <Select
                         options={countryOptions}
                         onChange={(newValue) => setSelectedCountry(newValue as SingleValue<{ value: string; label: string }>)}
                         value={selectedCountry}
                         isClearable
-                        placeholder="Filter by Location..."
-                        className="react-select-container text-left font-bold"
+                        placeholder="Location…"
+                        className="react-select-container text-left"
                         classNamePrefix="react-select"
                         components={{ Option: CustomOption, SingleValue: CustomSingleValue }}
                         styles={{
                           control: (base, state) => ({
                             ...base,
-                            minHeight: "56px",
-                            paddingLeft: "8px",
+                            minHeight: "46px",
+                            height: "46px",
+                            paddingLeft: "6px",
                             backgroundColor: "#FFFFFF",
-                            borderColor: state.isFocused ? "#F7B980" : "#E0E4E3",
-                            borderWidth: "2px",
-                            borderRadius: "24px",
+                            borderColor: state.isFocused ? "#F7B980" : "gainsboro",
+                            borderWidth: "1px",
+                            borderRadius: "16px",
                             boxShadow: "none",
-                            display: "flex",
-                            alignItems: "center",
-                            "&:hover": { borderColor: "#F7B980/60" }
+                            fontSize: "14px",
+                            cursor: "pointer",
+                            "&:hover": { borderColor: "#cbd5e1" }
                           }),
                           valueContainer: (base) => ({
                             ...base,
-                            padding: "2px 12px",
+                            height: "46px",
+                            padding: "0 6px",
                             display: "flex",
-                            alignItems: "center"
+                            alignItems: "center",
+                            flexWrap: "nowrap",
                           }),
                           indicatorsContainer: (base) => ({
                             ...base,
-                            height: "56px",
-                            display: "flex",
-                            alignItems: "center"
+                            height: "46px",
+                          }),
+                          indicatorSeparator: () => ({ display: "none" }),
+                          dropdownIndicator: (base) => ({
+                            ...base,
+                            color: "#94a3b8",
+                            padding: "0 8px",
+                            "&:hover": { color: "#64748b" }
+                          }),
+                          clearIndicator: (base) => ({
+                            ...base,
+                            color: "#94a3b8",
+                            padding: "0 4px",
+                            cursor: "pointer",
+                            "&:hover": { color: "#64748b" }
+                          }),
+                          placeholder: (base) => ({
+                            ...base,
+                            color: "#94a3b8",
+                            fontSize: "14px",
+                            fontWeight: 400,
+                            whiteSpace: "nowrap",
                           }),
                           menu: (base) => ({
                             ...base,
-                            backgroundColor: "rgba(255, 255, 255, 0.98)",
-                            backdropFilter: "blur(20px)",
-                            borderRadius: "24px",
-                            padding: "8px",
-                            border: "1px solid #E0E4E3",
-                            boxShadow: "0 20px 50px rgba(87,89,91,0.12)"
+                            backgroundColor: "#fff",
+                            borderRadius: "16px",
+                            padding: "4px",
+                            border: "1px solid gainsboro",
+                            boxShadow: "0 8px 24px rgba(0,0,0,0.08)",
+                            marginTop: "6px",
+                          }),
+                          menuList: (base) => ({
+                            ...base,
+                            padding: 0,
+                            maxHeight: "240px",
+                            borderRadius: "12px",
+                          }),
+                          option: (base, state) => ({
+                            ...base,
+                            backgroundColor: state.isSelected
+                              ? "#f1f5f9"
+                              : state.isFocused
+                              ? "#f8fafc"
+                              : "transparent",
+                            color: "#334155",
+                            borderRadius: "10px",
+                            cursor: "pointer",
+                            padding: 0,
                           }),
                         }}
                       />
                     </div>
-
-                    <Button 
-                      className="h-14 lg:h-auto px-10 rounded-[24px] shadow-lg shadow-[#F7B980]/10 font-black text-xs tracking-[0.2em] uppercase flex items-center justify-center gap-3"
-                      size="lg"
-                    >
-                      <Search className="w-5 h-5" />
-                      <span>Search Opportunities</span>
-                    </Button>
                   </div>
 
-            {isLoadingJobs ? (
-              <div className="flex flex-col items-center justify-center py-24 mt-10">
-                <div className="w-12 h-12 border-4 border-[#E2E8F0] border-t-[#F7B980] rounded-full animate-spin mb-6" />
-                <p className="text-[#64748B] font-bold text-sm tracking-widest uppercase">Syncing Live Opportunities...</p>
-              </div>
-            ) : filteredJobs.length > 0 ? (
-              <div className="space-y-6">
-                {filteredJobs.map((job) => (
-                  <div 
-                    key={job.id} 
-                    className="group bg-white/50 border-2 rounded-[36px] p-5 md:p-8 transition-all hover:bg-white hover:border-[#F7B980]/40 hover:shadow-2xl flex flex-col md:flex-row justify-between items-start md:items-center gap-8 relative overflow-hidden"
-                    style={{ borderColor: "rgba(224, 228, 227, 0.6)" }}
-                  >
-                    <div className="flex gap-6 items-start z-10">
-                      <div 
-                        className="w-16 h-16 rounded-[24px] flex items-center justify-center shrink-0 shadow-lg"
-                        style={{ background: "#F9F9F9", border: "1px solid #E0E4E3" }}
-                      >
-                         <Building2 className="w-8 h-8" style={{ color: "#64748B" }} />
-                      </div>
-                      <div>
-                        <h4 className="text-xl font-bold mb-1 transition-colors group-hover:text-[#F7B980]" style={{ color: "#334155" }}>{job.title}</h4>
-                        <p className="font-bold text-sm tracking-wide mb-4" style={{ color: "#64748B" }}>{job.company.toUpperCase()}</p>
-                        <div className="flex flex-wrap gap-4 text-xs font-bold uppercase tracking-wider" style={{ color: "#8A8C8E" }}>
-                          <span className="flex items-center gap-2 bg-[#E2E8F0] px-3 py-1.5 rounded-lg"><MapPin className="w-3.5 h-3.5" /> {job.location}</span>
-                          <span className="flex items-center gap-2 bg-[#E2E8F0] px-3 py-1.5 rounded-lg"><Briefcase className="w-3.5 h-3.5" /> {job.type}</span>
-                          <span className="bg-[#10B981]/10 text-[#10B981] px-3 py-1.5 rounded-lg">{job.salary}</span>
+                  {/* Job list */}
+                  {isLoadingJobs ? (
+                    <div className="flex flex-col items-center justify-center py-24">
+                      <div className="w-10 h-10 border-4 border-[#E2E8F0] border-t-[#F7B980] rounded-full animate-spin mb-4" />
+                      <p className="text-slate-400 text-sm font-medium">Loading opportunities…</p>
+                    </div>
+                  ) : filteredJobs.length > 0 ? (
+                    <div className="space-y-3">
+                      {filteredJobs.map((job) => (
+                        <div
+                          key={job.id}
+                          className="group bg-white border border-[gainsboro] rounded-2xl px-5 py-5 hover:border-slate-300 hover:shadow-md transition-all duration-200 flex flex-col sm:flex-row sm:items-center gap-5"
+                        >
+                          {/* Company initial */}
+                          <div className="w-11 h-11 rounded-xl bg-slate-100 flex items-center justify-center text-slate-500 font-bold text-base shrink-0">
+                            {job.company.charAt(0).toUpperCase()}
+                          </div>
+
+                          {/* Job info */}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex flex-wrap items-center gap-2 mb-1">
+                              <h4 className="text-sm font-semibold text-slate-800 group-hover:text-[#F7B980] transition-colors">{job.title}</h4>
+                              <span className="text-xs font-medium text-emerald-600 bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded-lg">{job.salary}</span>
+                            </div>
+                            <p className="text-xs text-slate-400 mb-2">{job.company}</p>
+                            <div className="flex flex-wrap gap-2">
+                              <span className="flex items-center gap-1 text-[11px] text-slate-500 bg-slate-50 border border-[gainsboro] px-2.5 py-1 rounded-lg">
+                                <MapPin className="w-3 h-3" /> {job.location}
+                              </span>
+                              <span className="flex items-center gap-1 text-[11px] text-slate-500 bg-slate-50 border border-[gainsboro] px-2.5 py-1 rounded-lg">
+                                <Briefcase className="w-3 h-3" /> {job.type}
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Actions */}
+                          <div className="flex items-center gap-2 shrink-0">
+                            <button
+                              onClick={() => setSelectedJob(job)}
+                              className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-all cursor-pointer"
+                            >
+                              Explore
+                            </button>
+                            <button
+                              onClick={() => handleApply(job.id)}
+                              className="px-4 py-2 rounded-xl text-xs font-semibold text-white bg-slate-800 hover:bg-slate-900 transition-all flex items-center gap-1.5 active:scale-95 cursor-pointer"
+                            >
+                              <Video className="w-3.5 h-3.5" />
+                              Submit VidioCV
+                            </button>
+                          </div>
                         </div>
-                      </div>
+                      ))}
                     </div>
-                    <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto z-10">
-                      <button 
-                        onClick={() => setSelectedJob(job)} 
-                        className="px-6 py-3 rounded-2xl font-bold text-xs uppercase tracking-widest transition-all hover:bg-[#E2E8F0] cursor-pointer"
-                        style={{ background: "transparent", color: "#334155", border: "1px solid #E0E4E3" }}
+                  ) : (
+                    <div className="text-center py-20 rounded-2xl border border-dashed border-[gainsboro] bg-slate-50/50">
+                      <Search className="w-8 h-8 text-slate-300 mx-auto mb-3" />
+                      <p className="text-sm font-semibold text-slate-600 mb-1">No matching opportunities</p>
+                      <p className="text-xs text-slate-400 mb-5">Try different keywords or clear your location filter.</p>
+                      <button
+                        onClick={() => { setSearchQuery(""); setSelectedCountry(null); }}
+                        className="px-5 py-2 bg-slate-800 text-white text-xs font-semibold rounded-xl hover:bg-slate-900 transition-all cursor-pointer"
                       >
-                        Explore
+                        Clear filters
                       </button>
-                      <Button 
-                        onClick={() => handleApply(job.id)} 
-                        className="flex-1 shrink-0 flex items-center justify-center gap-3"
-                        size="md"
-                      >
-                        <Video className="w-4 h-4" /> 
-                        Submit Portfolio
-                      </Button>
                     </div>
-                    {/* Subtle decorative element */}
-                    <div className="absolute right-0 bottom-0 w-32 h-32 bg-[#F7B980]/5 rounded-full blur-3xl -mr-16 -mb-16 pointer-events-none group-hover:bg-[#F7B980]/10 transition-all" />
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div 
-                className="text-center py-16 md:py-24 rounded-[32px] border-2 border-dashed flex flex-col items-center" 
-                style={{ borderColor: "#E0E4E3", background: "rgba(249, 249, 249, 0.4)" }}
-                onClick={() => { setSearchQuery(""); setSelectedCountry(null); }}
-              >
-                <div className="w-20 h-20 rounded-full bg-white flex items-center justify-center mb-6 shadow-xl border border-[#E0E4E3]">
-                  <Search className="w-10 h-10" style={{ color: "#64748B" }} />
-                </div>
-                <p className="text-xl font-bold mb-2" style={{ color: "#334155" }}>No matching opportunities</p>
-                <p className="font-medium mb-8" style={{ color: "#64748B" }}>Try adjusting your filters or search terms.</p>
-                <button 
-                  onClick={() => { setSearchQuery(""); setSelectedCountry(null); }} 
-                  className="font-bold text-sm underline opacity-60 hover:opacity-100 transition-opacity cursor-pointer"
-                  style={{ color: "#334155" }}
-                >
-                  Clear all filters
-                </button>
-              </div>
-            )}
+                  )}
           </div>
         </div>
       )}
 
             {activeTab === "applications" && (
-              <div 
-                className="border border-white rounded-[40px] p-6 lg:p-12 shadow-2xl relative overflow-hidden transition-all duration-500"
-                style={{ 
-                  background: "rgba(255, 255, 255, 0.7)", 
-                  backdropFilter: "blur(24px)",
-                  boxShadow: "0 24px 64px rgba(87,89,91,0.06)"
-                }}
-              >
-                <div className="mb-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-                  <div className="flex items-center gap-5">
-                    <div className="p-3 rounded-2xl bg-[#F7B980]/10 border border-[#F7B980]/20">
-                      <Briefcase className="w-8 h-8 text-[#F7B980]" />
-                    </div>
-                    <div>
-                      <h3 className="text-3xl font-extrabold tracking-tight" style={{ color: "#334155" }}>Applied Opportunities</h3>
-                      <p className="text-sm font-bold opacity-60 mt-1" style={{ color: "#64748B" }}>Track your digital journey from first impression to finalized offer.</p>
-                    </div>
+              <div className="bg-white border border-[gainsboro] rounded-2xl p-6">
+                {/* Header */}
+                <div className="flex items-center justify-between mb-6">
+                  <div>
+                    <h3 className="text-sm font-semibold text-slate-800 flex items-center gap-2">
+                      <Briefcase className="w-4 h-4 text-[#F7B980]" />
+                      Applications
+                    </h3>
+                    <p className="text-xs text-slate-400 mt-0.5">
+                      {applications.length} application{applications.length !== 1 ? "s" : ""} submitted
+                    </p>
                   </div>
                 </div>
 
-                <div className="space-y-6">
-                  {applications.length > 0 ? (
-                    applications.map((app) => (
-                      <div 
-                        key={app.id} 
+                {/* List */}
+                {applications.length > 0 ? (
+                  <div className="space-y-3">
+                    {applications.map((app) => (
+                      <div
+                        key={app.id}
                         onClick={() => setSelectedApplication(app)}
-                        className="bg-white/40 border-2 rounded-[32px] p-6 md:p-8 transition-all hover:bg-white hover:border-[#F7B980]/30 hover:shadow-2xl flex flex-col md:flex-row justify-between md:items-center gap-6 cursor-pointer group relative overflow-hidden"
-                        style={{ background: "rgba(255, 255, 255, 0.4)", borderColor: "rgba(224, 228, 227, 0.6)" }}
+                        className="group flex items-center gap-4 bg-white border border-[gainsboro] rounded-2xl px-5 py-4 hover:border-slate-300 hover:shadow-md transition-all duration-200 cursor-pointer"
                       >
-                        <div className="flex items-center gap-6 flex-1">
-                          <div 
-                            className="w-14 h-14 rounded-[20px] flex items-center justify-center shrink-0 shadow-sm border border-[#E0E4E3]"
-                            style={{ background: "#F9F9F9" }}
-                          >
-                            <Building2 className="w-7 h-7" style={{ color: "#64748B" }} />
-                          </div>
-                          <div>
-                            <h4 className="text-xl font-extrabold mb-1 group-hover:text-[#F7B980] transition-colors tracking-tight" style={{ color: "#334155" }}>{app.title}</h4>
-                            <div className="flex flex-wrap items-center gap-2 text-sm font-bold" style={{ color: "#64748B" }}>
-                               <span>{app.company}</span>
-                               <span className="opacity-30">•</span>
-                               <span className="opacity-70">{app.date}</span>
-                            </div>
-                          </div>
+                        {/* Company initial */}
+                        <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-500 font-semibold text-sm shrink-0">
+                          {app.company.charAt(0).toUpperCase()}
                         </div>
 
-                        <div className="flex items-center justify-between md:justify-end gap-6 w-full md:w-auto pt-4 md:pt-0 border-t md:border-none border-[#E0E4E3]/30">
-                          <span className={`px-5 py-2 rounded-full text-[10px] font-black uppercase tracking-widest border shadow-sm transition-all ${app.color}`}>
-                            {app.status}
-                          </span>
-                          <div className="p-2 rounded-xl bg-white/50 border border-[#E0E4E3] group-hover:border-[#F7B980]/30 transition-all">
-                             <ChevronRight className="w-5 h-5 opacity-40 group-hover:opacity-100 group-hover:translate-x-1 transition-all" style={{ color: "#334155" }} />
-                          </div>
+                        {/* Job info */}
+                        <div className="flex-1 min-w-0">
+                          <h4 className="text-sm font-semibold text-slate-800 truncate group-hover:text-[#F7B980] transition-colors">
+                            {app.title}
+                          </h4>
+                          <p className="text-xs text-slate-400 mt-0.5 truncate">
+                            {app.company} · {app.date}
+                          </p>
                         </div>
-                        {/* Decorative glow */}
-                        <div className="absolute right-0 top-0 w-24 h-24 bg-[#F7B980]/5 rounded-full blur-3xl -mr-12 -mt-12 group-hover:bg-[#F7B980]/10 transition-all" />
+
+                        {/* Status badge */}
+                        <StatusBadge status={app.status} />
+
+                        {/* Arrow */}
+                        <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-slate-500 group-hover:translate-x-0.5 transition-all shrink-0" />
                       </div>
-                    ))
-                  ) : (
-                    <div className="text-center py-20 bg-[#F9F9F9]/50 rounded-[32px] border-2 border-dashed" style={{ borderColor: "#E0E4E3" }}>
-                       <Briefcase className="w-12 h-12 mx-auto mb-6 opacity-20" style={{ color: "#334155" }} />
-                       <p className="text-xl font-bold mb-2" style={{ color: "#334155" }}>No active explorations</p>
-                       <p className="font-medium px-8" style={{ color: "#64748B" }}>Your digital applications will materialize here once you begin your quest.</p>
-                    </div>
-                  )
-                  }
-                </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-20 rounded-2xl border border-dashed border-[gainsboro] bg-slate-50/50">
+                    <Briefcase className="w-8 h-8 text-slate-300 mx-auto mb-3" />
+                    <p className="text-sm font-semibold text-slate-600 mb-1">No applications yet</p>
+                    <p className="text-xs text-slate-400">Jobs you apply to will appear here.</p>
+                  </div>
+                )}
               </div>
             )}
             
             {activeTab === "interviews" && (
-              <div 
-                className="border border-white rounded-[40px] p-6 lg:p-12 shadow-2xl relative overflow-hidden transition-all duration-500"
-                style={{ 
-                  background: "rgba(255, 255, 255, 0.7)", 
-                  backdropFilter: "blur(24px)",
-                  boxShadow: "0 24px 64px rgba(87,89,91,0.06)"
-                }}
-              >
-                <div className="mb-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-                  <div className="flex items-center gap-5">
-                    <div className="p-3 rounded-2xl bg-[#F7B980]/10 border border-[#F7B980]/20">
-                      <CalendarIcon className="w-8 h-8 text-[#F7B980]" />
-                    </div>
-                    <div>
-                      <h3 className="text-3xl font-extrabold tracking-tight" style={{ color: "#334155" }}>Interview Schedule</h3>
-                      <p className="text-sm font-bold opacity-60 mt-1" style={{ color: "#64748B" }}>Your professional spotlight awaits. Preparation is the bridge to opportunity.</p>
-                    </div>
+              <div className="bg-white border border-[gainsboro] rounded-2xl p-6">
+                {/* Header */}
+                <div className="flex items-center justify-between mb-6">
+                  <div>
+                    <h3 className="text-sm font-semibold text-slate-800 flex items-center gap-2">
+                      <CalendarIcon className="w-4 h-4 text-[#F7B980]" />
+                      Interview Schedule
+                    </h3>
+                    <p className="text-xs text-slate-400 mt-0.5">
+                      {interviews.length} interview{interviews.length !== 1 ? "s" : ""} scheduled
+                    </p>
                   </div>
                 </div>
-                 
-                 {isLoadingInterviews ? (
-                   <div className="flex flex-col items-center justify-center py-20 mt-10">
-                      <div className="w-12 h-12 border-4 border-[#E2E8F0] border-t-[#F7B980] rounded-full animate-spin mb-6" />
-                      <p className="text-[#64748B] font-bold text-sm tracking-widest uppercase">Retrieving your schedule...</p>
-                   </div>
-                 ) : interviews.length > 0 ? (
-                   <div className="space-y-6">
-                     {interviews.map((interview) => (
-                       <div 
-                         key={interview.id} 
-                         className="bg-white/40 border-2 rounded-[32px] p-6 md:p-8 transition-all hover:bg-white hover:border-[#F7B980]/30 hover:shadow-2xl flex flex-col md:flex-row justify-between md:items-center gap-8 cursor-pointer group relative overflow-hidden"
-                         style={{ background: "rgba(255, 255, 255, 0.4)", borderColor: "rgba(224, 228, 227, 0.6)" }}
-                       >
-                         <div className="flex items-center gap-6 flex-1">
-                            <div 
-                              className="w-14 h-14 rounded-[20px] flex items-center justify-center shrink-0 shadow-sm border border-[#E0E4E3]"
-                              style={{ background: "#F9F9F9" }}
-                            >
-                              <Building2 className="w-7 h-7" style={{ color: "#64748B" }} />
-                            </div>
-                            <div>
-                               <p className="text-[10px] font-black uppercase tracking-[0.2em] mb-1" style={{ color: "#64748B" }}>{interview.jobTitle}</p>
-                               <h4 className="text-xl font-extrabold group-hover:text-[#F7B980] transition-colors tracking-tight" style={{ color: "#334155" }}>{interview.company}</h4>
-                               <div className="flex flex-wrap items-center gap-4 mt-3">
-                                  <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/60 border border-[#E0E4E3] text-xs font-bold" style={{ color: "#334155" }}>
-                                     <Calendar className="w-3.5 h-3.5" />
-                                     {interview.date}
-                                  </div>
-                                  <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/60 border border-[#E0E4E3] text-xs font-bold" style={{ color: "#334155" }}>
-                                     <ArrowLeft className="w-3.5 h-3.5 rotate-[135deg]" /> {/* Simple clock-ish stand-in if Clock not imported */}
-                                     {interview.time}
-                                  </div>
-                               </div>
-                            </div>
-                         </div>
 
-                         <div className="flex items-center justify-between md:justify-end gap-6 w-full md:w-auto pt-4 md:pt-0 border-t md:border-none border-[#E0E4E3]/30">
-                            <span className="px-5 py-2 rounded-full text-[10px] font-black uppercase tracking-widest border bg-[#F7B980]/5 text-[#F7B980] border-[#F7B980]/20 shadow-sm">
-                              {interview.type}
-                            </span>
-                            <div className="p-2 rounded-xl bg-white/50 border border-[#E0E4E3] group-hover:border-[#F7B980]/30 transition-all font-bold text-[10px] uppercase tracking-widest px-4" style={{ color: "#334155" }}>
-                               Prep Guide
-                            </div>
-                            <ChevronRight className="w-5 h-5 opacity-40 group-hover:opacity-100 group-hover:translate-x-1 transition-all" style={{ color: "#334155" }} />
-                         </div>
-                         {/* Decorative glow */}
-                         <div className="absolute left-0 bottom-0 w-24 h-24 bg-[#F7B980]/5 rounded-full blur-3xl -ml-12 -mb-12 group-hover:bg-[#F7B980]/10 transition-all" />
-                       </div>
-                     ))}
-                   </div>
-                 ) : (
-                   <div className="text-center py-20 bg-[#F9F9F9]/50 rounded-[40px] border-2 border-dashed flex flex-col items-center" style={{ borderColor: "#E0E4E3" }}>
-                      <div className="w-24 h-24 bg-white rounded-full flex items-center justify-center mb-8 shadow-2xl border border-[#E2E8F0] transform group-hover:scale-110 transition-transform">
-                        <CalendarIcon className="w-10 h-10" style={{ color: "#F7B980" }} />
-                      </div>
-                      <h3 className="text-3xl font-extrabold mb-4 tracking-tight" style={{ color: "#334155" }}>Ready for the spotlight?</h3>
-                      <p className="max-w-md font-bold text-base leading-relaxed opacity-60 px-8" style={{ color: "#64748B" }}>Your upcoming interview schedule is currently clear. Keep your portfolio updated to attract global hiring teams.</p>
-                      <button 
-                         onClick={() => setActiveTab("jobs")} 
-                         className="mt-10 px-12 py-4 rounded-full font-black text-xs tracking-[0.2em] uppercase transition-all shadow-xl hover:-translate-y-1 active:scale-95 bg-[#334155] text-white hover:bg-[#475569] shadow-slate-200 cursor-pointer"
+                {isLoadingInterviews ? (
+                  <div className="flex flex-col items-center justify-center py-20">
+                    <div className="w-8 h-8 border-4 border-[#E2E8F0] border-t-[#F7B980] rounded-full animate-spin mb-3" />
+                    <p className="text-slate-400 text-sm">Loading schedule…</p>
+                  </div>
+                ) : interviews.length > 0 ? (
+                  <div className="space-y-3">
+                    {interviews.map((interview) => (
+                      <div
+                        key={interview.id}
+                        className="group flex items-center gap-4 bg-white border border-[gainsboro] rounded-2xl px-5 py-4 hover:border-slate-300 hover:shadow-md transition-all duration-200"
                       >
-                         Browse Roles
-                      </button>
-                   </div>
-                 )}
+                        {/* Company initial */}
+                        <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-500 font-semibold text-sm shrink-0">
+                          {interview.company.charAt(0).toUpperCase()}
+                        </div>
+
+                        {/* Info */}
+                        <div className="flex-1 min-w-0">
+                          <h4 className="text-sm font-semibold text-slate-800 truncate group-hover:text-[#F7B980] transition-colors">
+                            {interview.company}
+                          </h4>
+                          <p className="text-xs text-slate-400 mt-0.5 truncate">{interview.jobTitle}</p>
+                        </div>
+
+                        {/* Date + time */}
+                        <div className="hidden sm:flex items-center gap-3 shrink-0">
+                          <span className="flex items-center gap-1.5 text-[11px] text-slate-500 bg-slate-50 border border-[gainsboro] px-2.5 py-1 rounded-lg">
+                            <CalendarIcon className="w-3 h-3" />
+                            {interview.date}
+                          </span>
+                          <span className="flex items-center gap-1.5 text-[11px] text-slate-500 bg-slate-50 border border-[gainsboro] px-2.5 py-1 rounded-lg">
+                            <Bell className="w-3 h-3" />
+                            {interview.time}
+                          </span>
+                        </div>
+
+                        {/* Type badge */}
+                        <InterviewTypeBadge type={interview.type} />
+
+                        <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-slate-500 group-hover:translate-x-0.5 transition-all shrink-0" />
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-20 rounded-2xl border border-dashed border-[gainsboro] bg-slate-50/50">
+                    <CalendarIcon className="w-8 h-8 text-slate-300 mx-auto mb-3" />
+                    <p className="text-sm font-semibold text-slate-600 mb-1">No interviews scheduled</p>
+                    <p className="text-xs text-slate-400 mb-5">Apply to roles and employers will invite you here.</p>
+                    <button
+                      onClick={() => setActiveTab("jobs")}
+                      className="px-5 py-2 bg-slate-800 text-white text-xs font-semibold rounded-xl hover:bg-slate-900 transition-all cursor-pointer"
+                    >
+                      Browse Roles
+                    </button>
+                  </div>
+                )}
               </div>
             )}
             
@@ -1772,424 +1724,248 @@ export default function CandidateDashboard() {
             )}
 
             {activeTab === "settings" && (
-              <div 
-                className="border border-white rounded-[48px] p-2 shadow-2xl relative overflow-hidden flex flex-col lg:flex-row min-h-[850px] transition-all duration-500"
-                style={{ 
-                  background: "rgba(255, 255, 255, 0.8)", 
-                  backdropFilter: "blur(40px)",
-                  boxShadow: "0 32px 80px rgba(87,89,91,0.12)"
-                }}
-              >
+              <div className="bg-white border border-[gainsboro] rounded-2xl flex flex-col lg:flex-row overflow-hidden">
                 {/* Settings Sidebar */}
-                <div className="w-full lg:w-80 border-b lg:border-b-0 lg:border-r border-[#E2E8F0]/60 p-6 lg:p-10 space-y-3">
-                   <div className="mb-10 px-4">
-                     <p className="text-[10px] font-black uppercase tracking-[0.25em] mb-1 opacity-50" style={{ color: "#64748B" }}>Configuration</p>
-                     <h3 className="text-2xl font-extrabold tracking-tight" style={{ color: "#334155" }}>Workspace</h3>
-                   </div>
-                   {[
-                     { id: "general", label: "Identity & Profile", icon: UserCircle, desc: "Personal footprint" },
-                     { id: "career", label: "Career Strategy", icon: Briefcase, desc: "Job match logic" },
-                     { id: "security", label: "Access & Security", icon: Shield, desc: "Keys and sessions" },
-                     { id: "privacy", label: "Privacy Guard", icon: Lock, desc: "Video visibility" },
-                     { id: "notifications", label: "Alert Protocols", icon: Bell, desc: "Push & email" },
-                   ].map((item) => (
-                     <button
-                       key={item.id}
-                       onClick={() => setSettingsSection(item.id as "general" | "career" | "security" | "privacy" | "notifications")}
-                       className={`w-full flex items-center gap-5 px-6 py-5 rounded-[30px] transition-all cursor-pointer group text-left`}
-                       style={settingsSection === item.id ? {
-                         background: "white",
-                         color: "#F7B980",
-                         boxShadow: "0 15px 35px rgba(87,89,91,0.08)"
-                       } : {
-                         color: "#64748B",
-                       }}
-                     >
-                       <div className={`p-3 rounded-2xl transition-all ${settingsSection === item.id ? "bg-[#F7B980]/10 text-[#F7B980] scale-110" : "bg-[#F9F9F9] text-[#64748B] group-hover:bg-white group-hover:text-[#334155]"}`}>
-                         <item.icon className="w-5 h-5 transition-transform group-active:scale-90" />
-                       </div>
-                       <div className="flex-1">
-                         <p className="font-extrabold text-sm leading-tight transition-colors group-hover:text-[#334155]">{item.label}</p>
-                         <p className="text-[9px] opacity-40 font-black uppercase tracking-widest mt-1">{item.desc}</p>
-                       </div>
-                       {settingsSection === item.id && <div className="w-1.5 h-1.5 rounded-full bg-[#F7B980]" />}
-                     </button>
-                   ))}
+                <div className="w-full lg:w-52 border-b lg:border-b-0 lg:border-r border-[gainsboro] p-4 flex flex-col gap-1">
+                  <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-widest px-3 py-2 mb-1">Settings</p>
+                  {[
+                    { id: "general",       label: "Profile",       icon: UserCircle },
+                    { id: "career",        label: "Career",        icon: Briefcase  },
+                    { id: "security",      label: "Security",      icon: Shield     },
+                    { id: "privacy",       label: "Privacy",       icon: Lock       },
+                    { id: "notifications", label: "Notifications", icon: Bell       },
+                  ].map((item) => (
+                    <button
+                      key={item.id}
+                      onClick={() => setSettingsSection(item.id as "general" | "career" | "security" | "privacy" | "notifications")}
+                      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all cursor-pointer text-left text-xs font-medium ${
+                        settingsSection === item.id
+                          ? "bg-slate-100 text-slate-800"
+                          : "text-slate-500 hover:text-slate-700 hover:bg-slate-50"
+                      }`}
+                    >
+                      <item.icon className="w-4 h-4 shrink-0" />
+                      {item.label}
+                    </button>
+                  ))}
 
-                   <div className="pt-8 mt-8 border-t border-[#E2E8F0] px-4 space-y-4">
-                      <p className="text-[9px] font-black uppercase tracking-[0.2em] opacity-40">System Actions</p>
-                      <button onClick={() => setIsLogoutModalOpen(true)} className="w-full flex items-center justify-between px-6 py-4 rounded-[24px] border border-transparent hover:border-red-100 hover:bg-red-50 text-red-400 hover:text-red-500 font-black text-[10px] uppercase tracking-widest transition-all group cursor-pointer">
-                        Sign Out Workspace
-                        <LogOut className="w-4 h-4 group-hover:translate-x-1 transition-transform" /> 
-                      </button>
-                   </div>
+                  <div className="mt-auto pt-4 border-t border-[gainsboro]">
+                    <button
+                      onClick={() => setIsLogoutModalOpen(true)}
+                      className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-medium text-red-400 hover:text-red-500 hover:bg-red-50 transition-all cursor-pointer"
+                    >
+                      <LogOut className="w-4 h-4 shrink-0" />
+                      Sign Out
+                    </button>
+                  </div>
                 </div>
 
-                {/* Settings Content Area */}
-                <div className="flex-1 overflow-y-auto bg-[#F9F9F9]/30 custom-scrollbar">
-                    {/* Content Header / Breadcrumbs & Actions */}
-                    <div className="sticky top-0 z-20 px-8 py-6 bg-[#F9F9F9]/80 backdrop-blur-md border-b border-[#E2E8F0]/40 flex flex-col sm:flex-row items-center justify-between gap-6 shadow-sm">
-                      <div className="flex flex-col">
-                        <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest opacity-40" style={{ color: "#64748B" }}>
-                          <span>Dashboard</span>
-                          <ChevronRight className="w-3 h-3" />
-                          <span>Workspace Settings</span>
+                {/* Settings Content */}
+                <div className="flex-1 p-6 overflow-y-auto">
+                  <AnimatePresence mode="wait">
+                    <motion.div
+                      key={settingsSection}
+                      initial={{ opacity: 0, y: 6 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -6 }}
+                      transition={{ duration: 0.2 }}
+                      className="max-w-2xl space-y-8"
+                    >
+                      {settingsSection === "general" && (
+                        <div className="space-y-6">
+                          <div>
+                            <h4 className="text-sm font-semibold text-slate-800">Identity & Profile</h4>
+                            <p className="text-xs text-slate-400 mt-0.5">Manage your professional details and external links.</p>
+                          </div>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                              <label className="text-xs font-medium text-slate-500 mb-1.5 block">Full Name</label>
+                              <input type="text" defaultValue={userName} className="w-full px-3 py-2.5 bg-white border border-[gainsboro] rounded-xl outline-none text-sm text-slate-700 focus:ring-2 focus:ring-slate-200 transition-all" />
+                            </div>
+                            <div>
+                              <label className="text-xs font-medium text-slate-500 mb-1.5 block">Phone</label>
+                              <input type="tel" defaultValue="+1 (555) 782-0192" className="w-full px-3 py-2.5 bg-white border border-[gainsboro] rounded-xl outline-none text-sm text-slate-700 focus:ring-2 focus:ring-slate-200 transition-all" />
+                            </div>
+                            <div className="sm:col-span-2">
+                              <label className="text-xs font-medium text-slate-500 mb-1.5 block">Bio</label>
+                              <textarea rows={4} defaultValue="Senior Software Engineer with a passion for high-fidelity UI/UX and scalable distributed systems." className="w-full px-3 py-3 bg-white border border-[gainsboro] rounded-xl outline-none text-sm text-slate-700 focus:ring-2 focus:ring-slate-200 transition-all resize-none leading-relaxed" />
+                            </div>
+                          </div>
+                          <div>
+                            <div className="flex items-center justify-between mb-3">
+                              <div>
+                                <h5 className="text-xs font-semibold text-slate-800">External Links</h5>
+                                <p className="text-xs text-slate-400">Connect your portfolio and professional profiles.</p>
+                              </div>
+                              <button className="p-1.5 rounded-lg border border-[gainsboro] hover:bg-slate-50 transition-all cursor-pointer">
+                                <Plus className="w-3.5 h-3.5 text-slate-500" />
+                              </button>
+                            </div>
+                            <div className="space-y-2">
+                              {[
+                                { label: "LinkedIn", val: "linkedin.com/in/johndoe" },
+                                { label: "Portfolio", val: "johndoe.dev" },
+                              ].map((link, i) => (
+                                <div key={i} className="flex items-center gap-3 px-3 py-2.5 bg-white border border-[gainsboro] rounded-xl">
+                                  <LinkIcon className="w-4 h-4 text-slate-400 shrink-0" />
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-[11px] text-slate-400 mb-0.5">{link.label}</p>
+                                    <input type="text" defaultValue={link.val} className="w-full bg-transparent outline-none text-sm text-slate-700 font-medium" />
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
                         </div>
-                        <h4 className="text-sm font-black uppercase tracking-[0.1em] mt-1" style={{ color: "#334155" }}>Account Workspace</h4>
-                      </div>
-                      <div className="flex items-center gap-4">
-                        <button className="px-6 py-3 rounded-2xl border-2 border-[#E2E8F0] bg-white font-black text-[10px] uppercase tracking-widest text-[#64748B] hover:border-[#64748B]/20 hover:text-[#334155] transition-all cursor-pointer">
-                          Discard Changes
-                        </button>
-                        <button className="px-6 py-3 rounded-2xl bg-[#334155] text-white font-black text-[10px] uppercase tracking-widest shadow-lg shadow-[#334155]/20 hover:bg-[#475569] transition-all cursor-pointer flex items-center gap-2">
-                          <CheckCircle2 className="w-4 h-4 text-[#F7B980]" />
-                          Sync Global Portfolio
-                        </button>
-                      </div>
-                    </div>
+                      )}
 
-                    <div className="p-8 lg:p-16">
-                      <AnimatePresence mode="wait">
-                        <motion.div
-                          key={settingsSection}
-                          initial={{ opacity: 0, x: 20 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          exit={{ opacity: 0, x: -20 }}
-                          transition={{ duration: 0.4, ease: "easeOut" }}
-                          className="max-w-4xl mx-auto space-y-16"
-                        >
-                          {settingsSection === "general" && (
-                            <div className="space-y-12">
-                              <div className="flex flex-col md:flex-row md:items-end justify-between gap-8 pb-10 border-b border-[#E2E8F0]">
-                                 <div className="flex-1">
-                                   <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#F7B980]/10 border border-[#F7B980]/20 text-[9px] font-black text-[#F7B980] uppercase tracking-widest mb-4">
-                                      <UserCircle className="w-3 h-3" /> Verified Presence
-                                   </div>
-                                   <h3 className="text-4xl font-extrabold tracking-tight mb-3" style={{ color: "#334155" }}>Identity & Presence</h3>
-                                   <p className="font-bold text-base leading-relaxed opacity-60" style={{ color: "#64748B" }}>Manage your global professional footprint and verified identifier.</p>
-                                 </div>
-                                 <div className="flex -space-x-4">
-                                    {[
-                                      { src: "/avatars/user-pfp.png", alt: "User Profile" },
-                                      { src: "/avatars/recruiter-1.png", alt: "Recruiter 1" },
-                                      { src: "/avatars/recruiter-2.png", alt: "Recruiter 2" },
-                                      { initials: "+4" }
-                                    ].map((avatar, i) => (
-                                      <div key={i} className="w-16 h-16 rounded-[24px] border-[4px] border-white bg-white shadow-xl flex items-center justify-center text-xs font-black transition-transform hover:scale-110 cursor-help" style={{ color: "#64748B" }}>
-                                        <div className="w-full h-full rounded-[20px] bg-[#F9F9F9] flex items-center justify-center border border-[#E2E8F0] overflow-hidden">
-                                          {avatar.src ? (
-                                            <NextImage 
-                                              src={avatar.src} 
-                                              alt={avatar.alt || "Avatar"} 
-                                              width={64} 
-                                              height={64} 
-                                              className="w-full h-full object-cover"
-                                            />
-                                          ) : (
-                                            avatar.initials
-                                          )}
-                                        </div>
-                                      </div>
-                                    ))}
-                                 </div>
+                      {settingsSection === "career" && (
+                        <div className="space-y-6">
+                          <div>
+                            <h4 className="text-sm font-semibold text-slate-800">Career Preferences</h4>
+                            <p className="text-xs text-slate-400 mt-0.5">Set your job match criteria and compensation expectations.</p>
+                          </div>
+                          <div className="space-y-3">
+                            <h5 className="text-xs font-medium text-slate-500">Work Preferences</h5>
+                            <div className="divide-y divide-[gainsboro] border border-[gainsboro] rounded-xl overflow-hidden">
+                              <div className="px-4 py-3 bg-white">
+                                <Toggle enabled={prefs.remoteOnly} setEnabled={(val) => setPrefs({...prefs, remoteOnly: val})} label="Remote only" description="Only show remote opportunities" />
                               </div>
-                              
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-                                <div className="space-y-4">
-                                  <label className="text-[10px] font-black uppercase tracking-[0.25em] opacity-40 ml-4" style={{ color: "#64748B" }}>Legal Identifier</label>
-                                  <input type="text" defaultValue={userName} className="w-full px-8 py-5 bg-white border border-[#E2E8F0] rounded-[28px] outline-none transition-all font-extrabold focus:border-[#F7B980] focus:ring-4 focus:ring-[#F7B980]/5 shadow-sm" style={{ color: "#334155" }} />
-                                </div>
-                                <div className="space-y-4">
-                                  <label className="text-[10px] font-black uppercase tracking-[0.25em] opacity-40 ml-4" style={{ color: "#64748B" }}>Main Connection</label>
-                                  <input type="tel" defaultValue="+1 (555) 782-0192" className="w-full px-8 py-5 bg-white border border-[#E2E8F0] rounded-[28px] outline-none transition-all font-extrabold focus:border-[#F7B980] focus:ring-4 focus:ring-[#F7B980]/5 shadow-sm" style={{ color: "#334155" }} />
-                                </div>
-                                <div className="md:col-span-2 space-y-4">
-                                  <label className="text-[10px] font-black uppercase tracking-[0.25em] opacity-40 ml-4" style={{ color: "#64748B" }}>Professional Narrative</label>
-                                  <textarea rows={5} defaultValue="Senior Software Engineer with a passion for high-fidelity UI/UX and scalable distributed systems. Currently optimizing video delivery at scale." className="w-full px-8 py-7 bg-white border border-[#E2E8F0] rounded-[32px] outline-none transition-all font-bold text-lg leading-relaxed focus:border-[#F7B980] focus:ring-4 focus:ring-[#F7B980]/5 shadow-sm resize-none" style={{ color: "#334155" }} />
-                                </div>
-                              </div>
-
-                              <div className="pt-8 space-y-10">
-                                  <div className="flex items-center justify-between">
-                                    <div>
-                                      <h4 className="text-2xl font-black tracking-tight" style={{ color: "#334155" }}>Ecosystem Hub</h4>
-                                      <p className="text-sm font-bold opacity-50 mt-1" style={{ color: "#64748B" }}>Connect your external professional nodes for deeper verification.</p>
-                                    </div>
-                                    <button className="p-3 bg-white rounded-2xl border border-[#E2E8F0] shadow-sm hover:border-[#F7B980] transition-all cursor-pointer">
-                                      <Plus className="w-5 h-5 text-[#F7B980]" />
-                                    </button>
-                                  </div>
-                                  <div className="grid grid-cols-1 gap-6">
-                                    {[
-                                      { label: "LinkedIn Domain", val: "linkedin.com/in/johndoe", icon: LinkIcon },
-                                      { label: "Architecture Portfolio", val: "johndoe.dev", icon: LinkIcon }
-                                    ].map((hub, i) => (
-                                      <div key={i} className="flex items-center gap-6 p-6 rounded-[32px] bg-white border border-[#E2E8F0] shadow-sm group hover:border-[#F7B980] transition-all relative overflow-hidden">
-                                        <div className="p-4 rounded-[22px] bg-[#F9F9F9] text-[#64748B] group-hover:bg-[#F7B980]/10 group-hover:text-[#F7B980] transition-all shadow-inner">
-                                          <hub.icon className="w-6 h-6" />
-                                        </div>
-                                        <div className="flex-1">
-                                          <p className="text-[10px] font-black uppercase tracking-widest mb-1.5 opacity-40" style={{ color: "#64748B" }}>{hub.label}</p>
-                                          <input type="text" defaultValue={hub.val} className="w-full bg-transparent outline-none font-black text-base" style={{ color: "#334155" }} />
-                                        </div>
-                                        <div className="absolute right-0 top-0 w-32 h-32 bg-[#F7B980]/5 rounded-full blur-[60px] -mr-16 -mt-16 opacity-0 group-hover:opacity-100 transition-opacity" />
-                                      </div>
-                                    ))}
-                                  </div>
+                              <div className="px-4 py-3 bg-white">
+                                <Toggle enabled={prefs.openToRelocate} setEnabled={(val) => setPrefs({...prefs, openToRelocate: val})} label="Open to relocation" description="Willing to move for the right opportunity" />
                               </div>
                             </div>
-                          )}
+                          </div>
+                          <div>
+                            <div className="flex items-center justify-between mb-2">
+                              <h5 className="text-xs font-medium text-slate-500">Expected Salary</h5>
+                              <span className="text-sm font-semibold text-slate-800">${(prefs.expectedSalary / 1000).toFixed(0)}k / yr</span>
+                            </div>
+                            <input type="range" min="50000" max="300000" step="5000" value={prefs.expectedSalary} onChange={(e) => setPrefs({...prefs, expectedSalary: parseInt(e.target.value)})} className="w-full h-1.5 rounded-full appearance-none cursor-pointer accent-slate-800 bg-slate-200" />
+                            <div className="flex justify-between text-[11px] text-slate-400 mt-1.5">
+                              <span>$50k</span><span>$300k+</span>
+                            </div>
+                          </div>
+                          <div>
+                            <h5 className="text-xs font-medium text-slate-500 mb-3">Target Sectors</h5>
+                            <div className="flex flex-wrap gap-2">
+                              {["FinTech", "HealthTech", "AI / ML", "Cybersecurity", "E-commerce", "SaaS", "Web3"].map(tag => (
+                                <button key={tag} className="px-3 py-1.5 rounded-lg border border-[gainsboro] text-xs font-medium text-slate-600 bg-white hover:bg-slate-800 hover:text-white hover:border-slate-800 transition-all cursor-pointer">{tag}</button>
+                              ))}
+                              <button className="px-3 py-1.5 rounded-lg border border-dashed border-[gainsboro] text-xs font-medium text-slate-400 hover:text-slate-600 hover:border-slate-300 flex items-center gap-1.5 cursor-pointer transition-all">
+                                <Plus className="w-3 h-3" /> Add
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      )}
 
-                          {settingsSection === "career" && (
-                            <div className="space-y-12">
-                              <div className="pb-10 border-b border-[#E2E8F0]">
-                                 <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#F7B980]/10 border border-[#F7B980]/20 text-[9px] font-black text-[#F7B980] uppercase tracking-widest mb-4">
-                                    <Briefcase className="w-3 h-3" /> Strategy Architecture
-                                 </div>
-                                 <h3 className="text-4xl font-extrabold tracking-tight mb-3" style={{ color: "#334155" }}>Career Strategy</h3>
-                                 <p className="font-bold text-base leading-relaxed opacity-60" style={{ color: "#64748B" }}>Configure your employment mobility and signal your availability to the network.</p>
+                      {settingsSection === "notifications" && (
+                        <div className="space-y-6">
+                          <div>
+                            <h4 className="text-sm font-semibold text-slate-800">Notifications</h4>
+                            <p className="text-xs text-slate-400 mt-0.5">Choose what alerts you receive.</p>
+                          </div>
+                          <div className="divide-y divide-[gainsboro] border border-[gainsboro] rounded-xl overflow-hidden">
+                            {[
+                              { icon: Mail,   label: "Email updates",        desc: "Weekly digests and important account activity.",  enabled: prefs.emailAlerts,   key: "emailAlerts"   },
+                              { icon: Bell,   label: "Browser notifications", desc: "Instant push alerts for recruiter inquiries.",    enabled: prefs.browserAlerts, key: "browserAlerts" },
+                              { icon: Shield, label: "Recruiter inquiries",   desc: "Allow employers to contact you directly.",        enabled: prefs.jobInvites,    key: "jobInvites"    },
+                            ].map((item, i) => (
+                              <div key={i} className="flex items-center gap-4 px-4 py-3.5 bg-white">
+                                <item.icon className="w-4 h-4 text-slate-400 shrink-0" />
+                                <div className="flex-1">
+                                  <Toggle enabled={item.enabled} setEnabled={(val) => setPrefs({...prefs, [item.key]: val})} label={item.label} description={item.desc} />
+                                </div>
                               </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
 
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
-                                 <div className="space-y-10">
-                                    <div className="space-y-6">
-                                      <label className="text-[10px] font-black uppercase tracking-[0.25em] ml-4 opacity-40" style={{ color: "#64748B" }}>Mobility Protocols</label>
-                                      <div className="space-y-4">
-                                        <div className="p-6 rounded-[32px] bg-white border border-[#E2E8F0] shadow-sm">
-                                          <Toggle 
-                                            enabled={prefs.remoteOnly} 
-                                            setEnabled={(val) => setPrefs({...prefs, remoteOnly: val})} 
-                                            label="Remote Operations" 
-                                            description="Prioritize opportunities with distributed workspace."
-                                          />
-                                        </div>
-                                        <div className="p-6 rounded-[32px] bg-white border border-[#E2E8F0] shadow-sm">
-                                          <Toggle 
-                                            enabled={prefs.openToRelocate} 
-                                            setEnabled={(val) => setPrefs({...prefs, openToRelocate: val})} 
-                                            label="Global Relocation" 
-                                            description="Willing to move for the right high-impact mission."
-                                          />
-                                        </div>
-                                      </div>
-                                    </div>
-                                 </div>
-                                 <div className="space-y-6">
-                                    <label className="text-[10px] font-black uppercase tracking-[0.25em] ml-4 opacity-40" style={{ color: "#64748B" }}>Compensation Blueprint</label>
-                                    <div className="p-10 rounded-[40px] bg-white border border-[#F7B980]/20 shadow-xl shadow-[#F7B980]/5 space-y-10 relative overflow-hidden">
-                                      <div className="flex justify-between items-start relative z-10">
-                                        <div>
-                                          <p className="text-xs font-black uppercase tracking-widest opacity-40" style={{ color: "#64748B" }}>Target Minimum</p>
-                                          <p className="text-4xl font-black mt-2" style={{ color: "#334155" }}>${(prefs.expectedSalary / 1000).toFixed(0)}k<span className="text-lg text-[#F7B980] ml-1">USD+</span></p>
-                                        </div>
-                                        <div className="p-3 bg-[#F7B980]/10 rounded-2xl text-[#F7B980] border border-[#F7B980]/10">
-                                           <Lock className="w-5 h-5" />
-                                        </div>
-                                      </div>
-                                      <div className="relative z-10 pt-4">
-                                        <input 
-                                          type="range" 
-                                          min="50000" 
-                                          max="300000" 
-                                          step="5000"
-                                          value={prefs.expectedSalary} 
-                                          onChange={(e) => setPrefs({...prefs, expectedSalary: parseInt(e.target.value)})} 
-                                          className="w-full h-2 bg-[#F9F9F9] rounded-lg appearance-none cursor-pointer accent-[#F7B980]" 
-                                        />
-                                        <div className="flex justify-between text-[10px] font-black uppercase tracking-widest mt-6 opacity-40" style={{ color: "#64748B" }}>
-                                          <span>$50k</span>
-                                          <span className="text-[#F7B980] opacity-100">$175k (Avg)</span>
-                                          <span>$300k+</span>
-                                        </div>
-                                      </div>
-                                      <div className="absolute top-0 right-0 w-48 h-48 bg-[#F7B980]/5 rounded-full blur-[80px] -mr-24 -mt-24 pointer-events-none" />
-                                    </div>
-                                 </div>
+                      {settingsSection === "privacy" && (
+                        <div className="space-y-6">
+                          <div>
+                            <h4 className="text-sm font-semibold text-slate-800">Privacy</h4>
+                            <p className="text-xs text-slate-400 mt-0.5">Control your video CV visibility and data.</p>
+                          </div>
+                          <div className="divide-y divide-[gainsboro] border border-[gainsboro] rounded-xl overflow-hidden">
+                            <div className="px-4 py-3.5 bg-white">
+                              <Toggle enabled={prefs.videoPublic} setEnabled={(val) => setPrefs({...prefs, videoPublic: val})} label="Public VidioCV" description="Make your video resume visible to employers on the network." />
+                            </div>
+                          </div>
+                          <div className="flex items-center justify-between px-4 py-3.5 bg-white border border-red-100 rounded-xl">
+                            <div>
+                              <p className="text-sm font-medium text-slate-800">Delete VidioCV</p>
+                              <p className="text-xs text-slate-400 mt-0.5">Permanently remove your video resume from your profile.</p>
+                            </div>
+                            <button className="px-4 py-2 rounded-lg text-xs font-semibold text-red-500 bg-red-50 hover:bg-red-100 border border-red-100 transition-all cursor-pointer shrink-0">Delete</button>
+                          </div>
+                          <div className="flex items-center justify-between px-4 py-3.5 bg-white border border-red-100 rounded-xl">
+                            <div>
+                              <p className="text-sm font-medium text-slate-800">Deactivate Account</p>
+                              <p className="text-xs text-slate-400 mt-0.5">Permanently delete your profile and all associated data.</p>
+                            </div>
+                            <button onClick={() => setIsLogoutModalOpen(true)} className="px-4 py-2 rounded-lg text-xs font-semibold text-red-500 bg-red-50 hover:bg-red-100 border border-red-100 transition-all cursor-pointer shrink-0">Deactivate</button>
+                          </div>
+                        </div>
+                      )}
+
+                      {settingsSection === "security" && (
+                        <div className="space-y-6">
+                          <div>
+                            <h4 className="text-sm font-semibold text-slate-800">Security</h4>
+                            <p className="text-xs text-slate-400 mt-0.5">Manage your password, email, and active sessions.</p>
+                          </div>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                              <label className="text-xs font-medium text-slate-500 mb-1.5 block">Password</label>
+                              <div className="relative">
+                                <input type="password" defaultValue="********" disabled className="w-full px-3 py-2.5 bg-white border border-[gainsboro] rounded-xl outline-none text-sm text-slate-700 pr-20" />
+                                <button className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-[#F7B980] hover:text-[#F0A060] transition-colors cursor-pointer">Change</button>
                               </div>
-
-                              <div className="pt-8 space-y-8">
-                                 <div className="flex items-center justify-between">
-                                   <div>
-                                     <h4 className="text-2xl font-black tracking-tight" style={{ color: "#334155" }}>Mission Targets</h4>
-                                     <p className="text-sm font-bold opacity-50 mt-1" style={{ color: "#64748B" }}>Tag the sectors where you want to make the most professional impact.</p>
-                                   </div>
-                                 </div>
-                                 <div className="flex flex-wrap gap-4">
-                                    {["FinTech", "HealthTech", "AI / ML", "Cybersecurity", "E-commerce", "SaaS", "Web3"].map(tag => (
-                                      <button 
-                                        key={tag} 
-                                        className="px-8 py-4 rounded-[24px] border font-black text-xs uppercase tracking-widest transition-all bg-white hover:bg-[#F7B980] hover:text-white hover:border-[#F7B980] hover:shadow-xl hover:shadow-[#F7B980]/20 cursor-pointer shadow-sm border-[#E2E8F0]"
-                                        style={{ color: "#334155" }}
-                                      >
-                                        {tag}
+                            </div>
+                            <div>
+                              <label className="text-xs font-medium text-slate-500 mb-1.5 block">Email</label>
+                              <div className="relative">
+                                <input type="email" defaultValue="johndoe@example.com" disabled className="w-full px-3 py-2.5 bg-white border border-[gainsboro] rounded-xl outline-none text-sm text-slate-700 pr-20" />
+                                <button className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-[#F7B980] hover:text-[#F0A060] transition-colors cursor-pointer">Update</button>
+                              </div>
+                            </div>
+                          </div>
+                          <div>
+                            <div className="flex items-center justify-between mb-3">
+                              <h5 className="text-xs font-medium text-slate-500">Active Sessions</h5>
+                              <button className="text-xs font-medium text-red-400 hover:text-red-500 transition-colors cursor-pointer">Disconnect all</button>
+                            </div>
+                            <div className="space-y-2">
+                              {[
+                                { device: "MacBook Pro M2", location: "San Francisco, US", time: "Active now",  current: true,  Icon: Monitor    },
+                                { device: "iPhone 15 Pro",  location: "Austin, TX",         time: "2 hours ago", current: false, Icon: Smartphone },
+                              ].map((session, i) => (
+                                <div key={i} className="flex items-center gap-3 px-4 py-3 bg-white border border-[gainsboro] rounded-xl">
+                                  <session.Icon className="w-4 h-4 text-slate-400 shrink-0" />
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-sm font-medium text-slate-800 truncate">{session.device}</p>
+                                    <p className="text-xs text-slate-400">{session.location} · {session.time}</p>
+                                  </div>
+                                  <div className="shrink-0">
+                                    {session.current ? (
+                                      <span className="px-2 py-0.5 rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-100 text-[11px] font-medium">Current</span>
+                                    ) : (
+                                      <button className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-all cursor-pointer">
+                                        <Trash2 className="w-3.5 h-3.5" />
                                       </button>
-                                    ))}
-                                    <button className="px-8 py-4 rounded-[24px] border-2 border-dashed border-[#E2E8F0] font-black text-xs uppercase tracking-widest flex items-center gap-3 cursor-pointer group hover:bg-white hover:border-[#F7B980]/30 transition-all text-[#64748B] hover:text-[#F7B980]">
-                                      <Plus className="w-5 h-5 transition-transform group-hover:rotate-90" /> New Target
-                                    </button>
-                                 </div>
-                              </div>
-                            </div>
-                          )}
-
-                          {settingsSection === "notifications" && (
-                            <div className="space-y-12">
-                              <div className="pb-10 border-b border-[#E2E8F0]">
-                                 <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#F7B980]/10 border border-[#F7B980]/20 text-[9px] font-black text-[#F7B980] uppercase tracking-widest mb-4">
-                                    <Bell className="w-3 h-3" /> Communications Sync
-                                 </div>
-                                 <h3 className="text-4xl font-extrabold tracking-tight mb-3" style={{ color: "#334155" }}>Alert Protocols</h3>
-                                 <p className="font-bold text-base leading-relaxed opacity-60" style={{ color: "#64748B" }}>Configure your real-time signal preferences for the dashboard.</p>
-                              </div>
-
-                              <div className="space-y-6">
-                                {[
-                                  { icon: Mail, label: "Email Sync", desc: "Weekly digests and mission-critical updates.", enabled: prefs.emailAlerts, key: "emailAlerts" },
-                                  { icon: Bell, label: "Desktop Signals", desc: "Instant push notifications for recruiter inquiries.", enabled: prefs.browserAlerts, key: "browserAlerts" },
-                                  { icon: Shield, label: "Private Inquiries", desc: "Allow high-tier recruiters to reach out directly.", enabled: prefs.jobInvites, key: "jobInvites" }
-                                ].map((alert, i) => (
-                                  <div key={i} className="bg-white border border-[#E2E8F0] rounded-[40px] p-8 flex items-center gap-10 shadow-sm group hover:border-[#F7B980]/30 transition-all">
-                                    <div className="p-5 rounded-[24px] bg-[#F9F9F9] text-[#64748B] group-hover:bg-[#F7B980]/10 group-hover:text-[#F7B980] transition-colors shadow-inner">
-                                      <alert.icon className="w-8 h-8" />
-                                    </div>
-                                    <div className="flex-1">
-                                      <Toggle 
-                                        enabled={alert.enabled as boolean} 
-                                        setEnabled={(val) => setPrefs({...prefs, [alert.key]: val})} 
-                                        label={alert.label} 
-                                        description={alert.desc}
-                                      />
-                                    </div>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-
-                          {settingsSection === "privacy" && (
-                            <div className="space-y-12">
-                              <div className="pb-10 border-b border-[#E2E8F0]">
-                                 <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#10B981]/10 border border-[#10B981]/20 text-[9px] font-black text-[#10B981] uppercase tracking-widest mb-4">
-                                    <Lock className="w-3 h-3" /> Security Overwatch
-                                 </div>
-                                 <h3 className="text-4xl font-extrabold tracking-tight mb-3" style={{ color: "#334155" }}>Privacy Guard</h3>
-                                 <p className="font-bold text-base leading-relaxed opacity-60" style={{ color: "#64748B" }}>Control your video resume discoverability and narrative data.</p>
-                              </div>
-
-                              <div className="grid grid-cols-1 gap-10">
-                                  <div className="bg-[#334155] rounded-[50px] p-12 text-white relative overflow-hidden shadow-2xl group">
-                                      <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-12">
-                                        <div className="max-w-md space-y-6">
-                                           <h4 className="text-4xl font-black tracking-tight underline decoration-[#F7B980]/30 decoration-8 underline-offset-8">Spotlight Visibility</h4>
-                                           <p className="text-white/60 font-bold text-lg leading-relaxed mt-4">When active, your high-fidelity Video Resume is promoted to the global recruiter network.</p>
-                                           <div className="inline-flex items-center gap-3 px-5 py-3 rounded-2xl bg-white/5 border border-white/10 shadow-inner">
-                                              <Shield className="w-5 h-5 text-[#F7B980]" />
-                                              <p className="text-[10px] font-black uppercase tracking-[0.2em]">Secured by VidioCV Privacy Protocols</p>
-                                           </div>
-                                        </div>
-                                        <div className="bg-white/5 p-10 rounded-[40px] border border-white/10 backdrop-blur-xl group-hover:bg-white/10 transition-colors">
-                                          <Toggle 
-                                            enabled={prefs.videoPublic} 
-                                            setEnabled={(val) => setPrefs({...prefs, videoPublic: val})} 
-                                            label="Go Public" 
-                                            description="Active for Recruiters"
-                                            dark
-                                          />
-                                        </div>
-                                      </div>
-                                      <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-[#F7B980]/10 rounded-full blur-[140px] -mr-64 -mt-64 pointer-events-none group-hover:bg-[#F7B980]/15 transition-all duration-700" />
-                                  </div>
-
-                                  <div className="p-10 rounded-[40px] border-2 border-dashed border-[#E2E8F0] flex flex-col sm:flex-row items-center justify-between gap-10 hover:bg-red-50/10 transition-colors">
-                                     <div className="flex items-center gap-8">
-                                        <div className="p-5 rounded-[24px] bg-red-50 text-red-400 border border-red-50 shadow-inner">
-                                          <Trash2 className="w-8 h-8" />
-                                        </div>
-                                        <div>
-                                          <p className="font-extrabold text-xl" style={{ color: "#334155" }}>Narrative Data Wipe</p>
-                                          <p className="text-sm font-bold opacity-50 mt-1" style={{ color: "#64748B" }}>Irreversibly delete your active Video CV and local metadata.</p>
-                                        </div>
-                                     </div>
-                                     <button className="px-10 py-4 rounded-[20px] font-black text-xs uppercase tracking-widest text-red-500 bg-red-50/50 hover:bg-red-100 transition-all border border-red-100 cursor-pointer">Execute Wipe</button>
-                                  </div>
-                              </div>
-                            </div>
-                          )}
-
-                          {settingsSection === "security" && (
-                            <div className="space-y-12">
-                              <div className="pb-10 border-b border-[#E2E8F0]">
-                                 <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#334155]/10 border border-[#334155]/20 text-[9px] font-black text-[#334155] uppercase tracking-widest mb-4">
-                                    <Shield className="w-3 h-3" /> Authenticity Hub
-                                 </div>
-                                 <h3 className="text-4xl font-extrabold tracking-tight mb-3" style={{ color: "#334155" }}>Security Hub</h3>
-                                 <p className="font-bold text-base leading-relaxed opacity-60" style={{ color: "#64748B" }}>Manage authentication hardware and active workspace sessions.</p>
-                              </div>
-
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-                                <div className="space-y-4">
-                                  <label className="text-[10px] font-black uppercase tracking-[0.25em] ml-4 opacity-40" style={{ color: "#64748B" }}>Access Key</label>
-                                  <div className="relative group">
-                                    <input type="password" defaultValue="********" disabled className="w-full px-8 py-5 bg-white border border-[#E2E8F0] rounded-[28px] transition-all font-extrabold" style={{ color: "#334155" }} />
-                                    <button className="absolute right-6 top-1/2 -translate-y-1/2 font-black text-[10px] uppercase tracking-widest text-[#F7B980] hover:scale-105 transition-transform cursor-pointer px-4 py-2 rounded-xl bg-[#F7B980]/5">Rotate</button>
+                                    )}
                                   </div>
                                 </div>
-                                <div className="space-y-4">
-                                  <label className="text-[10px] font-black uppercase tracking-[0.25em] ml-4 opacity-40" style={{ color: "#64748B" }}>Verified Terminal</label>
-                                  <div className="relative group">
-                                    <input type="email" defaultValue="johndoe@example.com" disabled className="w-full px-8 py-5 bg-white border border-[#E2E8F0] rounded-[28px] transition-all font-extrabold" style={{ color: "#334155" }} />
-                                    <button className="absolute right-6 top-1/2 -translate-y-1/2 font-black text-[10px] uppercase tracking-widest text-[#F7B980] hover:scale-105 transition-transform cursor-pointer px-4 py-2 rounded-xl bg-[#F7B980]/5">Update</button>
-                                  </div>
-                                </div>
-                              </div>
-
-                              <div className="space-y-8 pt-6">
-                                 <div className="flex items-center justify-between px-4">
-                                   <h4 className="text-2xl font-black tracking-tight" style={{ color: "#334155" }}>Active Terminals</h4>
-                                   <button className="text-[10px] font-black uppercase tracking-widest text-red-400 hover:text-red-500 transition-colors cursor-pointer border border-transparent hover:border-red-100 hover:bg-red-50 px-4 py-2 rounded-xl">Disconnect All</button>
-                                 </div>
-                                 <div className="grid grid-cols-1 gap-6">
-                                    {[
-                                      { device: "MacBook Pro M2 - San Francisco, US", time: "Active Workspace", current: true, icon: "💻" },
-                                      { device: "iPhone 15 Pro - Austin, TX", time: "Last check-in 2h ago", current: false, icon: "📱" }
-                                    ].map((session, i) => (
-                                      <div key={i} className="flex justify-between items-center p-8 rounded-[40px] bg-white border border-[#E2E8F0] shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 relative group overflow-hidden">
-                                        <div className="flex items-center gap-8">
-                                          <div className="w-16 h-16 rounded-[24px] bg-[#F9F9F9] flex items-center justify-center text-3xl shadow-inner border border-[#E2E8F0] group-hover:scale-110 transition-transform">
-                                            {session.icon}
-                                          </div>
-                                          <div>
-                                            <p className="font-extrabold text-lg tracking-tight" style={{ color: "#334155" }}>{session.device}</p>
-                                            <div className="flex items-center gap-3 mt-2">
-                                              <div className={`w-2.5 h-2.5 rounded-full ${session.current ? "bg-[#10B981] shadow-lg shadow-[#10B981]/40" : "bg-slate-300"}`} />
-                                              <p className="text-[10px] font-black uppercase tracking-widest opacity-40" style={{ color: "#64748B" }}>{session.time}</p>
-                                            </div>
-                                          </div>
-                                        </div>
-                                        {!session.current && <button className="p-4 text-red-400 hover:text-red-500 hover:bg-red-50 rounded-2xl transition-all cursor-pointer shadow-sm border border-transparent hover:border-red-100"><Trash2 className="w-6 h-6" /></button>}
-                                        <div className="absolute right-0 bottom-0 w-24 h-24 bg-slate-500/5 rounded-full blur-3xl -mr-12 -mb-12 pointer-events-none" />
-                                      </div>
-                                    ))}
-                                 </div>
-                              </div>
-
-                              <div className="pt-12 border-t border-[#E2E8F0]">
-                                 <div className="p-12 rounded-[50px] bg-red-500/5 border border-red-100 flex flex-col md:flex-row items-center justify-between gap-12 relative overflow-hidden group">
-                                    <div className="relative z-10 max-w-md text-center md:text-left">
-                                       <h5 className="text-3xl font-black text-red-500 tracking-tight mb-3">Danger Zone</h5>
-                                       <p className="text-base font-bold text-red-400 leading-relaxed">Permanently deactivate your professional profile and erase all narrative history across the VidioCV network.</p>
-                                    </div>
-                                    <button onClick={() => setIsLogoutModalOpen(true)} className="relative z-10 px-12 py-5 bg-red-500 text-white rounded-[28px] font-black text-xs uppercase tracking-[0.2em] shadow-2xl shadow-red-500/30 hover:bg-red-600 hover:scale-105 active:scale-95 transition-all cursor-pointer">
-                                      Deactivate Profile
-                                    </button>
-                                    <div className="absolute top-0 right-0 w-[300px] h-[300px] bg-red-500/5 rounded-full blur-[100px] -mr-32 -mt-32 pointer-events-none group-hover:bg-red-500/10 transition-all duration-700" />
-                                 </div>
-                              </div>
+                              ))}
                             </div>
-                          )}
-                        </motion.div>
-                      </AnimatePresence>
-                    </div>
+                          </div>
+                        </div>
+                      )}
+                    </motion.div>
+                  </AnimatePresence>
                 </div>
               </div>
             )}
@@ -2241,12 +2017,12 @@ export default function CandidateDashboard() {
         title={selectedJob?.title}
         type="info"
         primaryAction={{
-          label: "Submit Video Portfolio",
+          label: "Submit VidioCV",
           onClick: () => {
              setModalConfig({
                isOpen: true,
                title: "Application Synced",
-               message: "Your Video Portfolio has been successfully transmitted to " + selectedJob?.company + ". Good luck!",
+               message: "Your VidioCV has been successfully transmitted to " + selectedJob?.company + ". Good luck!",
                type: "success"
              });
              setSelectedJob(null);
@@ -2465,7 +2241,7 @@ export default function CandidateDashboard() {
                              <Video className="w-5 h-5 text-[#F7B980]" />
                           </div>
                           <div>
-                             <p className="text-xs font-bold" style={{ color: "#334155" }}>Video Portfolio Linked</p>
+                             <p className="text-xs font-bold" style={{ color: "#334155" }}>VidioCV Presence Established</p>
                              <p className="text-[9px] font-bold opacity-50 uppercase tracking-widest" style={{ color: "#64748B" }}>Verified Submission</p>
                           </div>
                        </div>
@@ -2522,20 +2298,54 @@ export default function CandidateDashboard() {
 }
 
 // Helpers System
+function InterviewTypeBadge({ type }: { type: string }) {
+  const t = type.toLowerCase();
+  const styles =
+    t.includes("video") || t.includes("remote")
+      ? "bg-blue-50 text-blue-600 border-blue-100"
+      : t.includes("onsite") || t.includes("in-person")
+      ? "bg-violet-50 text-violet-600 border-violet-100"
+      : t.includes("phone")
+      ? "bg-slate-50 text-slate-500 border-slate-200"
+      : "bg-amber-50 text-amber-600 border-amber-100";
+  return (
+    <span className={`px-2.5 py-1 rounded-lg border text-[11px] font-medium shrink-0 ${styles}`}>
+      {type}
+    </span>
+  );
+}
+
+function StatusBadge({ status }: { status: string }) {
+  const s = status.toLowerCase();
+  const styles =
+    s.includes("shortlist") || s.includes("offer")
+      ? "bg-emerald-50 text-emerald-700 border-emerald-100"
+      : s.includes("review") || s.includes("screen")
+      ? "bg-amber-50 text-amber-600 border-amber-100"
+      : s.includes("reject") || s.includes("declined")
+      ? "bg-rose-50 text-rose-500 border-rose-100"
+      : "bg-slate-50 text-slate-500 border-slate-100";
+  return (
+    <span className={`px-2.5 py-1 rounded-lg border text-[11px] font-medium shrink-0 ${styles}`}>
+      {status}
+    </span>
+  );
+}
+
 const CustomOption = (props: OptionProps<{ value: string; label: string }, false>) => {
   return (
-    <div {...props.innerProps} className="flex items-center gap-3 px-4 py-3 hover:bg-[#E2E8F0] cursor-pointer transition-colors group">
-      <ReactCountryFlag countryCode={props.data.value} svg style={{ width: "1.5rem", height: "1.5rem" }} className="rounded-sm shadow-sm" />
-      <span className="font-bold text-sm group-hover:text-[#334155]" style={{ color: "#8A8C8E" }}>{props.data.label}</span>
+    <div {...props.innerProps} className="flex items-center gap-2.5 px-3 py-2.5 cursor-pointer">
+      <ReactCountryFlag countryCode={props.data.value} svg style={{ width: "1.1rem", height: "1.1rem", flexShrink: 0 }} className="rounded-sm" />
+      <span className="text-sm text-slate-600 truncate">{props.data.label}</span>
     </div>
   );
 };
 
 const CustomSingleValue = (props: SingleValueProps<{ value: string; label: string }, false>) => {
   return (
-    <div {...props.innerProps} className="flex items-center gap-3 font-bold text-sm" style={{ color: "#334155" }}>
-      <ReactCountryFlag countryCode={props.data.value} svg style={{ width: "1.5rem", height: "1.5rem" }} className="rounded-sm shadow-sm" />
-      <span>{props.data.label}</span>
+    <div {...props.innerProps} className="flex items-center gap-2 text-sm text-slate-700">
+      <ReactCountryFlag countryCode={props.data.value} svg style={{ width: "1.1rem", height: "1.1rem", flexShrink: 0 }} className="rounded-sm" />
+      <span className="truncate">{props.data.label}</span>
     </div>
   );
 };

@@ -3,6 +3,10 @@ import prisma from "@/app/lib/prisma";
 import { getTokenFromRequest, verifyToken } from "@/app/lib/auth";
 import { MatchEngine, MatchCandidate, MatchJob } from "@/lib/ai/matcher";
 
+// Server-side in-memory cache: employerId -> { data, expiresAt }
+const serverCache = new Map<string, { data: unknown; expiresAt: number }>();
+const SERVER_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
 export async function GET(request: NextRequest) {
   try {
     const token = getTokenFromRequest(request);
@@ -17,10 +21,17 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     const jobId = searchParams.get("jobId");
+    const cacheKey = `${payload.userId}:${jobId ?? "all"}`;
+
+    // Return cached result if still fresh
+    const cached = serverCache.get(cacheKey);
+    if (cached && Date.now() < cached.expiresAt) {
+      return NextResponse.json({ success: true, recommendations: cached.data });
+    }
 
     // 1. Fetch Employer's Jobs (or specific job)
     const employerJobs = await prisma.job.findMany({
-      where: { 
+      where: {
         employerId: payload.userId,
         ...(jobId ? { id: jobId } : {})
       }
@@ -30,18 +41,19 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ success: false, message: "Job not found" }, { status: 404 });
     }
 
-    // 2. Fetch all Candidates with full profiles
+    // 2. Fetch top 50 candidates only — enough for meaningful ranking
     const allCandidates = await prisma.cvProfile.findMany({
+      take: 50,
       include: {
         skills: { include: { skill: true } },
         workExperiences: true,
-        // @ts-expect-error - relation exists in schema but not in client yet
         user: { select: { name: true, email: true } }
       }
     });
 
-    // 3. For each job, rank candidates synchronously using ML parallelization
-    const recommendationsByJob = await Promise.all(employerJobs.map(async (job) => {
+    // 3. Process jobs sequentially to reduce memory/CPU pressure
+    const recommendationsByJob = [];
+    for (const job of employerJobs) {
       const matchJob: MatchJob = {
         id: job.id,
         title: job.title,
@@ -88,14 +100,17 @@ export async function GET(request: NextRequest) {
         };
       }));
 
-      return {
+      recommendationsByJob.push({
         jobId: job.id,
         jobTitle: job.title,
         topMatches: candidatesWithScores
           .sort((a, b) => (b.matchScore || 0) - (a.matchScore || 0))
           .slice(0, 10)
-      };
-    }));
+      });
+    }
+
+    // Store in server cache
+    serverCache.set(cacheKey, { data: recommendationsByJob, expiresAt: Date.now() + SERVER_CACHE_TTL });
 
     return NextResponse.json({
       success: true,

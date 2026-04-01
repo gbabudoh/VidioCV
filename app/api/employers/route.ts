@@ -21,6 +21,9 @@ export async function GET(request: Request) {
         id: true,
         name: true,
         email: true,
+        country: true,
+        // @ts-expect-error - companyType is generated in Prisma client but not yet picked up by TS server
+        companyType: true,
       },
     });
 

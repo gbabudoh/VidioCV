@@ -1,12 +1,12 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import NextImage from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   Plus, Settings, LogOut, Bell, Filter, Video, Users, Calendar as CalendarIcon, 
   MapPin, Building2, Briefcase, Search, Mail, Lock, Shield, Sparkles,
-  Trash2, ArrowLeft, ArrowRight, Archive, LayoutDashboard, AlertCircle
+  Trash2, ArrowLeft, ArrowRight, Archive, LayoutDashboard, AlertCircle, LayoutGrid, List
 } from "lucide-react";
 import MobileBottomNav from "@/app/components/common/MobileBottomNav";
 import Link from "next/link";
@@ -138,6 +138,13 @@ export default function EmployerDashboard() {
     relocationSupport: true
   });
 
+  // Employer Profile States
+  const [employerName, setEmployerName] = useState("");
+  const [employerCountry, setEmployerCountry] = useState("");
+  const [employerType, setEmployerType] = useState("");
+  const [employerBio, setEmployerBio] = useState("");
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
+
   // Interaction States
   const [selectedCandidateVideo, setSelectedCandidateVideo] = useState<Candidate | null>(null);
   const [selectedCandidateExperience, setSelectedCandidateExperience] = useState<Candidate | null>(null);
@@ -152,7 +159,10 @@ export default function EmployerDashboard() {
   const [employerInterviews, setEmployerInterviews] = useState<Interview[]>([]);
   const [isLoadingInterviews, setIsLoadingInterviews] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [networkSearch, setNetworkSearch] = useState("");
+  const [networkSort, setNetworkSort] = useState<'name' | 'skills' | 'recent'>("recent");
   const [messageText, setMessageText] = useState("");
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [isLoadingCandidates, setIsLoadingCandidates] = useState(true);
@@ -177,6 +187,7 @@ export default function EmployerDashboard() {
   const [scheduleNotes, setScheduleNotes] = useState("");
   const [isScheduling, setIsScheduling] = useState(false);
   const [scheduleError, setScheduleError] = useState("");
+  const [isGeneralScheduleModalOpen, setIsGeneralScheduleModalOpen] = useState(false);
 
   // New Post Job States
   const [postJobTitle, setPostJobTitle] = useState("");
@@ -217,6 +228,18 @@ export default function EmployerDashboard() {
         const token = localStorage.getItem("token");
         if (!token) return;
 
+        // Use localStorage cache — skip ML run if data is fresh (5 min TTL)
+        const CACHE_KEY = "recommendations_cache";
+        const CACHE_TTL = 5 * 60 * 1000;
+        const cached = localStorage.getItem(CACHE_KEY);
+        if (cached) {
+          const { data: cachedData, timestamp } = JSON.parse(cached);
+          if (Date.now() - timestamp < CACHE_TTL) {
+            setRecommendations(cachedData);
+            return;
+          }
+        }
+
         setIsLoadingRecommendations(true);
         const response = await fetch("/api/candidates/recommendations", {
           headers: { "Authorization": `Bearer ${token}` }
@@ -224,6 +247,7 @@ export default function EmployerDashboard() {
         const data = await response.json();
         if (data.success && data.recommendations) {
           setRecommendations(data.recommendations);
+          localStorage.setItem(CACHE_KEY, JSON.stringify({ data: data.recommendations, timestamp: Date.now() }));
         }
       } catch (error) {
         console.error("Failed to fetch recommendations:", error);
@@ -232,7 +256,7 @@ export default function EmployerDashboard() {
       }
     };
 
-    if (activeTab === "candidates" || activeTab === "overview") {
+    if (activeTab === "candidates") {
       fetchRecommendations();
     }
   }, [activeTab]);
@@ -249,7 +273,13 @@ export default function EmployerDashboard() {
         });
         const data = await res.json();
         if (data.success && data.user) {
-           // Success
+           setEmployerName(data.user.name || "");
+           setEmployerCountry(data.user.country || "");
+           setEmployerType(data.user.companyType || "");
+           // UserProfile might have bio/location
+           if (data.user.profile) {
+             setEmployerBio(data.user.profile.bio || "");
+           }
         }
       } catch (error) {
         console.error("Failed to fetch employer profile:", error);
@@ -317,7 +347,7 @@ export default function EmployerDashboard() {
   }, [activeTab, messageSubTab]);
 
   useEffect(() => {
-    if (activeTab !== "jobs" && activeTab !== "overview") return;
+    if (activeTab !== "jobs" && activeTab !== "overview" && activeTab !== "candidates") return;
     const fetchJobs = async () => {
       try {
         setIsLoadingJobs(true);
@@ -340,7 +370,7 @@ export default function EmployerDashboard() {
   }, [activeTab]);
 
   useEffect(() => {
-    if (activeTab !== "interviews" && activeTab !== "overview") return;
+    if (activeTab !== "interviews" && activeTab !== "overview" && activeTab !== "candidates") return;
     const fetchInterviews = async () => {
       try {
         setIsLoadingInterviews(true);
@@ -407,6 +437,37 @@ export default function EmployerDashboard() {
     }
   };
 
+  const handleSaveEmployerProfile = async () => {
+    try {
+      setIsSavingProfile(true);
+      const token = localStorage.getItem("token");
+      const response = await fetch("/api/profile/employer/update", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          name: employerName,
+          country: employerCountry,
+          companyType: employerType
+        })
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        setSuccessMessage({
+          title: "Brand Protocol Updated",
+          message: "Your organizational identity has been synchronized across the talent network."
+        });
+      }
+    } catch (error) {
+      console.error("Save profile error:", error);
+    } finally {
+      setIsSavingProfile(false);
+    }
+  };
+
   const handlePostJob = async () => {
     if (!postJobTitle || !postJobDescription || !postJobLocation || !postJobDepartment) {
       setPostJobError("Please fulfill all mandatory parameters to publish.");
@@ -469,11 +530,18 @@ export default function EmployerDashboard() {
     }
   };
 
-  const filteredCandidates = candidates.filter(c => 
-     c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-     c.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-     c.skills.some(s => s.toLowerCase().includes(searchQuery.toLowerCase()))
-  );
+  const networkQuery = networkSearch || searchQuery;
+  const filteredCandidates = candidates
+    .filter(c =>
+      c.name.toLowerCase().includes(networkQuery.toLowerCase()) ||
+      c.title.toLowerCase().includes(networkQuery.toLowerCase()) ||
+      c.skills.some(s => s.toLowerCase().includes(networkQuery.toLowerCase()))
+    )
+    .sort((a, b) => {
+      if (networkSort === "name") return a.name.localeCompare(b.name);
+      if (networkSort === "skills") return b.skills.length - a.skills.length;
+      return 0; // "recent" — preserve original fetch order
+    });
 
   const handleSendMessage = async () => {
     if (!selectedCandidateMessage || !messageText.trim()) return;
@@ -558,9 +626,15 @@ export default function EmployerDashboard() {
   };
 
   const handleScheduleInterview = async () => {
-    if (!selectedCandidateSchedule || !scheduleTime || !scheduleJobId) {
+    if ((!selectedCandidateSchedule && !isGeneralScheduleModalOpen) || !scheduleTime || !scheduleJobId) {
       setScheduleError("Please calibrate both synchronization time and target opportunity.");
       return;
+    }
+
+    const targetCandidateId = selectedCandidateSchedule?.userId || selectedRecipientId;
+    if (!targetCandidateId) {
+       setScheduleError("Please select a target candidate for this synchronization.");
+       return;
     }
 
     try {
@@ -574,7 +648,7 @@ export default function EmployerDashboard() {
           "Authorization": `Bearer ${token}`
         },
         body: JSON.stringify({
-          candidateId: selectedCandidateSchedule.userId,
+          candidateId: targetCandidateId,
           jobId: scheduleJobId,
           dateTime: new Date(scheduleTime).toISOString(),
           interviewType: scheduleType,
@@ -583,14 +657,16 @@ export default function EmployerDashboard() {
       });
 
       const data = await response.json();
-      const name = selectedCandidateSchedule.name;
+      const name = selectedCandidateSchedule?.name || candidates.find(c => c.userId === targetCandidateId)?.name || "Candidate";
 
       if (data.success) {
         setSelectedCandidateSchedule(null);
+        setIsGeneralScheduleModalOpen(false);
         setScheduleTime("");
         setScheduleJobId("");
         setScheduleNotes("");
         setScheduleType("video");
+        setSelectedRecipientId("");
         
         setSuccessMessage({ 
           title: "Sync Proposed", 
@@ -664,7 +740,7 @@ export default function EmployerDashboard() {
             </div>
             <Link 
               href="/" 
-              className="hidden lg:flex items-center gap-2 px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-[0.2em] text-[#64748B] hover:text-[#334155] hover:bg-[#E2E8F0]/50 transition-all group"
+              className="hidden lg:flex items-center gap-2 px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-[0.2em] text-[#64748B] hover:text-[#334155] hover:bg-[#E2E8F0]/50 transition-all group cursor-pointer"
             >
               Go to homepage <ArrowRight className="w-3 h-3 group-hover:translate-x-1 transition-transform" />
             </Link>
@@ -675,7 +751,7 @@ export default function EmployerDashboard() {
             <div className="md:hidden flex items-center">
                <button 
                  onClick={() => setActiveTab("overview")}
-                 className="flex items-center gap-2 text-[#64748B] font-bold text-xs uppercase tracking-widest"
+                 className="flex items-center gap-2 text-[#64748B] font-bold text-xs uppercase tracking-widest cursor-pointer"
                >
                  <ArrowLeft className="w-4 h-4" />
                  Back
@@ -782,7 +858,7 @@ export default function EmployerDashboard() {
             </div>
             <button 
               onClick={() => setIsPostJobModalOpen(true)} 
-              className="px-10 py-5 bg-[#334155] hover:bg-[#454749] text-white rounded-3xl font-black text-[10px] uppercase tracking-[0.2em] shadow-2xl transition-all hover:-translate-y-1 active:scale-95 flex items-center gap-3 shrink-0"
+              className="px-10 py-5 bg-[#334155] hover:bg-[#454749] text-white rounded-3xl font-black text-[10px] uppercase tracking-[0.2em] shadow-2xl transition-all hover:-translate-y-1 active:scale-95 flex items-center gap-3 shrink-0 cursor-pointer"
             >
               <Plus className="w-5 h-5" /> Post Opportunity
             </button>
@@ -882,7 +958,23 @@ export default function EmployerDashboard() {
                     <h3 className="text-3xl font-black tracking-tight" style={{ color: "#334155" }}>Global Talent Pool</h3>
                     <p className="font-medium text-base" style={{ color: "#64748B" }}>Curated matches driven by high-fidelity Video CVs.</p>
                   </div>
-                  <div className="flex gap-4 w-full md:w-auto">
+                  <div className="flex flex-wrap items-center gap-4 w-full md:w-auto">
+                    <div className="flex items-center gap-1 bg-white/50 p-1.5 rounded-2xl border border-[#E2E8F0] shadow-sm">
+                       <button 
+                         onClick={() => setViewMode('grid')}
+                         className={`p-2 rounded-xl transition-all cursor-pointer ${viewMode === 'grid' ? 'bg-[#334155] text-white shadow-lg' : 'text-[#64748B] hover:bg-[#E2E8F0]'}`}
+                         title="Grid View"
+                       >
+                         <LayoutGrid className="w-4 h-4" />
+                       </button>
+                       <button 
+                         onClick={() => setViewMode('list')}
+                         className={`p-2 rounded-xl transition-all cursor-pointer ${viewMode === 'list' ? 'bg-[#334155] text-white shadow-lg' : 'text-[#64748B] hover:bg-[#E2E8F0]'}`}
+                         title="List View"
+                       >
+                         <List className="w-4 h-4" />
+                       </button>
+                    </div>
                     <button onClick={() => setIsFilterModalOpen(true)} className="px-8 py-4 bg-white hover:bg-[#E2E8F0] font-bold text-[10px] uppercase tracking-widest rounded-2xl text-[#334155] border border-[#E2E8F0] shadow-sm transition cursor-pointer flex items-center gap-3">
                       <Filter className="w-4 h-4" /> Refine
                     </button>
@@ -909,10 +1001,10 @@ export default function EmployerDashboard() {
                     {isLoadingRecommendations ? (
                        <div>
                           <div className="h-8 w-48 bg-gray-200 rounded-lg animate-pulse mb-8" />
-                          <div className="flex gap-6 overflow-x-auto pb-6 -mx-2 px-2">
-                            {[1, 2].map(i => (
-                              <div key={i} className="min-w-[320px] md:min-w-[380px] h-[280px] bg-white rounded-[40px] border border-gray-100 animate-pulse" />
-                            ))}
+                          <div className="grid grid-cols-2 gap-8">
+                             {[1, 2].map(i => (
+                               <div key={i} className="w-full h-[320px] bg-white rounded-[40px] border border-gray-100 animate-pulse" />
+                             ))}
                           </div>
                        </div>
                     ) : recommendations.length > 0 && !searchQuery && (
@@ -927,100 +1019,107 @@ export default function EmployerDashboard() {
                           </div>
                         </div>
 
-                        <div className="space-y-12">
+                        <div className={viewMode === 'list' ? "flex flex-col gap-8" : "grid grid-cols-1 md:grid-cols-2 gap-8"}>
                           {recommendations.map((rec) => (
-                            <div key={rec.jobId} className="space-y-6">
+                            <div key={rec.jobId} className="space-y-4">
                               <div className="flex items-center gap-4 pl-2">
                                  <div className="w-1.5 h-6 bg-[#F7B980] rounded-full" />
                                  <h4 className="text-sm font-black uppercase tracking-widest text-[#64748B]">For: {rec.jobTitle}</h4>
                               </div>
 
-                              <div className="flex gap-6 overflow-x-auto pb-6 hide-scrollbar -mx-2 px-2">
-                                {rec.topMatches.map((candidate) => (
-                                  <div 
-                                    key={`${rec.jobId}-${candidate.id}`}
-                                    className="min-w-[320px] md:min-w-[380px] bg-white rounded-[40px] p-8 border border-[#E2E8F0] shadow-xl hover:shadow-2xl transition-all group relative overflow-hidden"
-                                  >
-                                    <div className="absolute top-0 right-0 p-6">
-                                      <div className="px-5 py-2.5 bg-emerald-50 rounded-2xl border border-emerald-100 flex items-center gap-2 shadow-sm">
-                                        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                                        <span className="text-sm font-black text-emerald-700">{candidate.matchScore}% Fit</span>
-                                      </div>
-                                    </div>
-
-                                    <div className="flex flex-col gap-6">
-                                      <div className="flex items-center gap-5">
-                                        <div className="w-16 h-16 bg-[#334155] rounded-[24px] flex items-center justify-center text-white font-black text-2xl shadow-xl shrink-0 group-hover:scale-105 transition-transform">
-                                          {candidate.name.charAt(0)}
-                                        </div>
-                                        <div>
-                                          <h4 className="text-xl font-black leading-tight text-[#334155] group-hover:text-[#F7B980] transition-colors">{candidate.name}</h4>
-                                          <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#64748B]">{candidate.title}</p>
-                                        </div>
-                                      </div>
-
-                                      <div className="flex flex-wrap gap-2">
-                                        {candidate.skills.slice(0, 3).map(skill => (
-                                          <span key={skill} className="px-3 py-1.5 bg-[#F7B980]/10 text-[#F7B980] text-[9px] font-black uppercase tracking-widest rounded-xl border border-[#F7B980]/10">
-                                            {skill}
-                                          </span>
-                                        ))}
-                                        {candidate.skills.length > 3 && (
-                                          <span className="px-3 py-1.5 bg-[#E2E8F0] text-[#64748B] text-[9px] font-black uppercase tracking-widest rounded-xl border border-white/50">
-                                            +{candidate.skills.length - 3} more
-                                          </span>
-                                        )}
-                                      </div>
-
-                                      <div className="flex items-center justify-between pt-2">
-                                         <button 
-                                            onClick={() => setSelectedCandidateVideo(candidate)}
-                                            className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-[#334155] hover:text-[#F7B980] transition-colors"
-                                         >
-                                            <Video className="w-4 h-4" /> Watch CV
-                                         </button>
-                                         <button 
-                                            onClick={() => setSelectedCandidateMessage(candidate)}
-                                            className="flex items-center gap-2 px-6 py-3 bg-[#E2E8F0] hover:bg-[#F7B980] hover:text-white rounded-2xl text-[9px] font-black uppercase tracking-widest transition-all active:scale-95"
-                                         >
-                                            <Mail className="w-4 h-4" /> Secure Inquiry
-                                         </button>
-                                      </div>
-                                    </div>
-                                  </div>
-                                ))}
-                              </div>
+                              <CandidateList
+                                candidates={rec.topMatches.map(c => ({...c, matchScore: c.matchScore}))}
+                                viewMode={viewMode}
+                                columns={1}
+                                onViewVideo={(c) => setSelectedCandidateVideo(c)}
+                                onMessage={(c) => setSelectedCandidateMessage(c)}
+                                onSchedule={(c) => setSelectedCandidateSchedule(c)}
+                              />
                             </div>
                           ))}
                         </div>
                       </div>
                     )}
 
-                    <div className="flex items-center gap-3 mb-8">
-                      <div className="p-2.5 bg-[#E2E8F0] rounded-2xl">
-                         <Users className="w-5 h-5 text-[#64748B]" />
-                      </div>
-                      <div>
-                        <h3 className="text-2xl font-black tracking-tight" style={{ color: "#334155" }}>Talent Network</h3>
-                        <p className="text-sm font-semibold opacity-60" style={{ color: "#64748B" }}>Browse the global list of verified professionals.</p>
-                      </div>
-                    </div>
+                    {/* Talent Network */}
+                    <div className="border-t border-[#E2E8F0] pt-10 space-y-6">
+                      {/* Header row */}
+                      <div className="flex items-center justify-between gap-4">
+                        <div className="flex items-center gap-3">
+                          <div className="p-2.5 bg-[#E2E8F0] rounded-2xl">
+                            <Users className="w-5 h-5 text-[#64748B]" />
+                          </div>
+                          <div>
+                            <h3 className="text-2xl font-black tracking-tight" style={{ color: "#334155" }}>Talent Network</h3>
+                            <p className="text-sm font-semibold opacity-60" style={{ color: "#64748B" }}>
+                              {filteredCandidates.length} professional{filteredCandidates.length !== 1 ? "s" : ""} found
+                            </p>
+                          </div>
+                        </div>
 
-                    {filteredCandidates.length > 0 ? (
-                      <CandidateList 
-                        candidates={filteredCandidates} 
-                        onViewVideo={(c) => setSelectedCandidateVideo(c)}
-                        onViewExperience={(c) => setSelectedCandidateExperience(c)}
-                        onViewSkills={(c) => setSelectedCandidateSkills(c)}
-                        onMessage={(c) => setSelectedCandidateMessage(c)}
-                        onSchedule={(c) => setSelectedCandidateSchedule(c)}
-                      />
-                    ) : (
-                      <div className="text-center py-20 bg-white/50 rounded-3xl border border-dashed border-[#E2E8F0]">
-                        <p className="text-[#334155] font-black text-xl mb-2">No candidates found</p>
-                        <p className="text-[#64748B] text-sm">We couldn&apos;t find any talent matching your refining criteria. Try broadening your search.</p>
+                        {/* Sort pills */}
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-[#64748B] font-semibold mr-1">Sort:</span>
+                          {(["recent", "name", "skills"] as const).map(opt => (
+                            <button
+                              key={opt}
+                              onClick={() => setNetworkSort(opt)}
+                              className={`px-3 py-1.5 rounded-xl text-xs font-semibold capitalize transition-all ${
+                                networkSort === opt
+                                  ? "bg-[#334155] text-white"
+                                  : "bg-[#F1F5F9] text-[#64748B] hover:bg-[#E2E8F0] cursor-pointer"
+                              }`}
+                            >
+                              {opt}
+                            </button>
+                          ))}
+                        </div>
                       </div>
-                    )}
+
+                      {/* Search bar */}
+                      <div className="relative">
+                        <Search className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-[#94A3B8]" />
+                        <input
+                          type="text"
+                          value={networkSearch}
+                          onChange={(e) => setNetworkSearch(e.target.value)}
+                          placeholder="Search by name, role, or skill…"
+                          className="w-full pl-11 pr-10 py-3 bg-white border border-[gainsboro] rounded-2xl text-sm text-[#334155] placeholder-[#94A3B8] focus:outline-none focus:ring-2 focus:ring-[#334155]/10 focus:border-[#334155]/30 transition-all"
+                        />
+                        {networkSearch && (
+                          <button
+                            onClick={() => setNetworkSearch("")}
+                            className="absolute right-4 top-1/2 -translate-y-1/2 text-[#94A3B8] hover:text-[#334155] transition-colors text-xs font-semibold cursor-pointer"
+                          >
+                            ✕
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Results */}
+                      {filteredCandidates.length > 0 ? (
+                        <CandidateList
+                          candidates={filteredCandidates}
+                          viewMode={viewMode}
+                          onViewVideo={(c) => setSelectedCandidateVideo(c)}
+                          onMessage={(c) => setSelectedCandidateMessage(c)}
+                          onSchedule={(c) => setSelectedCandidateSchedule(c)}
+                        />
+                      ) : (
+                        <div className="text-center py-20 bg-white/50 rounded-3xl border border-dashed border-[#E2E8F0]">
+                          <p className="text-[#334155] font-black text-xl mb-2">No professionals found</p>
+                          <p className="text-[#64748B] text-sm">Try adjusting your search or clearing filters.</p>
+                          {networkSearch && (
+                            <button
+                              onClick={() => setNetworkSearch("")}
+                              className="mt-4 px-5 py-2 bg-[#334155] text-white rounded-xl text-sm font-semibold hover:bg-[#475569] transition-all cursor-pointer"
+                            >
+                              Clear search
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 )}
               </div>
@@ -1069,7 +1168,7 @@ export default function EmployerDashboard() {
                              <span className="px-6 py-2 bg-[#E2E8F0] rounded-full text-[10px] font-black uppercase tracking-[0.2em] text-[#334155] border border-white transition-all group-hover:bg-[#F7B980]/10 group-hover:text-[#F7B980] group-hover:border-[#F7B980]/20">
                                Active
                              </span>
-                             <button onClick={() => setSelectedJob(job)} className="px-8 py-3.5 bg-[#334155] hover:bg-[#454749] text-white font-bold text-[10px] tracking-widest uppercase rounded-xl transition-all shadow-lg active:scale-95">
+                             <button onClick={() => setSelectedJob(job)} className="px-8 py-3.5 bg-[#334155] hover:bg-[#454749] text-white font-bold text-[10px] tracking-widest uppercase rounded-xl transition-all shadow-lg active:scale-95 cursor-pointer">
                                Blueprint
                              </button>
                           </div>
@@ -1095,9 +1194,17 @@ export default function EmployerDashboard() {
                   boxShadow: "0 24px 64px rgba(87,89,91,0.06)"
                 }}
               >
-                <div className="mb-10 text-center space-y-2">
-                  <h3 className="text-3xl font-black tracking-tight" style={{ color: "#334155" }}>Session Schedule</h3>
-                  <p className="font-medium text-base" style={{ color: "#64748B" }}>Coordinate your global interview syncs and talent meetups.</p>
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-6 border-b border-[#E2E8F0] pb-10">
+                  <div className="space-y-1">
+                    <h3 className="text-3xl font-black tracking-tight" style={{ color: "#334155" }}>Session Schedule</h3>
+                    <p className="font-medium text-base" style={{ color: "#64748B" }}>Coordinate your global interview syncs and talent meetups.</p>
+                  </div>
+                  <button 
+                    onClick={() => setIsGeneralScheduleModalOpen(true)}
+                    className="px-8 py-4 bg-[#334155] hover:bg-[#454749] text-white font-black text-[10px] uppercase tracking-widest rounded-2xl shadow-xl transition-all active:scale-95 flex items-center gap-3 cursor-pointer"
+                  >
+                    <Plus className="w-4 h-4" /> Propose New Sync
+                  </button>
                 </div>
                 {isLoadingInterviews ? (
                   <div className="flex flex-col items-center justify-center py-20">
@@ -1182,7 +1289,7 @@ export default function EmployerDashboard() {
                     <div className="flex lg:hidden mb-8">
                        <button 
                          onClick={() => setActiveTab(previousTab)}
-                         className="flex items-center gap-2 text-[#64748B] hover:text-[#334155] font-black text-[10px] uppercase tracking-widest transition-all group"
+                         className="flex items-center gap-2 text-[#64748B] hover:text-[#334155] font-black text-[10px] uppercase tracking-widest transition-all group cursor-pointer"
                        >
                          <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" /> Back to Dashboard
                        </button>
@@ -1211,15 +1318,59 @@ export default function EmployerDashboard() {
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
                               <div className="space-y-4">
                                 <label className="text-[10px] font-black uppercase tracking-[0.25em]" style={{ color: "#64748B" }}>Legal Entity</label>
-                                <input type="text" defaultValue="TechNova Solutions" className="w-full px-8 py-5 bg-white border border-[#E2E8F0] rounded-3xl outline-none transition-all font-bold focus:border-[#F7B980] shadow-sm" style={{ color: "#334155" }} />
+                                <input 
+                                  type="text" 
+                                  value={employerName} 
+                                  onChange={(e) => setEmployerName(e.target.value)}
+                                  placeholder="e.g. TechNova Solutions"
+                                  className="w-full px-8 py-5 bg-white border border-[#E2E8F0] rounded-3xl outline-none transition-all font-bold focus:border-[#F7B980] shadow-sm" style={{ color: "#334155" }} 
+                                />
                               </div>
                               <div className="space-y-4">
                                 <label className="text-[10px] font-black uppercase tracking-[0.25em]" style={{ color: "#64748B" }}>Primary Industry</label>
-                                <input type="text" defaultValue="Software & SaaS" className="w-full px-8 py-5 bg-white border border-[#E2E8F0] rounded-3xl outline-none transition-all font-bold focus:border-[#F7B980] shadow-sm" style={{ color: "#334155" }} />
+                                <select 
+                                  value={employerType}
+                                  onChange={(e) => setEmployerType(e.target.value)}
+                                  className="w-full px-8 py-5 bg-white border border-[#E2E8F0] rounded-3xl outline-none transition-all font-bold focus:border-[#F7B980] shadow-sm appearance-none cursor-pointer" 
+                                  style={{ color: "#334155" }}
+                                >
+                                  <option value="">Select Industry...</option>
+                                  <option value="Software & SaaS">Software & SaaS</option>
+                                  <option value="Fintech">Fintech</option>
+                                  <option value="Healthcare">Healthcare</option>
+                                  <option value="AI & Machine Learning">AI & Machine Learning</option>
+                                  <option value="E-commerce">E-commerce</option>
+                                  <option value="Cybersecurity">Cybersecurity</option>
+                                </select>
+                              </div>
+                              <div className="space-y-4">
+                                <label className="text-[10px] font-black uppercase tracking-[0.25em]" style={{ color: "#64748B" }}>Operational Base (Country)</label>
+                                <input 
+                                  type="text" 
+                                  value={employerCountry} 
+                                  onChange={(e) => setEmployerCountry(e.target.value)}
+                                  placeholder="e.g. United Kingdom"
+                                  className="w-full px-8 py-5 bg-white border border-[#E2E8F0] rounded-3xl outline-none transition-all font-bold focus:border-[#F7B980] shadow-sm" style={{ color: "#334155" }} 
+                                />
                               </div>
                               <div className="md:col-span-2 space-y-4">
                                 <label className="text-[10px] font-black uppercase tracking-[0.25em]" style={{ color: "#64748B" }}>Organization Narrative</label>
-                                <textarea rows={5} defaultValue="Leading enterprise software development hub specializing in high-fidelity AI products and global cloud infrastructure." className="w-full px-8 py-6 bg-white border border-[#E2E8F0] rounded-[32px] outline-none transition-all font-medium text-lg leading-relaxed focus:border-[#F7B980] shadow-sm resize-none" style={{ color: "#334155" }} />
+                                <textarea 
+                                  rows={5} 
+                                  value={employerBio}
+                                  onChange={(e) => setEmployerBio(e.target.value)}
+                                  placeholder="Describe your organization's mission..."
+                                  className="w-full px-8 py-6 bg-white border border-[#E2E8F0] rounded-[32px] outline-none transition-all font-medium text-lg leading-relaxed focus:border-[#F7B980] shadow-sm resize-none" style={{ color: "#334155" }} 
+                                />
+                              </div>
+                              <div className="md:col-span-2 flex justify-end">
+                                 <button
+                                   onClick={handleSaveEmployerProfile}
+                                   disabled={isSavingProfile}
+                                   className="px-12 py-4 bg-[#334155] hover:bg-[#454749] text-white font-black text-[10px] uppercase tracking-widest rounded-2xl shadow-xl transition-all active:scale-95 disabled:opacity-50 flex items-center gap-3 cursor-pointer"
+                                 >
+                                   {isSavingProfile ? "Synchronizing..." : "Save Brand Protocol"}
+                                 </button>
                               </div>
                             </div>
                           </div>
@@ -1548,7 +1699,7 @@ export default function EmployerDashboard() {
                         <button 
                           onClick={handleSendComposeDirect}
                           disabled={!selectedRecipientId || !composeBody.trim() || isSendingDirect}
-                          className="w-full py-5 bg-[#334155] hover:bg-[#454749] text-white rounded-[24px] font-black text-[10px] uppercase tracking-[0.2em] shadow-2xl transition-all hover:-translate-y-1 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed group flex items-center justify-center gap-3"
+                          className="w-full py-5 bg-[#334155] hover:bg-[#454749] text-white rounded-[24px] font-black text-[10px] uppercase tracking-[0.2em] shadow-2xl transition-all hover:-translate-y-1 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer group flex items-center justify-center gap-3"
                         >
                            {isSendingDirect ? "Transmitting..." : (
                              <>
@@ -1885,13 +2036,14 @@ export default function EmployerDashboard() {
       </Modal>
 
       <Modal 
-        isOpen={!!selectedCandidateSchedule} 
+        isOpen={!!selectedCandidateSchedule || isGeneralScheduleModalOpen} 
         onClose={() => {
           setSelectedCandidateSchedule(null);
+          setIsGeneralScheduleModalOpen(false);
           setScheduleError("");
         }} 
         type="default" 
-        title={`Sync with ${selectedCandidateSchedule?.name}`}
+        title={selectedCandidateSchedule ? `Sync with ${selectedCandidateSchedule.name}` : "Propose New Synchronization"}
         primaryAction={{ 
           label: isScheduling ? "Transmitting..." : "Dispatch Invite", 
           onClick: handleScheduleInterview
@@ -1902,6 +2054,22 @@ export default function EmployerDashboard() {
              <div className="bg-red-50 border border-red-100 p-4 rounded-2xl flex items-center gap-3 animate-shake">
                 <AlertCircle className="w-4 h-4 text-red-400 shrink-0" />
                 <p className="text-[10px] font-bold text-red-400 uppercase tracking-widest">{scheduleError}</p>
+             </div>
+           )}
+           {isGeneralScheduleModalOpen && (
+             <div className="space-y-4">
+                <label className="text-[10px] font-black uppercase tracking-widest pl-2" style={{ color: "#64748B" }}>Target Candidate</label>
+                <select 
+                  value={selectedRecipientId}
+                  onChange={(e) => setSelectedRecipientId(e.target.value)}
+                  className="w-full px-8 py-5 bg-white border border-[#E2E8F0] rounded-2xl font-bold text-sm outline-none focus:border-[#F7B980] transition-all cursor-pointer" 
+                  style={{ color: "#334155" }}
+                >
+                  <option value="">Select Candidate...</option>
+                  {candidates.map(candidate => (
+                    <option key={candidate.id} value={candidate.userId}>{candidate.name} — {candidate.title}</option>
+                  ))}
+                </select>
              </div>
            )}
            <div className="space-y-4">
@@ -2001,8 +2169,8 @@ export default function EmployerDashboard() {
         <div className="space-y-8 p-2">
            <p className="font-medium" style={{ color: "#ACBAC4" }}>Audit and refine the parameters for this active recruitment pipeline.</p>
            <div className="flex gap-4">
-             <button onClick={() => setSelectedJob(null)} className="flex-1 py-4 bg-red-50 hover:bg-red-100 text-red-500 rounded-2xl font-black text-[10px] uppercase tracking-widest border border-red-100 transition-all">Deactivate Pipeline</button>
-             <button onClick={() => setSelectedJob(null)} className="flex-1 py-4 bg-[#F2F4F4] hover:bg-white text-[#57595B] rounded-2xl font-black text-[10px] uppercase tracking-widest border border-[#F2F4F4] transition-all">Archive</button>
+             <button onClick={() => setSelectedJob(null)} className="flex-1 py-4 bg-red-50 hover:bg-red-100 text-red-500 rounded-2xl font-black text-[10px] uppercase tracking-widest border border-red-100 transition-all cursor-pointer">Deactivate Pipeline</button>
+             <button onClick={() => setSelectedJob(null)} className="flex-1 py-4 bg-[#F2F4F4] hover:bg-white text-[#57595B] rounded-2xl font-black text-[10px] uppercase tracking-widest border border-[#F2F4F4] transition-all cursor-pointer">Archive</button>
            </div>
         </div>
       </Modal>

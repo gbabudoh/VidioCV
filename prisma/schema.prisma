@@ -15,6 +15,7 @@ model User {
   role       String       @default("candidate")
   name       String
   country    String?
+  companyType String?      @map("company_type")
   emailVerified       Boolean      @default(false) @map("email_verified")
   verificationToken   String?      @unique @map("verification_token")
   verificationExpires DateTime?    @map("verification_expires")
