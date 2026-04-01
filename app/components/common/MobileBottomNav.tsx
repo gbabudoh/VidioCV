@@ -20,7 +20,7 @@ const MobileBottomNav: React.FC<MobileBottomNavProps> = ({ items, activeTab, onT
   return (
     <div className="fixed bottom-0 left-0 right-0 z-[100] md:hidden">
       <div 
-        className="bg-white/90 backdrop-blur-2xl border-t border-white/50 shadow-[0_-8px_30px_rgba(0,0,0,0.05)] flex items-center justify-around p-2 pb-6 relative overflow-hidden"
+        className="bg-white/90 backdrop-blur-2xl border-t border-white/50 shadow-[0_-8px_30px_rgba(0,0,0,0.05)] grid grid-cols-6 p-2 pb-6 relative overflow-hidden"
       >
         {/* Active Tab Glow */}
         <div 
@@ -38,7 +38,7 @@ const MobileBottomNav: React.FC<MobileBottomNavProps> = ({ items, activeTab, onT
             <button
               key={item.id}
               onClick={() => onTabChange(item.id)}
-              className="relative flex flex-col items-center justify-center py-3 px-4 transition-all duration-500 ease-out flex-1"
+              className="relative flex flex-col items-center justify-center py-3 px-0.5 transition-all duration-500 ease-out min-w-0"
             >
               <AnimatePresence>
                 {isActive && (
