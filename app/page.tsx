@@ -115,9 +115,9 @@ export default function Home() {
               </motion.div>
 
               <motion.div variants={fadeUp} transition={springTransition}>
-                <h1 className="text-4xl sm:text-7xl md:text-8xl font-black leading-[0.95] tracking-tighter text-[#57595B] group">
+                <h1 className="text-4xl sm:text-7xl md:text-8xl font-black leading-[1.1] tracking-tighter text-[#57595B] group">
                   Beyond the <br />
-                  <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#57595B] via-[#8A8C8E] to-[#F7B980]">
+                  <span className="inline-block py-2 text-transparent bg-clip-text bg-gradient-to-r from-[#57595B] via-[#8A8C8E] to-[#F7B980]">
                     Static Resume
                   </span>
                 </h1>
@@ -159,8 +159,20 @@ export default function Home() {
                 className="flex items-center gap-8 pt-4"
               >
                 <div className="flex -space-x-4">
-                  {[1, 2, 3, 4].map((i) => (
-                    <div key={i} className="w-12 h-12 rounded-2xl border-4 border-[#F2F4F4] bg-[#ACBAC4] overflow-hidden" />
+                  {[
+                    "https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=100&auto=format&fit=crop",
+                    "https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?q=80&w=100&auto=format&fit=crop",
+                    "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=100&auto=format&fit=crop",
+                    "https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=100&auto=format&fit=crop"
+                  ].map((url, i) => (
+                    <div key={i} className="relative w-12 h-12 rounded-2xl border-4 border-[#F2F4F4] bg-[#ACBAC4] overflow-hidden shadow-lg">
+                      <NextImage 
+                        src={url}
+                        alt={`Profile ${i + 1}`}
+                        fill
+                        className="object-cover"
+                      />
+                    </div>
                   ))}
                 </div>
                 <div>
