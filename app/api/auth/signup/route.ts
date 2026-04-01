@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import { generateToken } from "@/app/lib/auth";
 import { z } from "zod";
 import prisma from "@/app/lib/prisma";
 import bcrypt from "bcryptjs";
@@ -31,6 +30,11 @@ export async function POST(request: NextRequest) {
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
+    const verificationToken = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+    const verificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+
+    // Bypass verification ONLY for specific demo accounts
+    const isDemoUser = email === "employer@demo.com" || email === "candidate@demo.com";
 
     const user = await prisma.user.create({
       data: {
@@ -39,6 +43,10 @@ export async function POST(request: NextRequest) {
         name,
         country,
         role,
+        // @ts-expect-error - Prisma client needs regeneration
+        emailVerified: isDemoUser,
+        verificationToken,
+        verificationExpires,
         profile: {
           create: {
             fullName: name,
@@ -56,45 +64,22 @@ export async function POST(request: NextRequest) {
     // Send system notification
     await Notifications.system.newUserRegistered(name, role as 'candidate' | 'employer');
 
-    // Subscribe and send welcome email (Listmonk)
-    if (role === 'candidate') {
-      await EmailNotifications.welcomeCandidate(email, name);
-    } else if (role === 'employer') {
-      await EmailNotifications.welcomeEmployer(email, name);
-    }
+    // Send verification email
+    await EmailNotifications.sendVerificationEmail(email, name, verificationToken);
 
-    const token = generateToken({
-      userId: user.id,
-      email: user.email,
-      role: user.role as "candidate" | "employer" | "admin",
-    });
-
-    const response = NextResponse.json(
+    return NextResponse.json(
       {
         success: true,
-        message: "User created successfully",
-        token,
+        message: "Registration successful! Please check your email to verify your account.",
         user: { 
           id: user.id,
           email: user.email, 
           name: user.name, 
-          country: user.country, 
           role: user.role 
         },
       },
       { status: 201 }
     );
-
-    // Set persistent session cookie (7 days)
-    response.cookies.set("auth_token", token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      maxAge: 60 * 60 * 24 * 7, // 7 days
-      path: "/",
-    });
-
-    return response;
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(

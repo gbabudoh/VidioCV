@@ -35,6 +35,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Bypass verification ONLY for specific demo accounts
+    const isDemoUser = user.email === "employer@demo.com" || user.email === "candidate@demo.com";
+
+    // @ts-expect-error - Prisma client needs regeneration to include emailVerified
+    if (!user.emailVerified && !isDemoUser) {
+      return NextResponse.json(
+        { success: false, message: "Please verify your email before logging in. Check your inbox for the verification link." },
+        { status: 403 }
+      );
+    }
+
     if (role && user.role !== role) {
       return NextResponse.json(
         { success: false, message: `This account is not registered as ${role === "employer" ? "an employer" : "a candidate"}. Please use the correct login.` },

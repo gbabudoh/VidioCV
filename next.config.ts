@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import path from "path";
 
 const nextConfig: NextConfig = {
   images: {
@@ -7,7 +8,7 @@ const nextConfig: NextConfig = {
         protocol: "http",
         hostname: "149.102.155.247",
       },
-{
+      {
         protocol: "https",
         hostname: "images.unsplash.com",
       },
@@ -16,6 +17,18 @@ const nextConfig: NextConfig = {
         hostname: "example.com",
       },
     ],
+  },
+  webpack: (config) => {
+    config.resolve.alias = {
+      ...config.resolve.alias,
+      "gpu.js": path.resolve(__dirname, "lib/empty.js"),
+    };
+    return config;
+  },
+  turbopack: {
+    resolveAlias: {
+      "gpu.js": "./lib/empty.js",
+    },
   },
 };
 

@@ -15,18 +15,15 @@ import InterviewCalendar from "@/app/components/dashboard/InterviewCalendar";
 import Modal from "@/app/components/common/Modal";
 import VideoPlayer from "@/app/components/video-tools/VideoPlayer";
 import Toggle from "@/app/components/common/Toggle";
-import Select, { GroupBase, StylesConfig, OptionProps, SingleValueProps } from "react-select";
-import ReactCountryFlag from "react-country-flag";
-import countryList from "country-list";
 import { useRouter } from "next/navigation";
 import { useSessionSync } from "@/app/lib/hooks/useSessionSync";
 
 type Tab = "overview" | "candidates" | "jobs" | "interviews" | "messages" | "settings";
 
-interface Option {
-  value: string;
-  label: string;
-}
+// interface Option {
+//   value: string;
+//   label: string;
+// }
 
 interface ProfessionalSkill {
   name: string;
@@ -52,6 +49,20 @@ interface Candidate {
   videoUrl: string | null;
   rating: number;
   experience?: Experience[];
+  matchScore?: number;
+  matchBreakdown?: {
+    skills: number;
+    title: number;
+    metadata: number;
+  };
+  matchedSkills?: string[];
+  missingSkills?: string[];
+}
+
+interface RecommendationJob {
+  jobId: string;
+  jobTitle: string;
+  topMatches: Candidate[];
 }
 
 interface Interview {
@@ -106,31 +117,6 @@ interface RawInboxSignal {
   } | null;
 }
 
-const countryOptions: Option[] = countryList.getData().map((country) => ({
-  value: country.code,
-  label: country.name,
-}));
-
-// Placeholder for select components that need these
-const selectStyles: StylesConfig<Option, false, GroupBase<Option>> = {
-  control: (base, state) => ({
-    ...base,
-    height: "56px",
-    backgroundColor: "white",
-    borderColor: state.isFocused ? "#F7B980" : "#E2E8F0",
-    borderRadius: "1rem",
-    borderWidth: "1px",
-    boxShadow: "none",
-    paddingLeft: "1rem"
-  }),
-  menu: (base) => ({
-    ...base,
-    backgroundColor: "rgba(255, 255, 255, 0.95)",
-    backdropFilter: "blur(16px)",
-    borderRadius: "1rem",
-    zIndex: 100
-  }),
-};
 
 export default function EmployerDashboard() {
   const router = useRouter();
@@ -141,7 +127,7 @@ export default function EmployerDashboard() {
   const [isPostJobModalOpen, setIsPostJobModalOpen] = useState(false);
   const [successMessage, setSuccessMessage] = useState<{ title: string; message: string } | null>(null);
 
-  const [selectedCountry, setSelectedCountry] = useState<{ value: string; label: string } | null>(null);
+  // const [selectedCountry, setSelectedCountry] = useState<{ value: string; label: string } | null>(null);
   
   const [prefs, setPrefs] = useState({
     emailAlerts: true,
@@ -222,6 +208,37 @@ export default function EmployerDashboard() {
     fetchCandidates();
   },[]);
 
+  const [recommendations, setRecommendations] = useState<RecommendationJob[]>([]);
+  const [isLoadingRecommendations, setIsLoadingRecommendations] = useState(false);
+
+  useEffect(() => {
+    const fetchRecommendations = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        if (!token) return;
+
+        setIsLoadingRecommendations(true);
+        const response = await fetch("/api/candidates/recommendations", {
+          headers: { "Authorization": `Bearer ${token}` }
+        });
+        const data = await response.json();
+        if (data.success && data.recommendations) {
+          setRecommendations(data.recommendations);
+        }
+      } catch (error) {
+        console.error("Failed to fetch recommendations:", error);
+      } finally {
+        setIsLoadingRecommendations(false);
+      }
+    };
+
+    if (activeTab === "candidates" || activeTab === "overview") {
+      fetchRecommendations();
+    }
+  }, [activeTab]);
+
+  console.log("Recommendations loaded:", recommendations.length);
+
   useEffect(() => {
     const fetchEmployerProfile = async () => {
       try {
@@ -231,9 +248,8 @@ export default function EmployerDashboard() {
           headers: { Authorization: `Bearer ${token}` },
         });
         const data = await res.json();
-        // data.user is fetched but currently unused for state; we keep the fetch for profile verification/sync
         if (data.success && data.user) {
-           // Reserved for future personalization logic
+           // Success
         }
       } catch (error) {
         console.error("Failed to fetch employer profile:", error);
@@ -887,19 +903,124 @@ export default function EmployerDashboard() {
                      <div className="w-10 h-10 border-4 border-[#E2E8F0] border-t-[#F7B980] rounded-full animate-spin mb-4" />
                      <p className="text-[#64748B] font-bold text-sm tracking-wide">Loading global talent pool...</p>
                   </div>
-                ) : filteredCandidates.length > 0 ? (
-                  <CandidateList 
-                    candidates={filteredCandidates} 
-                    onViewVideo={(c) => setSelectedCandidateVideo(c)}
-                    onViewExperience={(c) => setSelectedCandidateExperience(c)}
-                    onViewSkills={(c) => setSelectedCandidateSkills(c)}
-                    onMessage={(c) => setSelectedCandidateMessage(c)}
-                    onSchedule={(c) => setSelectedCandidateSchedule(c)}
-                  />
                 ) : (
-                  <div className="text-center py-20 bg-white/50 rounded-3xl border border-dashed border-[#E2E8F0]">
-                     <p className="text-[#334155] font-black text-xl mb-2">No candidates found</p>
-                     <p className="text-[#64748B] text-sm">We couldn&apos;t find any talent matching your refining criteria. Try broadening your search.</p>
+                  <div className="space-y-16">
+                    {/* AI Matching Section */}
+                    {isLoadingRecommendations ? (
+                       <div>
+                          <div className="h-8 w-48 bg-gray-200 rounded-lg animate-pulse mb-8" />
+                          <div className="flex gap-6 overflow-x-auto pb-6 -mx-2 px-2">
+                            {[1, 2].map(i => (
+                              <div key={i} className="min-w-[320px] md:min-w-[380px] h-[280px] bg-white rounded-[40px] border border-gray-100 animate-pulse" />
+                            ))}
+                          </div>
+                       </div>
+                    ) : recommendations.length > 0 && !searchQuery && (
+                      <div>
+                        <div className="flex items-center gap-3 mb-8">
+                          <div className="p-2.5 bg-amber-100 rounded-2xl shadow-sm border border-amber-200">
+                            <Sparkles className="w-5 h-5 text-amber-600" />
+                          </div>
+                          <div>
+                            <h3 className="text-2xl font-black tracking-tight" style={{ color: "#334155" }}>AI Talent Intelligence</h3>
+                            <p className="text-sm font-semibold opacity-60" style={{ color: "#64748B" }}>Top-tier matches calibrated for your active opportunities.</p>
+                          </div>
+                        </div>
+
+                        <div className="space-y-12">
+                          {recommendations.map((rec) => (
+                            <div key={rec.jobId} className="space-y-6">
+                              <div className="flex items-center gap-4 pl-2">
+                                 <div className="w-1.5 h-6 bg-[#F7B980] rounded-full" />
+                                 <h4 className="text-sm font-black uppercase tracking-widest text-[#64748B]">For: {rec.jobTitle}</h4>
+                              </div>
+
+                              <div className="flex gap-6 overflow-x-auto pb-6 hide-scrollbar -mx-2 px-2">
+                                {rec.topMatches.map((candidate) => (
+                                  <div 
+                                    key={`${rec.jobId}-${candidate.id}`}
+                                    className="min-w-[320px] md:min-w-[380px] bg-white rounded-[40px] p-8 border border-[#E2E8F0] shadow-xl hover:shadow-2xl transition-all group relative overflow-hidden"
+                                  >
+                                    <div className="absolute top-0 right-0 p-6">
+                                      <div className="px-5 py-2.5 bg-emerald-50 rounded-2xl border border-emerald-100 flex items-center gap-2 shadow-sm">
+                                        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                                        <span className="text-sm font-black text-emerald-700">{candidate.matchScore}% Fit</span>
+                                      </div>
+                                    </div>
+
+                                    <div className="flex flex-col gap-6">
+                                      <div className="flex items-center gap-5">
+                                        <div className="w-16 h-16 bg-[#334155] rounded-[24px] flex items-center justify-center text-white font-black text-2xl shadow-xl shrink-0 group-hover:scale-105 transition-transform">
+                                          {candidate.name.charAt(0)}
+                                        </div>
+                                        <div>
+                                          <h4 className="text-xl font-black leading-tight text-[#334155] group-hover:text-[#F7B980] transition-colors">{candidate.name}</h4>
+                                          <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#64748B]">{candidate.title}</p>
+                                        </div>
+                                      </div>
+
+                                      <div className="flex flex-wrap gap-2">
+                                        {candidate.skills.slice(0, 3).map(skill => (
+                                          <span key={skill} className="px-3 py-1.5 bg-[#F7B980]/10 text-[#F7B980] text-[9px] font-black uppercase tracking-widest rounded-xl border border-[#F7B980]/10">
+                                            {skill}
+                                          </span>
+                                        ))}
+                                        {candidate.skills.length > 3 && (
+                                          <span className="px-3 py-1.5 bg-[#E2E8F0] text-[#64748B] text-[9px] font-black uppercase tracking-widest rounded-xl border border-white/50">
+                                            +{candidate.skills.length - 3} more
+                                          </span>
+                                        )}
+                                      </div>
+
+                                      <div className="flex items-center justify-between pt-2">
+                                         <button 
+                                            onClick={() => setSelectedCandidateVideo(candidate)}
+                                            className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-[#334155] hover:text-[#F7B980] transition-colors"
+                                         >
+                                            <Video className="w-4 h-4" /> Watch CV
+                                         </button>
+                                         <button 
+                                            onClick={() => setSelectedCandidateMessage(candidate)}
+                                            className="flex items-center gap-2 px-6 py-3 bg-[#E2E8F0] hover:bg-[#F7B980] hover:text-white rounded-2xl text-[9px] font-black uppercase tracking-widest transition-all active:scale-95"
+                                         >
+                                            <Mail className="w-4 h-4" /> Secure Inquiry
+                                         </button>
+                                      </div>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="flex items-center gap-3 mb-8">
+                      <div className="p-2.5 bg-[#E2E8F0] rounded-2xl">
+                         <Users className="w-5 h-5 text-[#64748B]" />
+                      </div>
+                      <div>
+                        <h3 className="text-2xl font-black tracking-tight" style={{ color: "#334155" }}>Talent Network</h3>
+                        <p className="text-sm font-semibold opacity-60" style={{ color: "#64748B" }}>Browse the global list of verified professionals.</p>
+                      </div>
+                    </div>
+
+                    {filteredCandidates.length > 0 ? (
+                      <CandidateList 
+                        candidates={filteredCandidates} 
+                        onViewVideo={(c) => setSelectedCandidateVideo(c)}
+                        onViewExperience={(c) => setSelectedCandidateExperience(c)}
+                        onViewSkills={(c) => setSelectedCandidateSkills(c)}
+                        onMessage={(c) => setSelectedCandidateMessage(c)}
+                        onSchedule={(c) => setSelectedCandidateSchedule(c)}
+                      />
+                    ) : (
+                      <div className="text-center py-20 bg-white/50 rounded-3xl border border-dashed border-[#E2E8F0]">
+                        <p className="text-[#334155] font-black text-xl mb-2">No candidates found</p>
+                        <p className="text-[#64748B] text-sm">We couldn&apos;t find any talent matching your refining criteria. Try broadening your search.</p>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -1890,23 +2011,4 @@ export default function EmployerDashboard() {
     </div>
   );
 }
-
-// Helpers for React-Select Custom Options
-const CustomOption = (props: OptionProps<Option, false, GroupBase<Option>>) => {
-  return (
-    <div {...props.innerProps} className="flex items-center gap-2 px-3 py-2 hover:bg-primary-50 dark:hover:bg-primary-900/30 cursor-pointer text-secondary-900 dark:text-white">
-      <ReactCountryFlag countryCode={props.data.value} svg style={{ width: "1.2rem", height: "1.2rem" }} />
-      <span>{props.data.label}</span>
-    </div>
-  );
-};
-
-const CustomSingleValue = (props: SingleValueProps<Option, false, GroupBase<Option>>) => {
-  return (
-    <div className="flex items-center gap-2 text-secondary-900 dark:text-white">
-      <ReactCountryFlag countryCode={props.data.value} svg style={{ width: "1.2rem", height: "1.2rem" }} />
-      <span>{props.data.label}</span>
-    </div>
-  );
-};
 

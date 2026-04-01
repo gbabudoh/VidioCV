@@ -98,7 +98,7 @@ export default function LiveKitPlayer({
   return (
     <div
       ref={containerRef}
-      className="relative group bg-slate-950 rounded-[32px] overflow-hidden shadow-[0_32px_64px_-16px_rgba(0,0,0,0.5)] aspect-video select-none"
+      className="relative group bg-[#0F172A] w-full rounded-none md:rounded-[32px] overflow-hidden border-y-4 md:border-4 border-white isolate shadow-[0_32px_64px_-16px_rgba(0,0,0,0.5)] aspect-video select-none transition-all duration-700"
     >
       {/* Main Video Engine */}
       <div className="w-full h-full" onClick={togglePlay}>
@@ -144,8 +144,8 @@ export default function LiveKitPlayer({
         )}
       </div>      {/* Glassmorphic Branding Tag */}
       {showBranding && (
-        <div className="absolute top-8 left-8 z-[60] flex items-center gap-4 pointer-events-none drop-shadow-2xl translate-y-0 opacity-100 transition-all duration-700">
-          <div className="w-12 h-12 rounded-2xl bg-white/10 backdrop-blur-2xl flex items-center justify-center border border-white/20 shadow-2xl">
+        <div className="absolute top-4 left-4 md:top-8 md:left-8 z-[60] flex items-center gap-3 md:gap-4 pointer-events-none drop-shadow-2xl translate-y-0 opacity-100 transition-all duration-700">
+          <div className="w-8 h-8 md:w-12 md:h-12 rounded-xl md:rounded-2xl bg-white/10 backdrop-blur-2xl flex items-center justify-center border border-white/20 shadow-2xl">
              <div className="w-6 h-6 bg-white rounded-lg flex items-center justify-center shadow-lg transform -rotate-12">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#0F172A" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M15 18l-6-6 6-6" />
@@ -153,7 +153,7 @@ export default function LiveKitPlayer({
              </div>
           </div>
           <div className="flex flex-col">
-            <span className="text-white font-[Inter] font-black text-2xl tracking-tighter drop-shadow-xl flex items-center gap-2">
+            <span className="text-white font-[Inter] font-black text-lg md:text-2xl tracking-tighter drop-shadow-xl flex items-center gap-2">
               VidioCV 
               <span className="text-[10px] bg-sky-500/80 px-2 py-0.5 rounded-full uppercase tracking-widest font-black">Pro</span>
             </span>

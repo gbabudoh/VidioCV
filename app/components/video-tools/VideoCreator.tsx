@@ -685,7 +685,7 @@ export default function VideoCreator({
 
   return (
     <div className="w-full max-w-4xl mx-auto space-y-6">
-      <div className="relative bg-black rounded-[32px] overflow-hidden aspect-video border-4 border-white shadow-2xl group">
+      <div className="relative bg-black rounded-none md:rounded-[32px] overflow-hidden aspect-video border-y-4 md:border-4 border-white shadow-2xl group">
         <video
           ref={videoRef}
           autoPlay muted playsInline
@@ -891,8 +891,8 @@ export default function VideoCreator({
             <div className="pointer-events-auto flex items-center gap-2 bg-black/85 backdrop-blur-xl px-4 py-2.5 rounded-2xl shadow-2xl border border-white/10">
               {/* Mic mute */}
               <button onClick={toggleMute} title={isMuted ? "Unmute" : "Mute mic"}
-                className={`p-2.5 rounded-xl transition-all cursor-pointer ${isMuted ? "bg-red-500 text-white" : "bg-white/10 text-white hover:bg-white/20"}`}>
-                {isMuted ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+                className={`p-2 md:p-2.5 rounded-xl transition-all cursor-pointer ${isMuted ? "bg-red-500 text-white" : "bg-white/10 text-white hover:bg-white/20"}`}>
+                {isMuted ? <MicOff className="h-3.5 w-3.5 md:h-4 md:w-4" /> : <Mic className="h-3.5 w-3.5 md:h-4 md:w-4" />}
               </button>
 
               {/* Mini VU meter */}
@@ -935,23 +935,23 @@ export default function VideoCreator({
 
               {/* Settings shortcut */}
               <button onClick={() => { setActiveControlTab("settings"); setShowControlPanel(p => activeControlTab === "settings" ? !p : true); }}
-                className={`p-2.5 rounded-xl transition-all cursor-pointer ${showControlPanel && activeControlTab === "settings" ? "bg-white/20 text-white" : "bg-white/10 text-white hover:bg-white/20"}`}
+                className={`p-2 md:p-2.5 rounded-xl transition-all cursor-pointer ${showControlPanel && activeControlTab === "settings" ? "bg-white/20 text-white" : "bg-white/10 text-white hover:bg-white/20"}`}
                 title="Settings">
-                <Settings className="h-4 w-4" />
+                <Settings className="h-3.5 w-3.5 md:h-4 md:w-4" />
               </button>
 
               <div className="h-4 w-px bg-white/15 mx-1" />
 
               {/* Restart */}
               <button onClick={restartRecording} title="Restart recording"
-                className="p-2.5 rounded-xl bg-white/10 text-white hover:bg-orange-500/30 hover:text-orange-300 transition-all cursor-pointer">
-                <RefreshCw className="h-4 w-4" />
+                className="p-2 md:p-2.5 rounded-xl bg-white/10 text-white hover:bg-orange-500/30 hover:text-orange-300 transition-all cursor-pointer">
+                <RefreshCw className="h-3.5 w-3.5 md:h-4 md:w-4" />
               </button>
 
               {/* Stop */}
               <button onClick={stopRecording} title="Stop recording"
-                className="p-2.5 rounded-xl bg-red-500/80 text-white hover:bg-red-500 transition-all cursor-pointer">
-                <Square className="h-4 w-4 fill-white" />
+                className="p-2 md:p-2.5 rounded-xl bg-red-500/80 text-white hover:bg-red-500 transition-all cursor-pointer">
+                <Square className="h-3.5 w-3.5 md:h-4 md:w-4 fill-white" />
               </button>
             </div>
           </div>
@@ -961,8 +961,8 @@ export default function VideoCreator({
       <div className="flex items-center justify-center gap-4">
         {!recordedBlob ? (
           !isRecording ? (
-            <button onClick={startRecording} className="flex items-center gap-3 px-10 py-5 bg-primary-600 hover:bg-primary-700 text-white rounded-2xl font-black text-xl shadow-2xl transition-all transform hover:scale-105 uppercase tracking-widest cursor-pointer">
-              <div className="w-4 h-4 bg-red-500 rounded-full animate-pulse" />
+            <button onClick={startRecording} className="flex items-center gap-3 px-6 py-4 md:px-10 md:py-5 bg-primary-600 hover:bg-primary-700 text-white rounded-2xl font-black text-base md:text-xl shadow-2xl transition-all transform hover:scale-105 uppercase tracking-widest cursor-pointer">
+              <div className="w-3 h-3 md:w-4 md:h-4 bg-red-500 rounded-full animate-pulse" />
               Start Studio Recording
             </button>
           ) : (

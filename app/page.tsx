@@ -1,41 +1,43 @@
+// [HMR Version: 1.0.1 - Resyncing Module Graph]
 "use client";
 
 import { useState, useEffect, startTransition } from "react";
-import { motion } from "framer-motion";
+import { motion, type Transition } from "framer-motion";
 import {
-  Play,
   Video,
   Brain,
   Sparkles,
-  ChevronRight,
-  CheckCircle2,
-  Users,
-  BarChart3,
   ArrowRight,
-  Camera,
-  Briefcase,
   TrendingUp,
   Shield,
   MessageSquare,
   Globe,
   Eye,
+  Award
 } from "lucide-react";
 import Link from "next/link";
+import NextImage from "next/image";
 import { Navbar } from "@/components/Navbar";
+import { Footer } from "@/components/Footer";
 
-// Brand palette
-// #BFC6C4 – muted sage
-// #ACBAC4 – steel blue-gray
-// #BFC9D1 – light slate
-// #57595B – dark charcoal
-// #F7B980 – warm amber/peach (accent)
+// Premium Sage/Amber Design System
+// Background: #F2F4F4 (Muted)
+// Amber: #F7B980
+// Sage: #BFC6C4
+// Steel: #57595B
+
+const springTransition: Transition = {
+  type: "spring",
+  stiffness: 100,
+  damping: 20
+};
 
 const fadeUp = {
-  initial: { opacity: 0, y: 24 },
+  initial: { opacity: 0, y: 30 },
   animate: { opacity: 1, y: 0 },
 };
 
-const stagger = {
+const staggerContainer = {
   animate: { transition: { staggerChildren: 0.1 } },
 };
 
@@ -46,15 +48,14 @@ export default function Home() {
   });
 
   useEffect(() => {
-    const token = localStorage.getItem("token");
-    const role = localStorage.getItem("userRole");
+    const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+    const role = typeof window !== "undefined" ? localStorage.getItem("userRole") : null;
 
     if (token && role) {
       startTransition(() => {
         setAuthState({
           isLoggedIn: true,
-          dashboardUrl:
-            role === "employer" ? "/dashboard/employer" : "/dashboard/candidate",
+          dashboardUrl: role === "employer" ? "/dashboard/employer" : "/dashboard/candidate",
         });
       });
     }
@@ -63,946 +64,274 @@ export default function Home() {
   const { isLoggedIn, dashboardUrl } = authState;
 
   return (
-    <div
-      className="min-h-screen overflow-hidden relative"
-      style={{
-        background:
-          "linear-gradient(135deg, #F2F4F4 0%, #F9F9F9 45%, #F9F5F1 100%)",
-      }}
-    >
-      {/* Ambient glow orbs */}
-      <div className="fixed inset-0 pointer-events-none overflow-hidden">
-        <div
-          className="absolute top-[-20%] left-[-10%] w-[60%] h-[60%] rounded-full blur-[160px]"
-          style={{ background: "rgba(247,185,128,0.18)" }}
-        />
-        <div
-          className="absolute top-[15%] right-[-15%] w-[50%] h-[50%] rounded-full blur-[140px]"
-          style={{ background: "rgba(172,186,196,0.22)" }}
-        />
-        <div
-          className="absolute bottom-[-10%] left-[30%] w-[45%] h-[45%] rounded-full blur-[120px]"
-          style={{ background: "rgba(191,201,209,0.18)" }}
-        />
+    <div className="min-h-screen relative overflow-hidden bg-[#F2F4F4] selection:bg-[#F7B980]/30 selection:text-[#57595B]">
+      
+      {/* 🔮 Ambient Intelligence - Background Layer */}
+      <div className="fixed inset-0 pointer-events-none z-0">
+        <div className="absolute top-[-10%] right-[-5%] w-[70vw] h-[70vw] rounded-full blur-[140px] opacity-[0.14]" 
+             style={{ background: "radial-gradient(circle, #F7B980 0%, transparent 70%)" }} />
+        <div className="absolute bottom-[-5%] left-[-10%] w-[60vw] h-[60vw] rounded-full blur-[120px] opacity-[0.12]"
+             style={{ background: "radial-gradient(circle, #ACBAC4 0%, transparent 70%)" }} />
+        <div className="absolute top-[20%] left-[20%] w-[40vw] h-[40vw] rounded-full blur-[160px] opacity-[0.08]"
+             style={{ background: "radial-gradient(circle, #BFC6C4 0%, transparent 70%)" }} />
       </div>
 
-      {/* Dot grid */}
-      <div
-        className="fixed inset-0 pointer-events-none"
-        style={{
-          backgroundImage:
-            "radial-gradient(circle, rgba(87,89,91,0.07) 1px, transparent 1px)",
-          backgroundSize: "40px 40px",
-          maskImage:
-            "radial-gradient(ellipse 90% 90% at 50% 40%, black 50%, transparent 100%)",
-          WebkitMaskImage:
-            "radial-gradient(ellipse 90% 90% at 50% 40%, black 50%, transparent 100%)",
-        }}
-      />
+      {/* 🏁 Dot Mesh Overlay */}
+      <div className="fixed inset-0 pointer-events-none z-0 opacity-[0.4]"
+           style={{ 
+             backgroundImage: "radial-gradient(circle, #57595B 0.5px, transparent 0.5px)", 
+             backgroundSize: "32px 32px",
+             maskImage: "radial-gradient(ellipse at center, black 40%, transparent 100%)"
+           }} />
 
       <Navbar />
 
-      {/* ========== HERO ========== */}
-      <section className="relative z-10 min-h-screen flex items-center pt-14">
-        <div className="max-w-7xl mx-auto px-6 py-20 w-full">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
-
-            {/* Left — text */}
-            <motion.div
-              variants={stagger}
+      <main className="relative z-10 pt-12">
+        
+        {/* ================= HERO SECTION ================= */}
+        <section className="min-h-[90vh] flex items-center px-6 md:px-12">
+          <div className="max-w-7xl mx-auto w-full grid grid-cols-1 lg:grid-cols-2 gap-20 items-center py-10">
+            
+            {/* Left Content — The Messaging */}
+            <motion.div 
+              variants={staggerContainer}
               initial="initial"
               animate="animate"
-              className="space-y-8"
+              className="space-y-10"
             >
-              <motion.div
+              <motion.div 
                 variants={fadeUp}
-                transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+                transition={springTransition}
+                className="inline-flex items-center gap-3.5 px-5 py-2.5 rounded-2xl bg-white/70 backdrop-blur-3xl border-white/40 shadow-xl shadow-[#F7B980]/5 group cursor-default"
               >
-                <div
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold"
-                  style={{
-                    background: "rgba(247,185,128,0.15)",
-                    border: "1px solid rgba(247,185,128,0.45)",
-                    color: "#57595B",
-                  }}
-                >
-                  <Sparkles className="w-4 h-4" style={{ color: "#F7B980" }} />
-                  Professional Video Recruitment
-                  <span
-                    className="w-1.5 h-1.5 rounded-full animate-pulse"
-                    style={{ background: "#F7B980" }}
-                  />
+                <div className="relative">
+                  <Sparkles className="w-5 h-5 text-[#F7B980] animate-pulse" />
+                  <div className="absolute inset-0 blur-md bg-[#F7B980] opacity-50 animate-pulse" />
                 </div>
+                <span className="text-[11px] font-black uppercase tracking-[0.25em] text-[#57595B] opacity-80">
+                  Human Talent, AI-Verified
+                </span>
+                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-lg shadow-emerald-500/20" />
               </motion.div>
 
-              <motion.div
-                variants={fadeUp}
-                transition={{ duration: 0.7, delay: 0.05, ease: [0.22, 1, 0.36, 1] }}
-              >
-                <h1
-                  className="text-5xl lg:text-7xl font-black leading-[1.05] tracking-tight"
-                  style={{ color: "#57595B" }}
-                >
-                  Let Your{" "}
-                  <span
-                    className="text-transparent bg-clip-text"
-                    style={{
-                      backgroundImage:
-                        "linear-gradient(135deg, #57595B 0%, #F7B980 100%)",
-                    }}
-                  >
-                    Personality
+              <motion.div variants={fadeUp} transition={springTransition}>
+                <h1 className="text-4xl sm:text-7xl md:text-8xl font-black leading-[0.95] tracking-tighter text-[#57595B] group">
+                  Beyond the <br />
+                  <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#57595B] via-[#8A8C8E] to-[#F7B980]">
+                    Static Resume
                   </span>
-                  <br />
-                  Speak First
                 </h1>
+                <p className="mt-8 text-lg sm:text-xl text-[#8A8C8E] font-medium leading-relaxed max-w-lg">
+                  The future of recruitment is kinetic. VidioCV bridges the gap between digital identity and human presence through AI-verified video portfolios.
+                </p>
               </motion.div>
 
-              <motion.p
-                variants={fadeUp}
-                transition={{ duration: 0.6, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
-                className="text-lg leading-relaxed max-w-lg"
-                style={{ color: "#8A8C8E" }}
-              >
-                VidioCV transforms how talent meets opportunity. Record a short
-                video introduction and let employers discover the real you —
-                beyond keywords and paper qualifications.
-              </motion.p>
-
-              <motion.div
-                variants={fadeUp}
-                transition={{ duration: 0.6, delay: 0.15, ease: [0.22, 1, 0.36, 1] }}
-                className="flex flex-col sm:flex-row gap-4"
+              <motion.div 
+                variants={fadeUp} 
+                transition={springTransition}
+                className="flex flex-col sm:flex-row gap-5"
               >
                 {isLoggedIn ? (
-                  <Link
-                    href={dashboardUrl}
-                    className="group inline-flex items-center justify-center gap-2 px-8 py-4 font-bold rounded-xl transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl"
-                    style={{
-                      background: "linear-gradient(135deg, #57595B 0%, #454749 100%)",
-                      color: "#FFFFFF",
-                      boxShadow: "0 12px 32px rgba(87,89,91,0.25)",
-                    }}
-                  >
-                    <Briefcase className="w-5 h-5 text-[#F7B980]" />
-                    Back to Dashboard
-                    <ArrowRight className="w-5 h-5 group-hover:translate-x-1.5 transition-transform" />
+                  <Link href={dashboardUrl} className="group relative px-10 py-5 rounded-2xl bg-[#57595B] text-white font-bold overflow-hidden shadow-2xl shadow-[#57595B]/20 transition-all hover:-translate-y-1">
+                    <span className="relative z-10 flex items-center gap-3">
+                      Go to Dashboard <ArrowRight className="w-5 h-5 group-hover:translate-x-1.5 transition-transform" />
+                    </span>
+                    <div className="absolute inset-0 bg-[#F7B980] translate-y-full group-hover:translate-y-0 transition-transform duration-500 ease-out z-0" />
                   </Link>
                 ) : (
                   <>
-                    <Link
-                      href="/auth/signup?role=candidate"
-                      className="group inline-flex items-center justify-center gap-2 px-7 py-3.5 font-semibold rounded-xl transition-all duration-300 hover:-translate-y-0.5"
-                      style={{
-                        background:
-                          "linear-gradient(135deg, #F7B980 0%, #F0A060 100%)",
-                        color: "#57595B",
-                        boxShadow: "0 8px 24px rgba(247,185,128,0.35)",
-                      }}
-                    >
-                      <Camera className="w-5 h-5" />
-                      Create Your Video CV
-                      <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                    <Link href="/auth/signup" className="relative px-10 py-5 rounded-2xl bg-[#F7B980] text-white font-bold shadow-xl shadow-[#F7B980]/25 transition-all hover:-translate-y-1 hover:shadow-2xl overflow-hidden group">
+                      <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity" />
+                      <span className="flex items-center gap-3">
+                        Launch Video CV <Video className="w-5 h-5" />
+                      </span>
                     </Link>
-                    <Link
-                      href="/auth/signup?role=employer"
-                      className="inline-flex items-center justify-center gap-2 px-7 py-3.5 font-semibold rounded-xl transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md"
-                      style={{
-                        background: "#FFFFFF",
-                        border: "1px solid #BFC6C4",
-                        color: "#57595B",
-                        boxShadow: "0 2px 8px rgba(87,89,91,0.08)",
-                      }}
-                    >
-                      <Briefcase className="w-5 h-5" style={{ color: "#ACBAC4" }} />
-                      Hire Top Talent
+                    <Link href="/auth/employer/signup" className="px-10 py-5 rounded-2xl bg-white/70 backdrop-blur-3xl border-white/40 text-[#57595B] font-bold shadow-soft transition-all hover:bg-white hover:-translate-y-1">
+                      Recruit Talent
                     </Link>
                   </>
                 )}
               </motion.div>
 
-              <motion.div
-                variants={fadeUp}
-                transition={{ duration: 0.5, delay: 0.2, ease: [0.22, 1, 0.36, 1] }}
-                className="flex items-center gap-6 text-sm"
-                style={{ color: "#ACBAC4" }}
+              <motion.div 
+                variants={fadeUp} 
+                transition={springTransition}
+                className="flex items-center gap-8 pt-4"
               >
-                {["Free to join", "No credit card", "5 min setup"].map((t) => (
-                  <div key={t} className="flex items-center gap-2">
-                    <CheckCircle2 className="w-4 h-4" style={{ color: "#F7B980" }} />
-                    {t}
+                <div className="flex -space-x-4">
+                  {[1, 2, 3, 4].map((i) => (
+                    <div key={i} className="w-12 h-12 rounded-2xl border-4 border-[#F2F4F4] bg-[#ACBAC4] overflow-hidden" />
+                  ))}
+                </div>
+                <div>
+                  <p className="text-sm font-black text-[#57595B]">10k+ Kinetic Profiles</p>
+                  <p className="text-xs font-bold text-[#ACBAC4]">Join 500+ Hiring Partners</p>
+                </div>
+              </motion.div>
+            </motion.div>
+
+            {/* Right Side — High-res Asset Integration */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, x: 40 }}
+              animate={{ opacity: 1, scale: 1, x: 0 }}
+              transition={{ duration: 1.2, ease: [0.22, 1, 0.36, 1] }}
+              className="relative aspect-square lg:aspect-auto lg:h-[700px] flex items-center justify-center lg:justify-end"
+            >
+              <div className="relative w-full h-full max-w-[640px] group">
+                <div className="absolute inset-0 bg-gradient-to-br from-[#F7B980]/20 to-[#ACBAC4]/20 blur-[100px] group-hover:scale-110 transition-transform duration-1000" />
+                
+                <div className="relative w-full h-full bg-white/70 backdrop-blur-3xl border-white/40 rounded-[48px] md:rounded-[64px] overflow-hidden shadow-[0_32px_80px_rgba(87,89,91,0.08)]">
+                  <NextImage 
+                    src="/vidiocv.png" 
+                    alt="VidioCV Experience" 
+                    fill 
+                    className="object-contain p-6 sm:p-12 transition-transform duration-[2000ms] group-hover:scale-105"
+                    priority
+                  />
+                  <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-white/40 to-transparent pointer-events-none" />
+                </div>
+
+                {/* 🏷️ Floating Intelligence Cards */}
+                <motion.div 
+                  animate={{ y: [-15, 15, -15] }} 
+                  transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
+                  className="absolute -right-12 lg:-right-8 top-10 lg:top-20 bg-white/80 backdrop-blur-3xl border-white/60 p-4 lg:p-6 rounded-[24px] lg:rounded-[32px] shadow-2xl flex items-center gap-5 w-56 lg:w-64 scale-[0.7] sm:scale-100 origin-right transition-transform"
+                >
+                  <div className="w-12 lg:w-14 h-12 lg:h-14 bg-emerald-100 rounded-2xl flex items-center justify-center shrink-0">
+                    <TrendingUp className="w-6 lg:w-7 h-6 lg:h-7 text-emerald-600" />
+                  </div>
+                  <div>
+                    <h4 className="text-[10px] lg:text-xs font-black uppercase tracking-widest text-[#ACBAC4]">Neural Match</h4>
+                    <p className="text-lg lg:text-xl font-black text-[#57595B]">98.4% Fit</p>
+                  </div>
+                </motion.div>
+
+                <motion.div 
+                   animate={{ y: [15, -15, 15] }} 
+                   transition={{ duration: 5, repeat: Infinity, ease: "easeInOut", delay: 1 }}
+                   className="absolute -left-16 lg:-left-12 bottom-20 lg:bottom-32 bg-white/80 backdrop-blur-3xl border-white/60 p-4 lg:p-6 rounded-[24px] lg:rounded-[32px] shadow-2xl flex items-center gap-5 w-56 lg:w-64 scale-[0.7] sm:scale-100 origin-left transition-transform"
+                >
+                  <div className="w-12 lg:w-14 h-12 lg:h-14 bg-amber-100 rounded-2xl flex items-center justify-center shrink-0">
+                    <Brain className="w-6 lg:w-7 h-6 lg:h-7 text-amber-600" />
+                  </div>
+                  <div>
+                    <h4 className="text-[10px] lg:text-xs font-black uppercase tracking-widest text-[#ACBAC4]">AI Verified</h4>
+                    <p className="text-lg lg:text-xl font-black text-[#57595B]">Top 2% Talent</p>
+                  </div>
+                </motion.div>
+              </div>
+            </motion.div>
+          </div>
+        </section>
+
+        {/* ================= HOW IT WORKS ================= */}
+        <section id="how-it-works" className="py-24 lg:py-40 relative px-6">
+          <div className="max-w-7xl mx-auto">
+            <div className="text-center mb-20 space-y-4">
+              <h2 className="text-4xl md:text-6xl font-black tracking-tighter text-[#57595B]">The Kinetic Workflow</h2>
+              <p className="text-[#8A8C8E] font-medium text-lg max-w-2xl mx-auto">From digital signal to human connection in three strategic phases.</p>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-12 relative">
+               {/* Connecting lines - Desktop */}
+               <div className="hidden md:block absolute top-[68px] left-[15%] right-[15%] h-0.5 border-t-2 border-dashed border-[#F7B980]/30 z-0" />
+               
+               {[
+                 { step: "01", title: "Record Identity", desc: "Use our zero-lag studio to capture your professional narration.", icon: Video, color: "#F7B980" },
+                 { step: "02", title: "AI-Verify", desc: "Our intelligence engine validates skills and optimizes your match score.", icon: Brain, color: "#ACBAC4" },
+                 { step: "03", title: "Global Match", desc: "Unlock high-fidelity inquiries from elite hiring partners.", icon: Globe, color: "#57595B" }
+               ].map((item, i) => (
+                 <div key={i} className="relative z-10 flex flex-col items-center text-center group">
+                    <div className="w-20 h-20 bg-white rounded-3xl shadow-2xl flex items-center justify-center mb-8 border border-[#E2E8F0] group-hover:scale-110 transition-transform duration-500">
+                       <item.icon className="w-10 h-10" style={{ color: item.color }} />
+                       <div className="absolute -top-3 -right-3 w-8 h-8 rounded-full bg-[#57595B] text-white flex items-center justify-center text-[10px] font-black">{item.step}</div>
+                    </div>
+                    <h3 className="text-2xl font-black text-[#57595B] mb-3">{item.title}</h3>
+                    <p className="text-[#8A8C8E] font-semibold text-sm leading-relaxed px-6">{item.desc}</p>
+                 </div>
+               ))}
+            </div>
+          </div>
+        </section>
+
+        {/* ================= FEATURES GRID ================= */}
+        <section id="features" className="py-24 lg:py-40 bg-white relative">
+          <div className="max-w-7xl mx-auto px-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
+              <div className="lg:col-span-1 space-y-6">
+                 <div className="w-20 h-1 bg-[#F7B980] rounded-full" />
+                 <h2 className="text-3xl sm:text-5xl font-black tracking-tighter text-[#57595B]">High Fidelity <br /> Sourcing</h2>
+                 <p className="text-[#8A8C8E] font-medium text-base sm:text-lg leading-relaxed">
+                   Experience the fusion of human personality with predictive analysis. Our engine handles the complexity so you can focus on connection.
+                 </p>
+                 <div className="pt-10 flex gap-4">
+                    <div className="p-4 rounded-3xl bg-[#F2F4F4] shadow-soft border-[#E2E8F0] border">
+                       <Award className="w-6 h-6 text-[#F7B980]" />
+                    </div>
+                    <div className="p-4 rounded-3xl bg-[#F2F4F4] shadow-soft border-[#E2E8F0] border">
+                       <Shield className="w-6 h-6 text-[#ACBAC4]" />
+                    </div>
+                 </div>
+              </div>
+
+              <div className="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-8">
+                {[
+                  { title: "Smart Inquiries", desc: "Recruiters can secure introductions without the overhead of immediate scheduling.", icon: MessageSquare, accent: "#F7B980" },
+                  { title: "CV Watchboard", desc: "Watch high-definition video portfolios directly from your workspace.", icon: Eye, accent: "#ACBAC4" },
+                  { title: "Neural Matching", desc: "Our AI prioritizes candidates based on true professional chemistry.", icon: Brain, accent: "#57595B" },
+                  { title: "Global Mesh", desc: "Sync your professional identity with hiring partners worldwide.", icon: Globe, accent: "#10B981" }
+                ].map((item, i) => (
+                  <div key={i} className="p-10 rounded-[40px] border-2 border-[#F2F4F4] hover:border-[#F7B980]/20 transition-all group cursor-pointer hover:shadow-2xl hover:shadow-[#F7B980]/5">
+                    <div className="w-14 h-14 rounded-2xl bg-[#F2F4F4] flex items-center justify-center mb-8 group-hover:scale-110 transition-transform">
+                       <item.icon className="w-7 h-7" style={{ color: item.accent }} />
+                    </div>
+                    <h3 className="text-2xl font-black text-[#57595B] mb-4">{item.title}</h3>
+                    <p className="text-[#8A8C8E] font-semibold text-sm leading-relaxed">{item.desc}</p>
                   </div>
                 ))}
-              </motion.div>
-            </motion.div>
-
-            {/* Right — phone mockup */}
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              transition={{ duration: 1.1, delay: 0.3, ease: [0.22, 1, 0.36, 1] }}
-              className="relative flex items-center justify-center lg:justify-end"
-            >
-              <div className="relative w-[280px] h-[570px]">
-                {/* Glow halo */}
-                <div
-                  className="absolute inset-0 rounded-[44px] blur-3xl scale-110"
-                  style={{
-                    background:
-                      "linear-gradient(135deg, rgba(247,185,128,0.35) 0%, rgba(172,186,196,0.30) 100%)",
-                  }}
-                />
-
-                {/* Phone frame */}
-                <div
-                  className="relative w-full h-full rounded-[44px] shadow-2xl overflow-hidden"
-                  style={{
-                    border: "1px solid rgba(255,255,255,0.45)",
-                    background:
-                      "linear-gradient(180deg, rgba(255,255,255,0.12) 0%, rgba(255,255,255,0.04) 100%)",
-                    backdropFilter: "blur(4px)",
-                  }}
-                >
-                  {/* Video background */}
-                  <div className="absolute inset-0">
-                    <div
-                      className="absolute inset-0"
-                      style={{
-                        background:
-                          "linear-gradient(180deg, #1a1f24 0%, #232a30 50%, #141a1f 100%)",
-                      }}
-                    />
-                    {/* Head silhouette */}
-                    <div className="absolute top-[14%] left-1/2 -translate-x-1/2">
-                      <div
-                        className="w-20 h-20 rounded-full blur-[6px]"
-                        style={{
-                          background:
-                            "radial-gradient(circle, rgba(247,185,128,0.45) 0%, rgba(240,160,96,0.25) 50%, transparent 100%)",
-                        }}
-                      />
-                    </div>
-                    {/* Shoulder gradient */}
-                    <div className="absolute top-[30%] left-1/2 -translate-x-1/2 w-44 h-36">
-                      <div
-                        className="w-full h-full rounded-full blur-xl"
-                        style={{
-                          background:
-                            "linear-gradient(180deg, rgba(87,89,91,0.5) 0%, rgba(87,89,91,0.25) 50%, transparent 100%)",
-                        }}
-                      />
-                    </div>
-                    <div
-                      className="absolute inset-0"
-                      style={{
-                        background:
-                          "linear-gradient(to top, transparent, transparent, rgba(247,185,128,0.06))",
-                      }}
-                    />
-                  </div>
-
-                  {/* Top HUD */}
-                  <div className="absolute top-0 left-0 right-0 p-5 bg-gradient-to-b from-black/70 to-transparent z-20">
-                    <div className="flex items-center justify-between">
-                      <div
-                        className="flex items-center gap-1.5 px-2.5 py-1 rounded-full"
-                        style={{
-                          background: "rgba(247,185,128,0.15)",
-                          border: "1px solid rgba(247,185,128,0.35)",
-                        }}
-                      >
-                        <span
-                          className="w-2 h-2 rounded-full animate-pulse"
-                          style={{ background: "#F7B980" }}
-                        />
-                        <span
-                          className="text-[11px] font-bold tracking-wide"
-                          style={{ color: "#F7B980" }}
-                        >
-                          REC
-                        </span>
-                      </div>
-                      <span className="text-xs font-mono" style={{ color: "rgba(255,255,255,0.45)" }}>
-                        02:47
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Play button */}
-                  <div className="absolute inset-0 z-20 flex items-center justify-center">
-                    <motion.div
-                      whileHover={{ scale: 1.1 }}
-                      whileTap={{ scale: 0.93 }}
-                      className="w-16 h-16 rounded-full flex items-center justify-center cursor-pointer shadow-2xl"
-                      style={{
-                        background: "rgba(247,185,128,0.20)",
-                        backdropFilter: "blur(16px)",
-                        border: "1px solid rgba(247,185,128,0.35)",
-                      }}
-                    >
-                      <Play className="w-7 h-7 fill-white translate-x-0.5" style={{ color: "white" }} />
-                    </motion.div>
-                  </div>
-
-                  {/* Waveform */}
-                  <div className="absolute bottom-[128px] left-0 right-0 z-20 px-7 flex items-end justify-center gap-[3px]">
-                    {[4, 9, 6, 13, 7, 11, 5, 10, 7, 12, 5, 9, 4, 8, 11, 6, 10, 4].map(
-                      (h, i) => (
-                        <motion.div
-                          key={i}
-                          className="w-1 rounded-full"
-                          style={{ background: "rgba(247,185,128,0.55)" }}
-                          animate={{ height: [`${h}px`, `${h * 2.6}px`, `${h}px`] }}
-                          transition={{
-                            duration: 0.75 + (i % 5) * 0.18,
-                            repeat: Infinity,
-                            ease: "easeInOut",
-                            delay: i * 0.055,
-                          }}
-                        />
-                      )
-                    )}
-                  </div>
-
-                  {/* Bottom overlay */}
-                  <div className="absolute bottom-0 left-0 right-0 p-5 bg-gradient-to-t from-black/95 via-black/65 to-transparent z-20">
-                    <div className="space-y-3">
-                      <div className="flex items-center gap-3">
-                        <div
-                          className="w-9 h-9 rounded-full flex items-center justify-center text-[11px] font-bold border shrink-0"
-                          style={{
-                            background: "linear-gradient(135deg, #F7B980, #F0A060)",
-                            borderColor: "rgba(255,255,255,0.20)",
-                            color: "#57595B",
-                          }}
-                        >
-                          AD
-                        </div>
-                        <div>
-                          <p className="text-sm font-semibold text-white leading-tight">
-                            Alex Davies
-                          </p>
-                          <p className="text-xs" style={{ color: "rgba(255,255,255,0.50)" }}>
-                            Senior UX Designer · London
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex gap-1.5 flex-wrap">
-                        {["Figma", "Design Systems", "React"].map((s) => (
-                          <span
-                            key={s}
-                            className="px-2.5 py-0.5 rounded-full text-[11px]"
-                            style={{
-                              background: "rgba(255,255,255,0.10)",
-                              border: "1px solid rgba(255,255,255,0.12)",
-                              color: "rgba(255,255,255,0.75)",
-                            }}
-                          >
-                            {s}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Notch */}
-                  <div className="absolute top-3 left-1/2 -translate-x-1/2 w-20 h-5 bg-black rounded-full z-30" />
-                </div>
-              </div>
-
-              {/* Floating card — AI match */}
-              <motion.div
-                animate={{ y: [-8, 8, -8] }}
-                transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-                className="absolute right-[-8px] top-[12%] lg:right-[-44px]"
-              >
-                <div
-                  className="px-4 py-3 rounded-2xl flex items-center gap-3 w-48"
-                  style={{
-                    background: "rgba(255,255,255,0.88)",
-                    backdropFilter: "blur(16px)",
-                    border: "1px solid rgba(255,255,255,0.95)",
-                    boxShadow: "0 8px 32px rgba(87,89,91,0.10)",
-                  }}
-                >
-                  <div
-                    className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
-                    style={{
-                      background: "rgba(247,185,128,0.15)",
-                      border: "1px solid rgba(247,185,128,0.30)",
-                    }}
-                  >
-                    <TrendingUp className="w-4 h-4" style={{ color: "#F7B980" }} />
-                  </div>
-                  <div>
-                    <p className="text-[11px] font-medium" style={{ color: "#ACBAC4" }}>
-                      Candidate Match Score
-                    </p>
-                    <p className="text-sm font-bold" style={{ color: "#57595B" }}>
-                      98% Fit
-                    </p>
-                  </div>
-                </div>
-              </motion.div>
-
-              {/* Floating card — hired in */}
-              <motion.div
-                animate={{ y: [8, -8, 8] }}
-                transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
-                className="absolute left-[-4px] lg:left-[-56px] bottom-[18%]"
-              >
-                <div
-                  className="px-4 py-3 rounded-2xl flex items-center gap-3 w-44"
-                  style={{
-                    background: "rgba(255,255,255,0.88)",
-                    backdropFilter: "blur(16px)",
-                    border: "1px solid rgba(255,255,255,0.95)",
-                    boxShadow: "0 8px 32px rgba(87,89,91,0.10)",
-                  }}
-                >
-                  <div
-                    className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
-                    style={{
-                      background: "rgba(191,198,196,0.25)",
-                      border: "1px solid rgba(191,198,196,0.40)",
-                    }}
-                  >
-                    <Users className="w-4 h-4" style={{ color: "#57595B" }} />
-                  </div>
-                  <div>
-                    <p className="text-[11px] font-medium" style={{ color: "#ACBAC4" }}>
-                      Hired In
-                    </p>
-                    <p className="text-sm font-bold" style={{ color: "#57595B" }}>
-                      3 Days
-                    </p>
-                  </div>
-                </div>
-              </motion.div>
-
-              {/* Floating card — profile views */}
-              <motion.div
-                animate={{ y: [-5, 5, -5] }}
-                transition={{ duration: 3.5, repeat: Infinity, ease: "easeInOut", delay: 1 }}
-                className="absolute left-[-4px] lg:left-[-44px] top-[22%]"
-              >
-                <div
-                  className="px-4 py-3 rounded-2xl flex items-center gap-3 w-48"
-                  style={{
-                    background: "rgba(255,255,255,0.88)",
-                    backdropFilter: "blur(16px)",
-                    border: "1px solid rgba(255,255,255,0.95)",
-                    boxShadow: "0 8px 32px rgba(87,89,91,0.10)",
-                  }}
-                >
-                  <div
-                    className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
-                    style={{
-                      background: "rgba(172,186,196,0.20)",
-                      border: "1px solid rgba(172,186,196,0.35)",
-                    }}
-                  >
-                    <Eye className="w-4 h-4" style={{ color: "#ACBAC4" }} />
-                  </div>
-                  <div>
-                    <p className="text-[11px] font-medium" style={{ color: "#ACBAC4" }}>
-                      Profile Views
-                    </p>
-                    <p className="text-sm font-bold" style={{ color: "#57595B" }}>
-                      1.2k this week
-                    </p>
-                  </div>
-                </div>
-              </motion.div>
-            </motion.div>
-          </div>
-        </div>
-      </section>
-
-      {/* ========== STATS STRIP ========== */}
-      <section className="relative z-10 py-12">
-        <div className="max-w-5xl mx-auto px-6">
-          <div
-            className="grid grid-cols-3 rounded-2xl overflow-hidden divide-x"
-            style={{
-              background: "rgba(255,255,255,0.78)",
-              backdropFilter: "blur(20px)",
-              border: "1px solid rgba(255,255,255,0.95)",
-              boxShadow: "0 4px 40px rgba(87,89,91,0.07)",
-              borderColor: "#E8ECED",
-            }}
-          >
-            {[
-              {
-                value: "50%",
-                label: "Faster Hiring Process",
-                gradient: "linear-gradient(135deg, #F7B980, #F0A060)",
-              },
-              {
-                value: "3x",
-                label: "Better Culture Match",
-                gradient: "linear-gradient(135deg, #57595B, #8A8C8E)",
-              },
-              {
-                value: "10k+",
-                label: "Active Candidates",
-                gradient: "linear-gradient(135deg, #ACBAC4, #BFC9D1)",
-              },
-            ].map((s, i) => (
-              <motion.div
-                key={i}
-                initial={{ opacity: 0, y: 16 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.5, delay: i * 0.1 }}
-                className="py-10 px-8 text-center transition-colors"
-                style={{ borderRight: i < 2 ? "1px solid #E8ECED" : undefined }}
-              >
-                <div
-                  className="text-4xl font-black mb-1.5 text-transparent bg-clip-text"
-                  style={{ backgroundImage: s.gradient }}
-                >
-                  {s.value}
-                </div>
-                <p className="text-sm font-medium" style={{ color: "#ACBAC4" }}>
-                  {s.label}
-                </p>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ========== HOW IT WORKS ========== */}
-      <section id="how-it-works" className="relative z-10 py-28">
-        <div className="max-w-7xl mx-auto px-6">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.6 }}
-            className="text-center mb-16"
-          >
-            <div
-              className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-semibold tracking-widest uppercase mb-6"
-              style={{
-                background: "#FFFFFF",
-                border: "1px solid #BFC6C4",
-                color: "#8A8C8E",
-                boxShadow: "0 2px 8px rgba(87,89,91,0.06)",
-              }}
-            >
-              Simple by design
-            </div>
-            <h2
-              className="text-4xl lg:text-5xl font-black mb-4"
-              style={{ color: "#57595B" }}
-            >
-              Three steps.{" "}
-              <span
-                className="text-transparent bg-clip-text"
-                style={{
-                  backgroundImage: "linear-gradient(135deg, #57595B 0%, #F7B980 100%)",
-                }}
-              >
-                Zero friction.
-              </span>
-            </h2>
-            <p className="text-lg max-w-lg mx-auto" style={{ color: "#ACBAC4" }}>
-              Go from signup to getting noticed in under 10 minutes.
-            </p>
-          </motion.div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {[
-              {
-                step: "01",
-                icon: Camera,
-                title: "Record Your Story",
-                desc: "Use our built-in recorder or upload an existing clip. Share your personality, skills, and what makes you unique in 60 seconds.",
-                accentColor: "#F7B980",
-                accentBg: "rgba(247,185,128,0.12)",
-                accentBorder: "rgba(247,185,128,0.30)",
-                hoverBorder: "#F7B980",
-              },
-              {
-                step: "02",
-                icon: Brain,
-                title: "AI Enhances Your Profile",
-                desc: "Our AI analyzes your video, generates a smart summary, and matches you with relevant roles based on your unique strengths.",
-                accentColor: "#57595B",
-                accentBg: "rgba(87,89,91,0.08)",
-                accentBorder: "rgba(87,89,91,0.20)",
-                hoverBorder: "#BFC6C4",
-              },
-              {
-                step: "03",
-                icon: Briefcase,
-                title: "Get Discovered & Hired",
-                desc: "Employers browse video profiles, request interviews, and connect directly. Skip the queue and get hired faster.",
-                accentColor: "#ACBAC4",
-                accentBg: "rgba(172,186,196,0.15)",
-                accentBorder: "rgba(172,186,196,0.35)",
-                hoverBorder: "#ACBAC4",
-              },
-            ].map((item, i) => (
-              <motion.div
-                key={i}
-                initial={{ opacity: 0, y: 30 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.6, delay: i * 0.15 }}
-                className="group relative p-8 rounded-2xl bg-white transition-all duration-300 hover:-translate-y-1"
-                style={{
-                  border: "1px solid #E8ECED",
-                  boxShadow: "0 2px 16px rgba(87,89,91,0.06)",
-                }}
-              >
-                <div
-                  className="text-6xl font-black mb-3 leading-none select-none"
-                  style={{ color: "#F2F3F3" }}
-                >
-                  {item.step}
-                </div>
-                <div
-                  className="w-12 h-12 rounded-xl flex items-center justify-center mb-6"
-                  style={{
-                    background: item.accentBg,
-                    border: `1px solid ${item.accentBorder}`,
-                  }}
-                >
-                  <item.icon className="w-6 h-6" style={{ color: item.accentColor }} />
-                </div>
-                <h3 className="text-xl font-bold mb-3" style={{ color: "#57595B" }}>
-                  {item.title}
-                </h3>
-                <p className="text-sm leading-relaxed" style={{ color: "#ACBAC4" }}>
-                  {item.desc}
-                </p>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ========== FEATURES GRID ========== */}
-      <section id="features" className="relative z-10 py-28">
-        <div className="max-w-7xl mx-auto px-6">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.6 }}
-            className="text-center mb-16"
-          >
-            <div
-              className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-semibold tracking-widest uppercase mb-6"
-              style={{
-                background: "#FFFFFF",
-                border: "1px solid #BFC6C4",
-                color: "#8A8C8E",
-                boxShadow: "0 2px 8px rgba(87,89,91,0.06)",
-              }}
-            >
-              Everything you need
-            </div>
-            <h2 className="text-4xl lg:text-5xl font-black mb-4" style={{ color: "#57595B" }}>
-              Built for{" "}
-              <span
-                className="text-transparent bg-clip-text"
-                style={{
-                  backgroundImage: "linear-gradient(135deg, #57595B 0%, #F7B980 100%)",
-                }}
-              >
-                Modern Hiring
-              </span>
-            </h2>
-          </motion.div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-            {[
-              { icon: Video, title: "HD Video CVs", desc: "Record, upload, or stream directly. Crisp 1080p video with professional-grade playback.", warm: true },
-              { icon: Brain, title: "AI Skill Matching", desc: "Intelligent algorithms match candidates to roles based on communication style, skills, and cultural fit.", warm: false },
-              { icon: Shield, title: "Privacy Controls", desc: "Granular visibility settings. Share with specific employers or keep your profile public.", warm: true },
-              { icon: MessageSquare, title: "Live Interview Suite", desc: "Built-in video interviewing with recording, real-time notes, and candidate scoring.", warm: false },
-              { icon: BarChart3, title: "Analytics Dashboard", desc: "Track profile views, application status, and employer engagement in real time.", warm: true },
-              { icon: Globe, title: "Global Reach", desc: "Access thousands of employers worldwide or filter by location, industry, and company size.", warm: false },
-            ].map((feature, i) => (
-              <motion.div
-                key={i}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.5, delay: i * 0.08 }}
-                className="group p-7 rounded-2xl bg-white transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md"
-                style={{
-                  border: "1px solid #E8ECED",
-                  boxShadow: "0 2px 12px rgba(87,89,91,0.05)",
-                }}
-              >
-                <div
-                  className="w-11 h-11 rounded-xl flex items-center justify-center mb-5"
-                  style={{
-                    background: feature.warm
-                      ? "rgba(247,185,128,0.12)"
-                      : "rgba(172,186,196,0.15)",
-                    border: feature.warm
-                      ? "1px solid rgba(247,185,128,0.28)"
-                      : "1px solid rgba(172,186,196,0.32)",
-                  }}
-                >
-                  <feature.icon
-                    className="w-5 h-5"
-                    style={{ color: feature.warm ? "#F7B980" : "#ACBAC4" }}
-                  />
-                </div>
-                <h3 className="text-lg font-bold mb-2" style={{ color: "#57595B" }}>
-                  {feature.title}
-                </h3>
-                <p className="text-sm leading-relaxed" style={{ color: "#ACBAC4" }}>
-                  {feature.desc}
-                </p>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ========== FOR CANDIDATES / EMPLOYERS ========== */}
-      <section className="relative z-10 py-28">
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-
-            {/* Candidates */}
-            <motion.div
-              initial={{ opacity: 0, x: -30 }}
-              whileInView={{ opacity: 1, x: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.7 }}
-              className="relative p-10 rounded-3xl overflow-hidden"
-              style={{
-                background: "linear-gradient(135deg, #FDF6EE 0%, #FEF9F4 100%)",
-                border: "1px solid rgba(247,185,128,0.35)",
-                boxShadow: "0 4px 32px rgba(247,185,128,0.10)",
-              }}
-            >
-              <div
-                className="absolute top-0 right-0 w-56 h-56 rounded-full pointer-events-none -translate-y-1/2 translate-x-1/2"
-                style={{
-                  background: "radial-gradient(circle, rgba(247,185,128,0.18) 0%, transparent 70%)",
-                }}
-              />
-              <div className="relative z-10">
-                <div
-                  className="w-12 h-12 rounded-2xl flex items-center justify-center mb-6"
-                  style={{
-                    background: "rgba(247,185,128,0.15)",
-                    border: "1px solid rgba(247,185,128,0.35)",
-                  }}
-                >
-                  <Camera className="w-6 h-6" style={{ color: "#F7B980" }} />
-                </div>
-                <p className="text-xs font-bold tracking-widest uppercase mb-2" style={{ color: "#F7B980" }}>
-                  For Candidates
-                </p>
-                <h3 className="text-3xl font-black mb-4" style={{ color: "#57595B" }}>
-                  Show who you really are
-                </h3>
-                <p className="mb-8 leading-relaxed" style={{ color: "#8A8C8E" }}>
-                  Your personality is your biggest asset. A video CV lets
-                  employers see your communication skills, enthusiasm, and
-                  professionalism before even meeting you.
-                </p>
-                <ul className="space-y-3 mb-8">
-                  {[
-                    "60-second video introduction",
-                    "AI-powered skill highlights",
-                    "Profile analytics & insights",
-                    "Direct employer messaging",
-                  ].map((item) => (
-                    <li key={item} className="flex items-center gap-3 text-sm" style={{ color: "#57595B" }}>
-                      <CheckCircle2 className="w-4 h-4 shrink-0" style={{ color: "#F7B980" }} />
-                      {item}
-                    </li>
-                  ))}
-                </ul>
-                <Link
-                  href="/auth/signup?role=candidate"
-                  className="inline-flex items-center gap-2 px-6 py-3 font-semibold rounded-xl transition-all duration-200 text-sm hover:-translate-y-0.5"
-                  style={{
-                    background: "linear-gradient(135deg, #F7B980 0%, #F0A060 100%)",
-                    color: "#57595B",
-                    boxShadow: "0 6px 20px rgba(247,185,128,0.30)",
-                  }}
-                >
-                  Create Free Profile
-                  <ArrowRight className="w-4 h-4" />
-                </Link>
-              </div>
-            </motion.div>
-
-            {/* Employers */}
-            <motion.div
-              initial={{ opacity: 0, x: 30 }}
-              whileInView={{ opacity: 1, x: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.7 }}
-              className="relative p-10 rounded-3xl overflow-hidden"
-              style={{
-                background: "linear-gradient(135deg, #F1F4F6 0%, #F5F7F9 100%)",
-                border: "1px solid #BFC9D1",
-                boxShadow: "0 4px 32px rgba(172,186,196,0.12)",
-              }}
-            >
-              <div
-                className="absolute top-0 right-0 w-56 h-56 rounded-full pointer-events-none -translate-y-1/2 translate-x-1/2"
-                style={{
-                  background: "radial-gradient(circle, rgba(172,186,196,0.22) 0%, transparent 70%)",
-                }}
-              />
-              <div className="relative z-10">
-                <div
-                  className="w-12 h-12 rounded-2xl flex items-center justify-center mb-6"
-                  style={{
-                    background: "rgba(172,186,196,0.20)",
-                    border: "1px solid #ACBAC4",
-                  }}
-                >
-                  <Briefcase className="w-6 h-6" style={{ color: "#57595B" }} />
-                </div>
-                <p className="text-xs font-bold tracking-widest uppercase mb-2" style={{ color: "#ACBAC4" }}>
-                  For Employers
-                </p>
-                <h3 className="text-3xl font-black mb-4" style={{ color: "#57595B" }}>
-                  Find the perfect culture fit
-                </h3>
-                <p className="mb-8 leading-relaxed" style={{ color: "#8A8C8E" }}>
-                  Go beyond the resume. Browse authentic video profiles and
-                  identify candidates who will thrive in your team — before
-                  spending a minute in interviews.
-                </p>
-                <ul className="space-y-3 mb-8">
-                  {[
-                    "Browse curated video profiles",
-                    "AI-powered candidate matching",
-                    "Integrated interview scheduling",
-                    "Team collaboration & scoring",
-                  ].map((item) => (
-                    <li key={item} className="flex items-center gap-3 text-sm" style={{ color: "#57595B" }}>
-                      <CheckCircle2 className="w-4 h-4 shrink-0" style={{ color: "#ACBAC4" }} />
-                      {item}
-                    </li>
-                  ))}
-                </ul>
-                <Link
-                  href="/auth/signup?role=employer"
-                  className="inline-flex items-center gap-2 px-6 py-3 font-semibold rounded-xl transition-all duration-200 text-sm hover:-translate-y-0.5"
-                  style={{
-                    background: "#57595B",
-                    color: "#FFFFFF",
-                    boxShadow: "0 6px 20px rgba(87,89,91,0.20)",
-                  }}
-                >
-                  Start Hiring
-                  <ArrowRight className="w-4 h-4" />
-                </Link>
-              </div>
-            </motion.div>
-          </div>
-        </div>
-      </section>
-
-      {/* ========== FINAL CTA ========== */}
-      <section className="relative z-10 py-24">
-        <div className="max-w-4xl mx-auto px-6">
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.7 }}
-            className="relative text-center p-14 rounded-3xl overflow-hidden"
-            style={{
-              background: "linear-gradient(135deg, #3D3F41 0%, #57595B 50%, #4A4C4E 100%)",
-              boxShadow: "0 24px 80px rgba(87,89,91,0.28)",
-            }}
-          >
-            <div
-              className="absolute top-1/2 left-1/4 -translate-y-1/2 w-56 h-56 rounded-full pointer-events-none"
-              style={{
-                background: "radial-gradient(circle, rgba(247,185,128,0.18) 0%, transparent 70%)",
-              }}
-            />
-            <div
-              className="absolute top-1/2 right-1/4 -translate-y-1/2 w-56 h-56 rounded-full pointer-events-none"
-              style={{
-                background: "radial-gradient(circle, rgba(191,201,209,0.15) 0%, transparent 70%)",
-              }}
-            />
-            <div className="relative z-10">
-              <h2 className="text-4xl lg:text-5xl font-black text-white mb-5 leading-tight">
-                Ready to stand{" "}
-                <span
-                  className="text-transparent bg-clip-text"
-                  style={{
-                    backgroundImage: "linear-gradient(135deg, #F7B980 0%, #FACCA0 100%)",
-                  }}
-                >
-                  out from the crowd?
-                </span>
-              </h2>
-              <p className="text-lg mb-10 max-w-xl mx-auto" style={{ color: "rgba(255,255,255,0.55)" }}>
-                Join thousands of professionals who&apos;ve replaced their PDF
-                resume with a video CV that gets real results.
-              </p>
-              <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                <Link
-                  href="/auth/signup?role=candidate"
-                  className="inline-flex items-center justify-center gap-2 px-8 py-4 font-bold rounded-xl transition-all duration-300 hover:-translate-y-0.5"
-                  style={{
-                    background: "linear-gradient(135deg, #F7B980 0%, #F0A060 100%)",
-                    color: "#57595B",
-                    boxShadow: "0 8px 28px rgba(247,185,128,0.35)",
-                  }}
-                >
-                  <Camera className="w-5 h-5" />
-                  Get Started Free
-                </Link>
-                <Link
-                  href="/auth/login"
-                  className="inline-flex items-center justify-center gap-2 px-8 py-4 font-semibold rounded-xl transition-all duration-300"
-                  style={{
-                    background: "rgba(255,255,255,0.08)",
-                    border: "1px solid rgba(255,255,255,0.18)",
-                    color: "#FFFFFF",
-                  }}
-                >
-                  Sign In
-                </Link>
               </div>
             </div>
-          </motion.div>
-        </div>
-      </section>
+          </div>
+        </section>
 
-      {/* ========== FOOTER ========== */}
-      <footer
-        className="relative z-10 py-8"
-        style={{
-          borderTop: "1px solid #E8ECED",
-          background: "rgba(255,255,255,0.50)",
-        }}
-      >
-        <div className="max-w-7xl mx-auto px-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-sm">
-          <div className="font-bold text-base" style={{ color: "#57595B" }}>
-            VidioCV
-          </div>
-          <div style={{ color: "#BFC6C4" }}>© 2025 VidioCV. All rights reserved.</div>
-          <div className="flex gap-6" style={{ color: "#BFC6C4" }}>
-            <a href="#" className="hover:text-[#57595B] transition-colors">Privacy</a>
-            <a href="#" className="hover:text-[#57595B] transition-colors">Terms</a>
-          </div>
-        </div>
-      </footer>
+        {/* ================= CALL TO ACTION ================= */}
+        <section className="py-24 lg:py-40 relative px-6">
+           <div className="max-w-5xl mx-auto rounded-[32px] md:rounded-[64px] overflow-hidden relative shadow-[0_48px_120px_rgba(247,185,128,0.15)] group bg-[#57595B]">
+              <div className="absolute inset-0 opacity-[0.05] z-0"
+                   style={{ 
+                     backgroundImage: "radial-gradient(circle, white 0.5px, transparent 0.5px)", 
+                     backgroundSize: "24px 24px"
+                   }} />
+              
+              <div className="relative z-10 px-8 py-16 md:px-10 md:py-24 text-center space-y-10">
+                <h2 className="text-3xl md:text-6xl font-black text-white tracking-tighter">
+                  Ready to evolve your <br />
+                  <span className="text-[#F7B980]">Recruitment Journey?</span>
+                </h2>
+                <div className="flex flex-col sm:flex-row justify-center gap-6">
+                  {isLoggedIn ? (
+                     <Link href={dashboardUrl} className="px-12 py-5 rounded-2xl bg-white text-[#57595B] font-bold shadow-xl shadow-white/5 transition-all hover:-translate-y-1">
+                        Go to Your Dashboard
+                     </Link>
+                  ) : (
+                    <>
+                      <Link href="/auth/signup" className="px-12 py-5 rounded-2xl bg-[#F7B980] text-white font-bold shadow-xl shadow-[#F7B980]/20 transition-all hover:-translate-y-1">
+                        Create Your Future
+                      </Link>
+                      <Link href="/auth/employer/signup" className="px-12 py-5 rounded-2xl border-2 border-white/20 text-white font-bold hover:bg-white/10 transition-all">
+                        Scale Your Team
+                      </Link>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              {/* Decorative Blur */}
+              <div className="absolute top-[-50%] left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-[#F7B980]/20 blur-[120px] pointer-events-none rounded-full" />
+           </div>
+        </section>
+      </main>
+      <Footer />
     </div>
   );
 }

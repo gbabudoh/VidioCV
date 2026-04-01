@@ -10,15 +10,20 @@ datasource db {
 model User {
   id         String       @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
   email      String       @unique
-  password   String
+  password   String?
+  googleId   String?      @unique @map("google_id")
   role       String       @default("candidate")
   name       String
   country    String?
-  createdAt  DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt  DateTime     @default(now()) @map("updated_at") @db.Timestamptz(6)
-  interviews Interview[]  @relation("CandidateInterviews")
-  jobs       Job[]
-  profile    UserProfile?
+  emailVerified       Boolean      @default(false) @map("email_verified")
+  verificationToken   String?      @unique @map("verification_token")
+  verificationExpires DateTime?    @map("verification_expires")
+  createdAt           DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt           DateTime     @default(now()) @map("updated_at") @db.Timestamptz(6)
+  interviews          Interview[]  @relation("CandidateInterviews")
+  jobs                Job[]
+  profile             UserProfile?
+  cvProfile           CvProfile?   @relation("UserCvProfile")
   sentDirectMessages     DirectMessage[] @relation("SentDirectMessages")
   receivedDirectMessages DirectMessage[] @relation("ReceivedDirectMessages")
 
@@ -48,7 +53,8 @@ model UserProfile {
 
 model CvProfile {
   id                     String           @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  userId                 String           @map("user_id") @db.Uuid
+  userId                 String           @unique @map("user_id") @db.Uuid
+  user                   User             @relation("UserCvProfile", fields: [userId], references: [id], onDelete: Cascade)
   slug                   String           @unique
   title                  String
   summary                String?

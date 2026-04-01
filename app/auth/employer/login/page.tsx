@@ -1,15 +1,25 @@
 "use client";
 
-import React, { useState } from "react";
-import { motion } from "framer-motion";
+import React, { useState, useEffect, Suspense } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import Image from "next/image";
-import { Mail, Lock, ArrowRight } from "lucide-react";
+import { Mail, Lock, ArrowRight, CheckCircle2 } from "lucide-react";
+import { useSearchParams } from "next/navigation";
+import { GoogleLoginButton } from "@/app/components/common/GoogleLoginButton";
 
-export default function EmployerLoginPage() {
+function LoginContent() {
+  const searchParams = useSearchParams();
   const [formData, setFormData] = useState({ email: "", password: "" });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(false);
+  const [verified, setVerified] = useState(false);
+
+  useEffect(() => {
+    if (searchParams.get("verified") === "true") {
+      setVerified(true);
+    }
+  }, [searchParams]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -41,6 +51,30 @@ export default function EmployerLoginPage() {
       }
     } catch {
       setErrors({ submit: "An error occurred. Please try again." });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleGoogleSuccess = async (response: any) => { // eslint-disable-line @typescript-eslint/no-explicit-any
+    setIsLoading(true);
+    setErrors({});
+    try {
+      const res = await fetch("/api/auth/google", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ idToken: response.credential, role: "employer" }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        localStorage.setItem("token", data.token);
+        localStorage.setItem("userRole", "employer");
+        window.location.href = "/dashboard/employer";
+      } else {
+        setErrors({ submit: data.message || "Google authentication failed" });
+      }
+    } catch {
+      setErrors({ submit: "A network error occurred. Please try again." });
     } finally {
       setIsLoading(false);
     }
@@ -113,6 +147,21 @@ export default function EmployerLoginPage() {
               Sign in to manage your talent pipeline
             </p>
           </div>
+
+          <AnimatePresence>
+            {verified && (
+              <motion.div
+                initial={{ opacity: 0, height: 0, marginBottom: 0 }}
+                animate={{ opacity: 1, height: "auto", marginBottom: 24 }}
+                exit={{ opacity: 0, height: 0, marginBottom: 0 }}
+                className="p-4 rounded-2xl flex items-center gap-3 overflow-hidden"
+                style={{ background: "rgba(34,197,94,0.1)", border: "1px solid rgba(34,197,94,0.2)" }}
+              >
+                <CheckCircle2 className="w-5 h-5 text-green-600 shrink-0" />
+                <p className="text-sm font-medium text-green-700">Account verified successfully! You can now sign in.</p>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           {/* Candidate / Employer tabs */}
           <div
@@ -266,6 +315,22 @@ export default function EmployerLoginPage() {
               )}
             </button>
 
+            {/* Divider */}
+            <div className="relative py-4">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-[#E8ECED]" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase tracking-widest">
+                <span className="bg-white/80 backdrop-blur-md px-4 text-[#ACBAC4] font-black">Or continue with</span>
+              </div>
+            </div>
+
+            {/* Google Login */}
+            <GoogleLoginButton 
+              onSuccess={handleGoogleSuccess}
+              onError={(err) => setErrors({ submit: "Google login failed: " + err })}
+              isLoading={isLoading}
+            />
 
           </form>
 
@@ -285,5 +350,13 @@ export default function EmployerLoginPage() {
         </motion.div>
       </div>
     </div>
+  );
+}
+
+export default function EmployerLoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <LoginContent />
+    </Suspense>
   );
 }

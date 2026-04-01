@@ -99,6 +99,15 @@ export const EmailNotifications = {
     });
   },
 
+  // Send email verification link
+  sendVerificationEmail: async (email: string, name: string, token: string) => {
+    const verificationUrl = `${process.env.NEXT_PUBLIC_APP_URL}/auth/verify?token=${token}`;
+    await sendTransactionalEmail(email, 6, { // Assume Template ID 6 for Email Verification
+      first_name: name,
+      verification_url: verificationUrl,
+    });
+  },
+
   // Welcome new employer
   welcomeEmployer: async (email: string, name: string) => {
     const listId = parseInt(process.env.LISTMONK_EMPLOYER_LIST_ID || "2");

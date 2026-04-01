@@ -54,19 +54,42 @@ export function Navbar() {
     >
       <div className="max-w-7xl mx-auto px-6 flex justify-between items-center">
         {/* Logo */}
-        <Link href="/" className="flex items-center group">
+        <Link 
+          href="/" 
+          onClick={(e) => {
+            if (window.location.pathname === "/") {
+              e.preventDefault();
+              window.scrollTo({ top: 0, behavior: "smooth" });
+            }
+          }}
+          className="flex items-center group"
+        >
           <Image
             src="/logo.png"
             alt="VidioCV Logo"
             width={120}
             height={52}
+            priority
             className="object-contain transition-all duration-300 group-hover:scale-105"
-            style={{ background: "none" }}
+            style={{ width: "120px", height: "auto" }}
           />
         </Link>
 
         {/* Desktop Nav Links */}
         <div className="hidden md:flex items-center gap-7">
+          <a 
+            href="#" 
+            onClick={(e) => {
+              e.preventDefault();
+              window.scrollTo({ top: 0, behavior: "smooth" });
+            }}
+            className="text-sm font-medium transition-colors cursor-pointer" 
+            style={{ color: "#ACBAC4" }} 
+            onMouseOver={e => (e.currentTarget.style.color = "#57595B")} 
+            onMouseOut={e => (e.currentTarget.style.color = "#ACBAC4")}
+          >
+            Home
+          </a>
           <a href="#how-it-works" className="text-sm font-medium transition-colors" style={{ color: "#ACBAC4" }} onMouseOver={e => (e.currentTarget.style.color = "#57595B")} onMouseOut={e => (e.currentTarget.style.color = "#ACBAC4")}>
             How It Works
           </a>
@@ -126,6 +149,18 @@ export function Navbar() {
           className="absolute top-full left-0 w-full px-4 pb-4 md:hidden"
         >
           <div className="flex flex-col gap-1 p-3 rounded-2xl shadow-xl mt-2" style={{ background: "rgba(253,252,250,0.98)", border: "1px solid #E0E4E3" }}>
+            <a 
+              href="#" 
+              onClick={(e) => {
+                e.preventDefault();
+                setMobileMenuOpen(false);
+                window.scrollTo({ top: 0, behavior: "smooth" });
+              }}
+              className="px-4 py-3 text-sm font-medium rounded-xl transition-all cursor-pointer" 
+              style={{ color: "#ACBAC4" }}
+            >
+              Home
+            </a>
             <a href="#how-it-works" onClick={() => setMobileMenuOpen(false)} className="px-4 py-3 text-sm font-medium rounded-xl transition-all" style={{ color: "#ACBAC4" }}>
               How It Works
             </a>

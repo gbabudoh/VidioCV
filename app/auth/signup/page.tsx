@@ -61,6 +61,7 @@ export default function SignupPage() {
   const [formData, setFormData] = useState({ name: "", email: "", password: "", country: "" });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -85,10 +86,7 @@ export default function SignupPage() {
         body: JSON.stringify({ name: formData.name, email: formData.email, country: formData.country, password: formData.password, role }),
       });
       if (response.ok) {
-        const data = await response.json();
-        localStorage.setItem("token", data.token);
-        localStorage.setItem("userRole", "candidate");
-        window.location.href = "/dashboard/candidate";
+        setIsSuccess(true);
       } else {
         const data = await response.json();
         setErrors({ submit: data.error || "Signup failed. Please try again." });
@@ -149,8 +147,28 @@ export default function SignupPage() {
             boxShadow: "0 8px 48px rgba(87,89,91,0.10), 0 2px 12px rgba(87,89,91,0.06)",
           }}
         >
-          {/* Header */}
-          <div className="text-center mb-7">
+          {isSuccess ? (
+            <div className="text-center py-4">
+              <div className="w-16 h-16 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mx-auto mb-6">
+                <Mail className="w-8 h-8 text-green-600 dark:text-green-400" />
+              </div>
+              <h2 className="text-2xl font-bold mb-4" style={{ color: "#57595B" }}>Check your email</h2>
+              <p className="text-sm leading-relaxed mb-8" style={{ color: "#ACBAC4" }}>
+                We&apos;ve sent a verification link to <span className="font-semibold text-secondary-900">{formData.email}</span>. 
+                Please click the link in the email to activate your account.
+              </p>
+              <Link 
+                href="/auth/login"
+                className="inline-flex items-center justify-center px-6 py-3 rounded-xl font-semibold text-sm transition-all hover:-translate-y-0.5"
+                style={{ background: "linear-gradient(135deg, #F7B980, #F0A060)", color: "#57595B" }}
+              >
+                Back to Login
+              </Link>
+            </div>
+          ) : (
+            <>
+              {/* Header */}
+              <div className="text-center mb-7">
             <h2 className="text-2xl font-bold tracking-tight" style={{ color: "#57595B" }}>
               Create Account
             </h2>
@@ -372,6 +390,8 @@ export default function SignupPage() {
               </Link>
             </p>
           </div>
+            </>
+          )}
         </motion.div>
       </div>
     </div>
