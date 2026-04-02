@@ -161,6 +161,16 @@ export default function EmployerDashboard() {
   const [searchQuery, setSearchQuery] = useState("");
   const [networkSearch, setNetworkSearch] = useState("");
   const [networkSort, setNetworkSort] = useState<'name' | 'skills' | 'recent'>("recent");
+  const [jobSearch, setJobSearch] = useState("");
+  const [isSavingPrefs, setIsSavingPrefs] = useState(false);
+  const [prefsSuccess, setPrefsSuccess] = useState(false);
+  const [isWipeConfirmOpen, setIsWipeConfirmOpen] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const [passwordChangeError, setPasswordChangeError] = useState("");
+  const [passwordChangeSuccess, setPasswordChangeSuccess] = useState(false);
   const [messageText, setMessageText] = useState("");
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
@@ -256,7 +266,7 @@ export default function EmployerDashboard() {
       }
     };
 
-    if (activeTab === "candidates") {
+    if (activeTab === "candidates" || activeTab === "overview") {
       fetchRecommendations();
     }
   }, [activeTab]);
@@ -465,6 +475,60 @@ export default function EmployerDashboard() {
       console.error("Save profile error:", error);
     } finally {
       setIsSavingProfile(false);
+    }
+  };
+
+  const handleSavePrefs = async () => {
+    try {
+      setIsSavingPrefs(true);
+      const token = localStorage.getItem("token");
+      await fetch("/api/profile/employer/update", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+        body: JSON.stringify({ prefs })
+      });
+      setPrefsSuccess(true);
+      setTimeout(() => setPrefsSuccess(false), 3000);
+    } catch (error) {
+      console.error("Failed to save preferences:", error);
+    } finally {
+      setIsSavingPrefs(false);
+    }
+  };
+
+  const handleChangePassword = async () => {
+    setPasswordChangeError("");
+    if (newPassword !== confirmPassword) {
+      setPasswordChangeError("New passwords do not match.");
+      return;
+    }
+    if (newPassword.length < 8) {
+      setPasswordChangeError("Password must be at least 8 characters.");
+      return;
+    }
+    try {
+      setIsChangingPassword(true);
+      const token = localStorage.getItem("token");
+      const res = await fetch("/api/auth/change-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+        body: JSON.stringify({ currentPassword, newPassword })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setPasswordChangeSuccess(true);
+        setCurrentPassword("");
+        setNewPassword("");
+        setConfirmPassword("");
+        setTimeout(() => setPasswordChangeSuccess(false), 4000);
+      } else {
+        setPasswordChangeError(data.message || "Failed to update password. Please try again.");
+      }
+    } catch (error) {
+      console.error("Password change error:", error);
+      setPasswordChangeError("An error occurred. Please try again.");
+    } finally {
+      setIsChangingPassword(false);
     }
   };
 
@@ -804,9 +868,9 @@ export default function EmployerDashboard() {
                <div>
                   <div className="flex items-center gap-3 mb-2">
                     <span className="w-2 h-2 rounded-full bg-[#F7B980] animate-pulse" />
-                    <p className="text-[10px] font-black uppercase tracking-[0.4em]" style={{ color: "#64748B" }}>System Control</p>
+                    <p className="text-[10px] font-black uppercase tracking-[0.4em]" style={{ color: "#64748B" }}>Account</p>
                   </div>
-                  <h2 className="text-4xl font-black tracking-tight" style={{ color: "#334155" }}>Headquarters Strategy</h2>
+                  <h2 className="text-4xl font-black tracking-tight" style={{ color: "#334155" }}>Account Settings</h2>
                </div>
             </div>
             <button 
@@ -907,40 +971,258 @@ export default function EmployerDashboard() {
             transition={{ duration: 0.3 }}
           >
             {activeTab === "overview" && (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                {[
-                  { label: "Active Opportunities", value: employerJobs.length.toString(), color: "#F7B980", icon: <Briefcase className="w-6 h-6" /> },
-                  { label: "Global Talent Pool", value: candidates.length.toString(), color: "#64748B", icon: <Users className="w-6 h-6" /> },
-                  { label: "Planned Interviews", value: employerInterviews.length.toString(), color: "#334155", icon: <CalendarIcon className="w-6 h-6" /> }
-                ].map((stat, idx) => (
+              <div className="space-y-8">
+
+                {/* Welcome + Quick Actions */}
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.05 }}
+                  className="border border-white rounded-[40px] p-8 lg:p-10 shadow-2xl relative overflow-hidden"
+                  style={{ background: "rgba(255,255,255,0.7)", backdropFilter: "blur(24px)", boxShadow: "0 24px 64px rgba(87,89,91,0.06)" }}
+                >
+                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                    <div>
+                      <p className="text-[10px] font-black uppercase tracking-[0.3em] mb-2" style={{ color: "#64748B" }}>
+                        {new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}
+                      </p>
+                      <h2 className="text-3xl font-black tracking-tight" style={{ color: "#334155" }}>
+                        {employerName ? `Welcome back, ${employerName.split(" ")[0]}.` : "Welcome back."}
+                      </h2>
+                      <p className="text-sm font-semibold mt-1" style={{ color: "#64748B" }}>
+                        Here&apos;s your hiring pipeline at a glance.
+                      </p>
+                    </div>
+                    <div className="flex flex-wrap gap-3">
+                      <button
+                        onClick={() => setIsPostJobModalOpen(true)}
+                        className="flex items-center gap-2.5 px-6 py-3.5 bg-[#334155] hover:bg-[#454749] text-white rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-xl transition-all hover:-translate-y-0.5 active:scale-95 cursor-pointer"
+                      >
+                        <Plus className="w-4 h-4" /> Post Opportunity
+                      </button>
+                      <button
+                        onClick={() => setIsGeneralScheduleModalOpen(true)}
+                        className="flex items-center gap-2.5 px-6 py-3.5 bg-white hover:bg-[#E2E8F0] text-[#334155] rounded-2xl font-black text-[10px] uppercase tracking-widest border border-[#E2E8F0] shadow-sm transition-all hover:-translate-y-0.5 active:scale-95 cursor-pointer"
+                      >
+                        <CalendarIcon className="w-4 h-4" /> Schedule Interview
+                      </button>
+                      <button
+                        onClick={() => setActiveTab("candidates")}
+                        className="flex items-center gap-2.5 px-6 py-3.5 bg-white hover:bg-[#E2E8F0] text-[#334155] rounded-2xl font-black text-[10px] uppercase tracking-widest border border-[#E2E8F0] shadow-sm transition-all hover:-translate-y-0.5 active:scale-95 cursor-pointer"
+                      >
+                        <Users className="w-4 h-4" /> Browse Talent
+                      </button>
+                    </div>
+                  </div>
+                </motion.div>
+
+                {/* Stats Row */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  {[
+                    {
+                      label: "Active Opportunities",
+                      value: employerJobs.length.toString(),
+                      sub: employerJobs.reduce((a, j) => a + (j.applicants || 0), 0) > 0
+                        ? `${employerJobs.reduce((a, j) => a + (j.applicants || 0), 0)} total applicants`
+                        : "No applicants yet",
+                      color: "#F7B980",
+                      icon: <Briefcase className="w-6 h-6" />,
+                      tab: "jobs" as Tab
+                    },
+                    {
+                      label: "Global Talent Pool",
+                      value: candidates.length.toString(),
+                      sub: recommendations.length > 0
+                        ? `${recommendations.reduce((a, r) => a + r.topMatches.length, 0)} AI-matched profiles`
+                        : "Candidates available",
+                      color: "#64748B",
+                      icon: <Users className="w-6 h-6" />,
+                      tab: "candidates" as Tab
+                    },
+                    {
+                      label: "Planned Interviews",
+                      value: employerInterviews.filter(i => i.status === "scheduled").length.toString(),
+                      sub: employerInterviews.filter(i => i.status === "completed").length > 0
+                        ? `${employerInterviews.filter(i => i.status === "completed").length} completed`
+                        : "None completed yet",
+                      color: "#334155",
+                      icon: <CalendarIcon className="w-6 h-6" />,
+                      tab: "interviews" as Tab
+                    }
+                  ].map((stat, idx) => (
+                    <motion.div
+                      key={stat.label}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.1 * (idx + 1) }}
+                      onClick={() => setActiveTab(stat.tab)}
+                      className="group border border-white rounded-[32px] p-8 shadow-xl relative overflow-hidden transition-all hover:-translate-y-1 cursor-pointer"
+                      style={{ background: "rgba(255,255,255,0.7)", backdropFilter: "blur(24px)", boxShadow: "0 16px 48px rgba(87,89,91,0.06)" }}
+                    >
+                      <div className="flex items-center gap-5">
+                        <div className="w-14 h-14 rounded-[20px] flex items-center justify-center shadow-lg border border-[#E2E8F0] transition-transform group-hover:scale-110 shrink-0" style={{ background: "white", color: stat.color }}>
+                          {stat.icon}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-[10px] font-black uppercase tracking-[0.2em] mb-0.5 truncate" style={{ color: "#64748B" }}>{stat.label}</p>
+                          <p className="text-4xl font-black tracking-tight leading-none" style={{ color: "#334155" }}>{stat.value}</p>
+                          <p className="text-[11px] font-semibold mt-1.5 truncate" style={{ color: "#94A3B8" }}>{stat.sub}</p>
+                        </div>
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
+
+                {/* Hiring Pipeline + Upcoming Interviews */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+                  {/* Hiring Pipeline */}
                   <motion.div
-                    key={stat.label}
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.1 * (idx + 1) }}
-                    onClick={() => {
-                        if (stat.label.includes("Opportunities")) setActiveTab("jobs");
-                        if (stat.label.includes("Talent")) setActiveTab("candidates");
-                        if (stat.label.includes("Planned")) setActiveTab("interviews");
-                    }}
-                    className="group border border-white rounded-[40px] p-10 shadow-2xl relative overflow-hidden transition-all hover:-translate-y-1 cursor-pointer"
-                    style={{ 
-                      background: "rgba(255, 255, 255, 0.7)", 
-                      backdropFilter: "blur(24px)",
-                      boxShadow: "0 24px 64px rgba(87,89,91,0.06)"
-                    }}
+                    transition={{ delay: 0.4 }}
+                    className="border border-white rounded-[32px] p-8 shadow-xl"
+                    style={{ background: "rgba(255,255,255,0.7)", backdropFilter: "blur(24px)", boxShadow: "0 16px 48px rgba(87,89,91,0.06)" }}
                   >
-                    <div className="flex items-center gap-6">
-                      <div className="w-16 h-16 rounded-[24px] flex items-center justify-center shadow-xl border border-[#E2E8F0] transition-transform group-hover:scale-110" style={{ background: "white", color: stat.color }}>
-                        {stat.icon}
+                    <div className="flex items-center justify-between mb-6">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 bg-[#FFF7ED] rounded-xl border border-[#FED7AA]">
+                          <Briefcase className="w-4 h-4 text-[#F7B980]" />
+                        </div>
+                        <div>
+                          <h3 className="text-base font-black tracking-tight" style={{ color: "#334155" }}>Hiring Pipeline</h3>
+                          <p className="text-[11px] font-semibold" style={{ color: "#94A3B8" }}>Active job performance</p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="text-[10px] font-black uppercase tracking-[0.2em] mb-1" style={{ color: "#64748B" }}>{stat.label}</p>
-                        <p className="text-4xl font-black tracking-tight" style={{ color: "#334155" }}>{stat.value}</p>
+                      <button onClick={() => setActiveTab("jobs")} className="text-[10px] font-black uppercase tracking-widest text-[#F7B980] hover:text-[#e6a060] transition-colors cursor-pointer">
+                        View All →
+                      </button>
+                    </div>
+                    {isLoadingJobs ? (
+                      <div className="space-y-3">
+                        {[1,2,3].map(i => <div key={i} className="h-14 bg-[#F1F5F9] rounded-2xl animate-pulse" />)}
+                      </div>
+                    ) : employerJobs.length === 0 ? (
+                      <div className="flex flex-col items-center justify-center py-10 text-center">
+                        <div className="p-3 bg-[#F1F5F9] rounded-2xl mb-3">
+                          <Briefcase className="w-6 h-6 text-[#CBD5E1]" />
+                        </div>
+                        <p className="text-sm font-bold text-[#94A3B8]">No active opportunities</p>
+                        <button onClick={() => setIsPostJobModalOpen(true)} className="mt-4 px-5 py-2.5 bg-[#334155] text-white text-[10px] font-black uppercase tracking-widest rounded-xl cursor-pointer hover:bg-[#454749] transition-all">
+                          Post First Job
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        {employerJobs.slice(0, 4).map((job) => (
+                          <div key={job.id} className="flex items-center justify-between p-4 bg-white/60 rounded-2xl border border-[#E2E8F0] hover:border-[#F7B980]/40 transition-all">
+                            <div className="min-w-0 flex-1">
+                              <p className="text-sm font-black truncate" style={{ color: "#334155" }}>{job.title}</p>
+                              <p className="text-[11px] font-semibold" style={{ color: "#94A3B8" }}>{job.days}d active</p>
+                            </div>
+                            <div className="flex items-center gap-4 shrink-0 ml-4">
+                              <div className="text-center">
+                                <p className="text-lg font-black leading-none" style={{ color: "#334155" }}>{job.applicants}</p>
+                                <p className="text-[10px] font-semibold uppercase tracking-wide" style={{ color: "#94A3B8" }}>Applied</p>
+                              </div>
+                              <div className="text-center">
+                                <p className="text-lg font-black leading-none" style={{ color: "#64748B" }}>{job.views}</p>
+                                <p className="text-[10px] font-semibold uppercase tracking-wide" style={{ color: "#94A3B8" }}>Views</p>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </motion.div>
+
+                  {/* Upcoming Interviews */}
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.5 }}
+                    className="border border-white rounded-[32px] p-8 shadow-xl"
+                    style={{ background: "rgba(255,255,255,0.7)", backdropFilter: "blur(24px)", boxShadow: "0 16px 48px rgba(87,89,91,0.06)" }}
+                  >
+                    <div className="flex items-center justify-between mb-6">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 bg-[#F0FDF4] rounded-xl border border-[#BBF7D0]">
+                          <CalendarIcon className="w-4 h-4 text-[#4ADE80]" />
+                        </div>
+                        <div>
+                          <h3 className="text-base font-black tracking-tight" style={{ color: "#334155" }}>Upcoming Interviews</h3>
+                          <p className="text-[11px] font-semibold" style={{ color: "#94A3B8" }}>Scheduled sessions</p>
+                        </div>
+                      </div>
+                      <button onClick={() => setActiveTab("interviews")} className="text-[10px] font-black uppercase tracking-widest text-[#F7B980] hover:text-[#e6a060] transition-colors cursor-pointer">
+                        View All →
+                      </button>
+                    </div>
+                    {isLoadingInterviews ? (
+                      <div className="space-y-3">
+                        {[1,2,3].map(i => <div key={i} className="h-14 bg-[#F1F5F9] rounded-2xl animate-pulse" />)}
+                      </div>
+                    ) : employerInterviews.filter(i => i.status === "scheduled").length === 0 ? (
+                      <div className="flex flex-col items-center justify-center py-10 text-center">
+                        <div className="p-3 bg-[#F1F5F9] rounded-2xl mb-3">
+                          <CalendarIcon className="w-6 h-6 text-[#CBD5E1]" />
+                        </div>
+                        <p className="text-sm font-bold text-[#94A3B8]">No upcoming interviews</p>
+                        <button onClick={() => setIsGeneralScheduleModalOpen(true)} className="mt-4 px-5 py-2.5 bg-[#334155] text-white text-[10px] font-black uppercase tracking-widest rounded-xl cursor-pointer hover:bg-[#454749] transition-all">
+                          Schedule Now
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        {employerInterviews.filter(i => i.status === "scheduled").slice(0, 4).map((interview) => (
+                          <div key={interview.id} className="flex items-center gap-4 p-4 bg-white/60 rounded-2xl border border-[#E2E8F0] hover:border-[#4ADE80]/40 transition-all">
+                            <div className="w-10 h-10 bg-[#F0FDF4] rounded-xl flex items-center justify-center shrink-0 border border-[#BBF7D0]">
+                              <Video className="w-4 h-4 text-[#4ADE80]" />
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <p className="text-sm font-black truncate" style={{ color: "#334155" }}>{interview.candidateName}</p>
+                              <p className="text-[11px] font-semibold truncate" style={{ color: "#94A3B8" }}>{interview.jobTitle || "General Interview"}</p>
+                            </div>
+                            <div className="text-right shrink-0">
+                              <p className="text-[11px] font-black" style={{ color: "#334155" }}>{interview.date}</p>
+                              <p className="text-[10px] font-semibold" style={{ color: "#94A3B8" }}>{interview.time}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </motion.div>
+                </div>
+
+                {/* AI Recommendations Teaser */}
+                {recommendations.length > 0 && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.6 }}
+                    className="border border-amber-100 rounded-[32px] p-8 shadow-xl cursor-pointer group"
+                    style={{ background: "rgba(255,247,237,0.7)", backdropFilter: "blur(24px)", boxShadow: "0 16px 48px rgba(247,185,128,0.08)" }}
+                    onClick={() => setActiveTab("candidates")}
+                  >
+                    <div className="flex items-center justify-between gap-6">
+                      <div className="flex items-center gap-4 min-w-0">
+                        <div className="p-3 bg-amber-100 rounded-2xl border border-amber-200 shrink-0">
+                          <Sparkles className="w-5 h-5 text-amber-500" />
+                        </div>
+                        <div className="min-w-0">
+                          <h3 className="text-base font-black tracking-tight" style={{ color: "#334155" }}>AI Talent Intelligence Ready</h3>
+                          <p className="text-sm font-semibold truncate" style={{ color: "#64748B" }}>
+                            {recommendations.reduce((a, r) => a + r.topMatches.length, 0)} top-matched candidates across {recommendations.length} {recommendations.length === 1 ? "role" : "roles"} — click to explore.
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 px-5 py-2.5 bg-[#334155] text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all group-hover:bg-[#454749] shrink-0">
+                        Explore <ArrowRight className="w-3.5 h-3.5" />
                       </div>
                     </div>
                   </motion.div>
-                ))}
+                )}
+
               </div>
             )}
 
@@ -1126,60 +1408,164 @@ export default function EmployerDashboard() {
             )}
 
             {activeTab === "jobs" && (
-              <div 
+              <div
                 className="border border-white rounded-[40px] p-10 lg:p-12 shadow-2xl relative overflow-hidden"
-                style={{ 
-                  background: "rgba(255, 255, 255, 0.7)", 
+                style={{
+                  background: "rgba(255, 255, 255, 0.7)",
                   backdropFilter: "blur(24px)",
                   boxShadow: "0 24px 64px rgba(87,89,91,0.06)"
                 }}
               >
+                {/* Header */}
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-6 border-b border-[#E2E8F0] pb-10">
                   <div className="space-y-1">
                     <h3 className="text-3xl font-black tracking-tight" style={{ color: "#334155" }}>Opportunity Pipeline</h3>
                     <p className="font-medium text-base" style={{ color: "#64748B" }}>Manage your active roles and track talent resonance.</p>
                   </div>
+                  <button
+                    onClick={() => setIsPostJobModalOpen(true)}
+                    className="flex items-center gap-3 px-8 py-4 bg-[#334155] hover:bg-[#454749] text-white font-black text-[10px] uppercase tracking-widest rounded-2xl shadow-xl transition-all hover:-translate-y-0.5 active:scale-95 cursor-pointer shrink-0"
+                  >
+                    <Plus className="w-4 h-4" /> Post New Role
+                  </button>
                 </div>
-                
+
                 {isLoadingJobs ? (
                   <div className="flex flex-col items-center justify-center py-20">
-                     <div className="w-10 h-10 border-4 border-[#E2E8F0] border-t-[#F7B980] rounded-full animate-spin mb-4" />
-                     <p className="text-[#64748B] font-bold text-sm tracking-wide">Retrieving your opportunities...</p>
+                    <div className="w-10 h-10 border-4 border-[#E2E8F0] border-t-[#F7B980] rounded-full animate-spin mb-4" />
+                    <p className="text-[#64748B] font-bold text-sm tracking-wide">Retrieving your opportunities...</p>
                   </div>
                 ) : employerJobs.length > 0 ? (
-                  <div className="grid gap-6">
-                    {employerJobs.map((job) => (
-                      <div
-                        key={job.id}
-                        className="group bg-white/40 border-2 border-transparent rounded-[32px] p-8 transition-all hover:bg-white hover:border-[#F7B980]/30 hover:shadow-2xl flex flex-col md:flex-row justify-between md:items-center gap-6 cursor-pointer"
-                        style={{ background: "rgba(255, 255, 255, 0.4)", border: "1px solid #E0E4E3" }}
-                      >
-                        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 w-full">
-                          <div className="space-y-2">
-                            <h4 className="text-2xl font-black group-hover:text-[#F7B980] transition-colors" style={{ color: "#334155" }}>
-                              {job.title}
-                            </h4>
-                            <div className="flex flex-wrap items-center gap-6 text-[10px] font-black uppercase tracking-widest" style={{ color: "#64748B" }}>
-                              <span className="flex items-center gap-2 px-3 py-1 bg-[#E2E8F0] rounded-lg">Posted {job.days} days ago</span>
-                              <span className="flex items-center gap-2 px-3 py-1 bg-[#E2E8F0] rounded-lg">{job.applicants} applications</span>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-6 w-full sm:w-auto">
-                             <span className="px-6 py-2 bg-[#E2E8F0] rounded-full text-[10px] font-black uppercase tracking-[0.2em] text-[#334155] border border-white transition-all group-hover:bg-[#F7B980]/10 group-hover:text-[#F7B980] group-hover:border-[#F7B980]/20">
-                               Active
-                             </span>
-                             <button onClick={() => setSelectedJob(job)} className="px-8 py-3.5 bg-[#334155] hover:bg-[#454749] text-white font-bold text-[10px] tracking-widest uppercase rounded-xl transition-all shadow-lg active:scale-95 cursor-pointer">
-                               Blueprint
-                             </button>
-                          </div>
+                  <div className="space-y-8">
+
+                    {/* Aggregate Stats */}
+                    <div className="grid grid-cols-3 gap-4">
+                      {[
+                        { label: "Active Roles", value: employerJobs.length },
+                        { label: "Total Applicants", value: employerJobs.reduce((a, j) => a + (j.applicants || 0), 0) },
+                        { label: "Total Views", value: employerJobs.reduce((a, j) => a + (j.views || 0), 0) },
+                      ].map((s) => (
+                        <div key={s.label} className="bg-white/60 border border-[#E2E8F0] rounded-2xl p-5 text-center">
+                          <p className="text-2xl font-black" style={{ color: "#334155" }}>{s.value}</p>
+                          <p className="text-[10px] font-black uppercase tracking-widest mt-1" style={{ color: "#94A3B8" }}>{s.label}</p>
                         </div>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
+
+                    {/* Search */}
+                    <div className="relative">
+                      <Search className="w-5 h-5 absolute left-5 top-1/2 -translate-y-1/2 text-[#64748B]" />
+                      <input
+                        type="text"
+                        value={jobSearch}
+                        onChange={(e) => setJobSearch(e.target.value)}
+                        placeholder="Search roles by title..."
+                        className="w-full pl-14 pr-6 py-4 bg-white border border-[#E2E8F0] rounded-2xl text-[#334155] font-bold text-sm focus:outline-none focus:ring-4 focus:ring-[#F7B980]/10 focus:border-[#F7B980] transition-all"
+                      />
+                    </div>
+
+                    {/* Job Cards */}
+                    {(() => {
+                      const filtered = employerJobs.filter(j =>
+                        j.title.toLowerCase().includes(jobSearch.toLowerCase())
+                      );
+                      if (filtered.length === 0) {
+                        return (
+                          <div className="text-center py-16 bg-white/50 rounded-3xl border border-dashed border-[#E2E8F0]">
+                            <p className="text-[#334155] font-black text-lg mb-1">No roles match &ldquo;{jobSearch}&rdquo;</p>
+                            <p className="text-[#94A3B8] text-sm font-semibold">Try a different search term.</p>
+                          </div>
+                        );
+                      }
+                      return (
+                        <div className="grid gap-4">
+                          {filtered.map((job) => (
+                            <div
+                              key={job.id}
+                              className="group bg-white/50 border border-[#E2E8F0] rounded-[28px] p-7 transition-all hover:bg-white hover:border-[#F7B980]/40 hover:shadow-xl"
+                            >
+                              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-5">
+
+                                {/* Left: Title + Meta */}
+                                <div className="space-y-3 min-w-0">
+                                  <h4 className="text-xl font-black group-hover:text-[#F7B980] transition-colors truncate" style={{ color: "#334155" }}>
+                                    {job.title}
+                                  </h4>
+                                  <div className="flex flex-wrap items-center gap-2">
+                                    <span className="px-3 py-1.5 bg-[#F0FDF4] text-[#16A34A] border border-[#BBF7D0] rounded-lg text-[10px] font-black uppercase tracking-widest">
+                                      Active
+                                    </span>
+                                    <span className="px-3 py-1.5 bg-[#F1F5F9] text-[#64748B] rounded-lg text-[10px] font-black uppercase tracking-widest">
+                                      Posted {job.days}d ago
+                                    </span>
+                                  </div>
+                                </div>
+
+                                {/* Right: Metrics + Action */}
+                                <div className="flex items-center gap-6 shrink-0">
+                                  {/* Applicants */}
+                                  <div className="text-center min-w-[52px]">
+                                    <p className="text-2xl font-black leading-none" style={{ color: "#334155" }}>{job.applicants}</p>
+                                    <p className="text-[10px] font-black uppercase tracking-widest mt-1" style={{ color: "#94A3B8" }}>Applied</p>
+                                  </div>
+                                  {/* Divider */}
+                                  <div className="w-px h-8 bg-[#E2E8F0]" />
+                                  {/* Views */}
+                                  <div className="text-center min-w-[52px]">
+                                    <p className="text-2xl font-black leading-none" style={{ color: "#64748B" }}>{job.views}</p>
+                                    <p className="text-[10px] font-black uppercase tracking-widest mt-1" style={{ color: "#94A3B8" }}>Views</p>
+                                  </div>
+                                  {/* Divider */}
+                                  <div className="w-px h-8 bg-[#E2E8F0]" />
+                                  {/* Action */}
+                                  <button
+                                    onClick={() => setSelectedJob(job)}
+                                    className="px-7 py-3.5 bg-[#334155] hover:bg-[#454749] text-white font-black text-[10px] tracking-widest uppercase rounded-xl transition-all shadow-lg active:scale-95 cursor-pointer"
+                                  >
+                                    Manage
+                                  </button>
+                                </div>
+                              </div>
+
+                              {/* Applicant fill bar */}
+                              {job.views > 0 && (
+                                <div className="mt-5">
+                                  <div className="flex items-center justify-between mb-1.5">
+                                    <p className="text-[10px] font-black uppercase tracking-widest" style={{ color: "#94A3B8" }}>Application Rate</p>
+                                    <p className="text-[10px] font-black" style={{ color: "#64748B" }}>
+                                      {Math.round((job.applicants / job.views) * 100)}%
+                                    </p>
+                                  </div>
+                                  <div className="h-1.5 bg-[#F1F5F9] rounded-full overflow-hidden">
+                                    <div
+                                      className="h-full rounded-full transition-all"
+                                      style={{
+                                        width: `${Math.min(Math.round((job.applicants / job.views) * 100), 100)}%`,
+                                        background: "#F7B980"
+                                      }}
+                                    />
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      );
+                    })()}
                   </div>
                 ) : (
-                  <div className="text-center py-20 bg-white/50 rounded-3xl border border-dashed border-[#E2E8F0]">
-                     <p className="text-[#334155] font-black text-xl mb-2">No active opportunities</p>
-                     <p className="text-[#64748B] text-sm">Your pipeline is currently empty. Post a new role to start discovering global talent.</p>
+                  <div className="flex flex-col items-center justify-center py-24 bg-white/50 rounded-3xl border border-dashed border-[#E2E8F0] text-center">
+                    <div className="p-4 bg-[#F1F5F9] rounded-2xl mb-5">
+                      <Briefcase className="w-8 h-8 text-[#CBD5E1]" />
+                    </div>
+                    <p className="text-[#334155] font-black text-xl mb-2">No active opportunities</p>
+                    <p className="text-[#64748B] text-sm font-semibold mb-6 max-w-xs">Your pipeline is currently empty. Post a new role to start discovering global talent.</p>
+                    <button
+                      onClick={() => setIsPostJobModalOpen(true)}
+                      className="flex items-center gap-2.5 px-8 py-4 bg-[#334155] hover:bg-[#454749] text-white font-black text-[10px] uppercase tracking-widest rounded-2xl shadow-xl transition-all hover:-translate-y-0.5 active:scale-95 cursor-pointer"
+                    >
+                      <Plus className="w-4 h-4" /> Post Your First Role
+                    </button>
                   </div>
                 )}
               </div>
@@ -1237,296 +1623,420 @@ export default function EmployerDashboard() {
                 }}
               >
                 {/* Settings Sidebar */}
-                <div className="w-full lg:w-80 border-b lg:border-b-0 lg:border-r border-[#E2E8F0]/60 p-10 space-y-4">
-                   <button 
-                     onClick={() => setActiveTab(previousTab)}
-                     className="flex items-center gap-2 mb-10 px-4 text-[#64748B] hover:text-[#334155] font-black text-[10px] uppercase tracking-[0.2em] transition-all group cursor-pointer"
-                   >
-                     <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" /> Back to Dashboard
-                   </button>
-                   <div className="mb-6 px-4">
-                     <p className="text-[10px] font-black uppercase tracking-[0.2em]" style={{ color: "#64748B" }}>Organization</p>
-                     <h3 className="text-xl font-bold" style={{ color: "#334155" }}>Operations</h3>
-                   </div>
-                     {[
-                       { id: "company", label: "Company Presence", icon: Building2, desc: "Brand footprint" },
-                       { id: "strategy", label: "Talent Strategy", icon: Briefcase, desc: "Recruitment logic" },
-                       { id: "security", label: "Access Control", icon: Shield, desc: "Keys and sessions" },
-                       { id: "privacy", label: "Data Pipeline", icon: Lock, desc: "Corporate visibility" },
-                       { id: "notifications", label: "Alert Protocols", icon: Bell, desc: "Push & email" },
-                     ].map((item) => (
-                       <button
-                         key={item.id}
-                         onClick={() => setSettingsSection(item.id as "company" | "strategy" | "security" | "privacy" | "notifications")}
-                         className={`w-full flex items-center gap-5 px-6 py-5 rounded-[28px] transition-all cursor-pointer group text-left`}
-                         style={settingsSection === item.id ? {
-                           background: "white",
-                           color: "#F7B980",
-                           boxShadow: "0 12px 32px rgba(247,185,128,0.15)"
-                         } : {
-                           color: "#64748B",
-                         }}
-                       >
-                       <div className={`p-3 rounded-2xl transition-colors ${settingsSection === item.id ? "bg-[#F7B980]/10 text-[#F7B980]" : "bg-[#E2E8F0] text-[#64748B] group-hover:text-[#334155]"}`}>
-                         <item.icon className="w-5 h-5" />
-                       </div>
-                       <div>
-                         <p className="font-bold text-sm leading-tight">{item.label}</p>
-                         <p className="text-[10px] opacity-60 font-bold uppercase tracking-widest mt-0.5">{item.desc}</p>
-                       </div>
-                     </button>
-                   ))}
+                <div className="w-full lg:w-72 border-b lg:border-b-0 lg:border-r border-[#E2E8F0]/60 p-8 space-y-2 shrink-0">
+                  <button
+                    onClick={() => setActiveTab(previousTab)}
+                    className="flex items-center gap-2 mb-8 px-3 text-[#64748B] hover:text-[#334155] font-black text-[10px] uppercase tracking-[0.2em] transition-all group cursor-pointer"
+                  >
+                    <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" /> Back to Dashboard
+                  </button>
+                  <div className="mb-4 px-3">
+                    <p className="text-[10px] font-black uppercase tracking-[0.2em]" style={{ color: "#94A3B8" }}>Account</p>
+                  </div>
+                  {[
+                    { id: "company",       label: "Company Profile",  icon: Building2, desc: "Name, bio & industry" },
+                    { id: "strategy",      label: "Talent Strategy",  icon: Briefcase, desc: "Hiring preferences"   },
+                    { id: "security",      label: "Security",         icon: Shield,    desc: "Password & access"    },
+                    { id: "privacy",       label: "Privacy",          icon: Lock,      desc: "Visibility & data"    },
+                    { id: "notifications", label: "Notifications",    icon: Bell,      desc: "Email & push"         },
+                  ].map((item) => (
+                    <button
+                      key={item.id}
+                      onClick={() => setSettingsSection(item.id as "company" | "strategy" | "security" | "privacy" | "notifications")}
+                      className="w-full flex items-center gap-4 px-5 py-4 rounded-2xl transition-all cursor-pointer group text-left"
+                      style={settingsSection === item.id ? {
+                        background: "white",
+                        boxShadow: "0 8px 24px rgba(247,185,128,0.12)"
+                      } : {}}
+                    >
+                      <div className={`p-2.5 rounded-xl transition-colors shrink-0 ${settingsSection === item.id ? "bg-[#F7B980]/10 text-[#F7B980]" : "bg-[#E2E8F0] text-[#64748B] group-hover:bg-[#F7B980]/10 group-hover:text-[#F7B980]"}`}>
+                        <item.icon className="w-4 h-4" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className={`font-black text-sm leading-tight ${settingsSection === item.id ? "text-[#334155]" : "text-[#64748B] group-hover:text-[#334155]"}`}>{item.label}</p>
+                        <p className="text-[10px] font-semibold mt-0.5 truncate" style={{ color: "#94A3B8" }}>{item.desc}</p>
+                      </div>
+                    </button>
+                  ))}
 
-                   <div className="pt-10 mt-10 border-t border-[#E2E8F0] px-4">
-                      <button onClick={() => setIsLogoutModalOpen(true)} className="flex items-center gap-3 text-red-400 hover:text-red-500 font-bold text-xs uppercase tracking-widest transition-all group cursor-pointer">
-                        <LogOut className="w-4 h-4 group-hover:-translate-x-1 transition-transform" /> Exit Workspace
-                      </button>
-                   </div>
+                  <div className="pt-6 mt-4 border-t border-[#E2E8F0] px-3">
+                    <button onClick={() => setIsLogoutModalOpen(true)} className="flex items-center gap-2.5 text-red-400 hover:text-red-500 font-bold text-xs uppercase tracking-widest transition-all group cursor-pointer">
+                      <LogOut className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" /> Sign Out
+                    </button>
+                  </div>
                 </div>
 
                 {/* Settings Content Area */}
-                <div className="flex-1 p-10 lg:p-20 overflow-y-auto bg-white/30 relative">
-                    <div className="flex lg:hidden mb-8">
-                       <button 
-                         onClick={() => setActiveTab(previousTab)}
-                         className="flex items-center gap-2 text-[#64748B] hover:text-[#334155] font-black text-[10px] uppercase tracking-widest transition-all group cursor-pointer"
-                       >
-                         <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" /> Back to Dashboard
-                       </button>
-                    </div>
-                    <AnimatePresence mode="wait">
-                      <motion.div
-                        key={settingsSection}
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -10 }}
-                        transition={{ duration: 0.3 }}
-                        className="max-w-4xl mx-auto space-y-16"
-                      >
-                        {settingsSection === "company" && (
-                          <div className="space-y-12">
-                             <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-8 border-b border-[#E2E8F0]">
-                               <div>
-                                 <h3 className="text-3xl font-black tracking-tight mb-2" style={{ color: "#334155" }}>Brand Footprint</h3>
-                                 <p className="font-medium text-base leading-relaxed" style={{ color: "#64748B" }}>Manage your organization&apos;s global identity and identifier.</p>
-                               </div>
-                               <div className="w-24 h-24 rounded-[32px] bg-white border border-[#E2E8F0] shadow-xl flex items-center justify-center">
-                                  <Building2 className="w-10 h-10 text-[#F7B980]" />
-                               </div>
+                <div className="flex-1 p-10 lg:p-16 overflow-y-auto bg-white/30">
+                  <div className="flex lg:hidden mb-8">
+                    <button
+                      onClick={() => setActiveTab(previousTab)}
+                      className="flex items-center gap-2 text-[#64748B] hover:text-[#334155] font-black text-[10px] uppercase tracking-widest transition-all group cursor-pointer"
+                    >
+                      <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" /> Back
+                    </button>
+                  </div>
+                  <AnimatePresence mode="wait">
+                    <motion.div
+                      key={settingsSection}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      transition={{ duration: 0.25 }}
+                      className="max-w-2xl space-y-10"
+                    >
+
+                      {/* ── Company Profile ── */}
+                      {settingsSection === "company" && (
+                        <div className="space-y-10">
+                          <div className="pb-6 border-b border-[#E2E8F0]">
+                            <h3 className="text-2xl font-black tracking-tight mb-1" style={{ color: "#334155" }}>Company Profile</h3>
+                            <p className="text-sm font-medium" style={{ color: "#64748B" }}>Manage your organization&apos;s public identity on the talent network.</p>
+                          </div>
+
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="space-y-2">
+                              <label className="text-[10px] font-black uppercase tracking-[0.25em]" style={{ color: "#64748B" }}>Company Name</label>
+                              <input
+                                type="text"
+                                value={employerName}
+                                onChange={(e) => setEmployerName(e.target.value)}
+                                placeholder="e.g. TechNova Solutions"
+                                className="w-full px-5 py-4 bg-white border border-[#E2E8F0] rounded-2xl outline-none transition-all font-bold text-sm focus:border-[#F7B980] focus:ring-4 focus:ring-[#F7B980]/10 shadow-sm"
+                                style={{ color: "#334155" }}
+                              />
                             </div>
-                            
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-                              <div className="space-y-4">
-                                <label className="text-[10px] font-black uppercase tracking-[0.25em]" style={{ color: "#64748B" }}>Legal Entity</label>
-                                <input 
-                                  type="text" 
-                                  value={employerName} 
-                                  onChange={(e) => setEmployerName(e.target.value)}
-                                  placeholder="e.g. TechNova Solutions"
-                                  className="w-full px-8 py-5 bg-white border border-[#E2E8F0] rounded-3xl outline-none transition-all font-bold focus:border-[#F7B980] shadow-sm" style={{ color: "#334155" }} 
+                            <div className="space-y-2">
+                              <label className="text-[10px] font-black uppercase tracking-[0.25em]" style={{ color: "#64748B" }}>Industry</label>
+                              <select
+                                value={employerType}
+                                onChange={(e) => setEmployerType(e.target.value)}
+                                className="w-full px-5 py-4 bg-white border border-[#E2E8F0] rounded-2xl outline-none transition-all font-bold text-sm focus:border-[#F7B980] focus:ring-4 focus:ring-[#F7B980]/10 shadow-sm appearance-none cursor-pointer"
+                                style={{ color: "#334155" }}
+                              >
+                                <option value="">Select industry...</option>
+                                <option value="Software & SaaS">Software & SaaS</option>
+                                <option value="Fintech">Fintech</option>
+                                <option value="Healthcare">Healthcare</option>
+                                <option value="AI & Machine Learning">AI & Machine Learning</option>
+                                <option value="E-commerce">E-commerce</option>
+                                <option value="Cybersecurity">Cybersecurity</option>
+                              </select>
+                            </div>
+                            <div className="space-y-2">
+                              <label className="text-[10px] font-black uppercase tracking-[0.25em]" style={{ color: "#64748B" }}>Country</label>
+                              <input
+                                type="text"
+                                value={employerCountry}
+                                onChange={(e) => setEmployerCountry(e.target.value)}
+                                placeholder="e.g. United Kingdom"
+                                className="w-full px-5 py-4 bg-white border border-[#E2E8F0] rounded-2xl outline-none transition-all font-bold text-sm focus:border-[#F7B980] focus:ring-4 focus:ring-[#F7B980]/10 shadow-sm"
+                                style={{ color: "#334155" }}
+                              />
+                            </div>
+                            <div className="md:col-span-2 space-y-2">
+                              <label className="text-[10px] font-black uppercase tracking-[0.25em]" style={{ color: "#64748B" }}>About / Bio</label>
+                              <textarea
+                                rows={4}
+                                value={employerBio}
+                                onChange={(e) => setEmployerBio(e.target.value)}
+                                placeholder="Describe your organization's mission and culture..."
+                                className="w-full px-5 py-4 bg-white border border-[#E2E8F0] rounded-2xl outline-none transition-all font-medium text-sm leading-relaxed focus:border-[#F7B980] focus:ring-4 focus:ring-[#F7B980]/10 shadow-sm resize-none"
+                                style={{ color: "#334155" }}
+                              />
+                            </div>
+                            <div className="md:col-span-2 flex items-center justify-end gap-4">
+                              {isSavingProfile === false && successMessage && (
+                                <p className="text-sm font-bold text-green-500">Changes saved successfully.</p>
+                              )}
+                              <button
+                                onClick={handleSaveEmployerProfile}
+                                disabled={isSavingProfile}
+                                className="px-8 py-3.5 bg-[#334155] hover:bg-[#454749] text-white font-black text-[10px] uppercase tracking-widest rounded-2xl shadow-lg transition-all active:scale-95 disabled:opacity-50 cursor-pointer"
+                              >
+                                {isSavingProfile ? "Saving..." : "Save Changes"}
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* ── Talent Strategy ── */}
+                      {settingsSection === "strategy" && (
+                        <div className="space-y-10">
+                          <div className="pb-6 border-b border-[#E2E8F0]">
+                            <h3 className="text-2xl font-black tracking-tight mb-1" style={{ color: "#334155" }}>Talent Strategy</h3>
+                            <p className="text-sm font-medium" style={{ color: "#64748B" }}>Configure your hiring preferences and workplace culture signals.</p>
+                          </div>
+
+                          <div className="space-y-4">
+                            {[
+                              { key: "hiringActive",      label: "Hiring Active",      desc: "Signal that your pipeline is currently open for applications." },
+                              { key: "remoteFriendly",    label: "Remote Friendly",    desc: "Show candidates your company supports distributed work." },
+                              { key: "relocationSupport", label: "Relocation Support", desc: "Offer relocation assistance for candidates who need to move." },
+                            ].map(({ key, label, desc }) => (
+                              <div key={key} className="bg-white border border-[#E2E8F0] rounded-2xl p-6 flex items-center justify-between shadow-sm">
+                                <div className="space-y-0.5">
+                                  <p className="font-bold text-sm" style={{ color: "#334155" }}>{label}</p>
+                                  <p className="text-xs font-medium" style={{ color: "#64748B" }}>{desc}</p>
+                                </div>
+                                <Toggle
+                                  enabled={prefs[key as keyof typeof prefs]}
+                                  setEnabled={(val) => setPrefs({ ...prefs, [key]: val })}
                                 />
                               </div>
-                              <div className="space-y-4">
-                                <label className="text-[10px] font-black uppercase tracking-[0.25em]" style={{ color: "#64748B" }}>Primary Industry</label>
-                                <select 
-                                  value={employerType}
-                                  onChange={(e) => setEmployerType(e.target.value)}
-                                  className="w-full px-8 py-5 bg-white border border-[#E2E8F0] rounded-3xl outline-none transition-all font-bold focus:border-[#F7B980] shadow-sm appearance-none cursor-pointer" 
+                            ))}
+                          </div>
+
+                          <div className="flex items-center justify-end gap-4">
+                            {prefsSuccess && <p className="text-sm font-bold text-green-500">Preferences saved.</p>}
+                            <button
+                              onClick={handleSavePrefs}
+                              disabled={isSavingPrefs}
+                              className="px-8 py-3.5 bg-[#334155] hover:bg-[#454749] text-white font-black text-[10px] uppercase tracking-widest rounded-2xl shadow-lg transition-all active:scale-95 disabled:opacity-50 cursor-pointer"
+                            >
+                              {isSavingPrefs ? "Saving..." : "Save Changes"}
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* ── Security ── */}
+                      {settingsSection === "security" && (
+                        <div className="space-y-10">
+                          <div className="pb-6 border-b border-[#E2E8F0]">
+                            <h3 className="text-2xl font-black tracking-tight mb-1" style={{ color: "#334155" }}>Security</h3>
+                            <p className="text-sm font-medium" style={{ color: "#64748B" }}>Update your password to keep your account secure.</p>
+                          </div>
+
+                          <div className="bg-white border border-[#E2E8F0] rounded-2xl p-8 shadow-sm space-y-6">
+                            <div className="flex items-center gap-4 mb-2">
+                              <div className="w-10 h-10 rounded-xl bg-[#F1F5F9] flex items-center justify-center">
+                                <Lock className="w-5 h-5 text-[#64748B]" />
+                              </div>
+                              <div>
+                                <p className="font-black text-sm" style={{ color: "#334155" }}>Change Password</p>
+                                <p className="text-xs font-medium" style={{ color: "#94A3B8" }}>Update your password periodically for best security.</p>
+                              </div>
+                            </div>
+
+                            <div className="space-y-4">
+                              <div className="space-y-2">
+                                <label className="text-[10px] font-black uppercase tracking-widest" style={{ color: "#64748B" }}>Current Password</label>
+                                <input
+                                  type="password"
+                                  value={currentPassword}
+                                  onChange={(e) => setCurrentPassword(e.target.value)}
+                                  placeholder="Enter current password"
+                                  className="w-full px-5 py-3.5 bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl outline-none text-sm font-bold focus:border-[#F7B980] focus:ring-4 focus:ring-[#F7B980]/10 transition-all"
                                   style={{ color: "#334155" }}
+                                />
+                              </div>
+                              <div className="space-y-2">
+                                <label className="text-[10px] font-black uppercase tracking-widest" style={{ color: "#64748B" }}>New Password</label>
+                                <input
+                                  type="password"
+                                  value={newPassword}
+                                  onChange={(e) => setNewPassword(e.target.value)}
+                                  placeholder="At least 8 characters"
+                                  className="w-full px-5 py-3.5 bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl outline-none text-sm font-bold focus:border-[#F7B980] focus:ring-4 focus:ring-[#F7B980]/10 transition-all"
+                                  style={{ color: "#334155" }}
+                                />
+                              </div>
+                              <div className="space-y-2">
+                                <label className="text-[10px] font-black uppercase tracking-widest" style={{ color: "#64748B" }}>Confirm New Password</label>
+                                <input
+                                  type="password"
+                                  value={confirmPassword}
+                                  onChange={(e) => setConfirmPassword(e.target.value)}
+                                  placeholder="Repeat new password"
+                                  className="w-full px-5 py-3.5 bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl outline-none text-sm font-bold focus:border-[#F7B980] focus:ring-4 focus:ring-[#F7B980]/10 transition-all"
+                                  style={{ color: "#334155" }}
+                                />
+                              </div>
+                            </div>
+
+                            {passwordChangeError && (
+                              <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-100 rounded-xl">
+                                <AlertCircle className="w-4 h-4 text-red-400 shrink-0" />
+                                <p className="text-xs font-bold text-red-500">{passwordChangeError}</p>
+                              </div>
+                            )}
+                            {passwordChangeSuccess && (
+                              <div className="p-3 bg-green-50 border border-green-100 rounded-xl">
+                                <p className="text-xs font-bold text-green-600">Password updated successfully.</p>
+                              </div>
+                            )}
+
+                            <div className="flex justify-end">
+                              <button
+                                onClick={handleChangePassword}
+                                disabled={isChangingPassword || !currentPassword || !newPassword || !confirmPassword}
+                                className="px-8 py-3.5 bg-[#334155] hover:bg-[#454749] text-white font-black text-[10px] uppercase tracking-widest rounded-2xl shadow-lg transition-all active:scale-95 disabled:opacity-40 cursor-pointer"
+                              >
+                                {isChangingPassword ? "Updating..." : "Update Password"}
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* ── Privacy ── */}
+                      {settingsSection === "privacy" && (
+                        <div className="space-y-10">
+                          <div className="pb-6 border-b border-[#E2E8F0]">
+                            <h3 className="text-2xl font-black tracking-tight mb-1" style={{ color: "#334155" }}>Privacy</h3>
+                            <p className="text-sm font-medium" style={{ color: "#64748B" }}>Control your company&apos;s visibility and manage your data.</p>
+                          </div>
+
+                          <div className="space-y-5">
+                            {/* Public Profile Toggle */}
+                            <div className="bg-[#334155] rounded-2xl p-8 text-white relative overflow-hidden shadow-xl">
+                              <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-6">
+                                <div className="space-y-2 max-w-sm">
+                                  <p className="font-black text-base">Public Company Profile</p>
+                                  <p className="text-white/60 text-sm font-medium leading-relaxed">When enabled, your company is visible to candidates searching the talent network.</p>
+                                  <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-white/10 border border-white/10 w-fit">
+                                    <Shield className="w-3.5 h-3.5 text-[#F7B980]" />
+                                    <p className="text-[10px] font-black uppercase tracking-widest">Protected by privacy controls</p>
+                                  </div>
+                                </div>
+                                <div className="shrink-0">
+                                  <Toggle
+                                    enabled={prefs.publicProfile}
+                                    setEnabled={(val) => setPrefs({ ...prefs, publicProfile: val })}
+                                    dark
+                                  />
+                                </div>
+                              </div>
+                              <div className="absolute top-0 right-0 w-64 h-64 bg-[#F7B980]/10 rounded-full blur-[80px] -mr-32 -mt-32" />
+                            </div>
+
+                            {/* Danger Zone */}
+                            <div className="rounded-2xl border-2 border-dashed border-red-100 bg-red-50/30 p-6">
+                              <p className="text-[10px] font-black uppercase tracking-widest text-red-400 mb-4">Danger Zone</p>
+                              <div className="flex items-start justify-between gap-6">
+                                <div className="flex items-start gap-4">
+                                  <div className="p-2.5 rounded-xl bg-red-100 text-red-400 shrink-0 mt-0.5">
+                                    <Trash2 className="w-4 h-4" />
+                                  </div>
+                                  <div>
+                                    <p className="font-black text-sm" style={{ color: "#334155" }}>Delete All Job Data</p>
+                                    <p className="text-xs font-medium mt-0.5" style={{ color: "#64748B" }}>Permanently deletes all your job postings and applicant data. This cannot be undone.</p>
+                                  </div>
+                                </div>
+                                <button
+                                  onClick={() => setIsWipeConfirmOpen(true)}
+                                  className="px-5 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest text-red-400 border border-red-200 hover:bg-red-100 transition-all cursor-pointer shrink-0"
                                 >
-                                  <option value="">Select Industry...</option>
-                                  <option value="Software & SaaS">Software & SaaS</option>
-                                  <option value="Fintech">Fintech</option>
-                                  <option value="Healthcare">Healthcare</option>
-                                  <option value="AI & Machine Learning">AI & Machine Learning</option>
-                                  <option value="E-commerce">E-commerce</option>
-                                  <option value="Cybersecurity">Cybersecurity</option>
-                                </select>
-                              </div>
-                              <div className="space-y-4">
-                                <label className="text-[10px] font-black uppercase tracking-[0.25em]" style={{ color: "#64748B" }}>Operational Base (Country)</label>
-                                <input 
-                                  type="text" 
-                                  value={employerCountry} 
-                                  onChange={(e) => setEmployerCountry(e.target.value)}
-                                  placeholder="e.g. United Kingdom"
-                                  className="w-full px-8 py-5 bg-white border border-[#E2E8F0] rounded-3xl outline-none transition-all font-bold focus:border-[#F7B980] shadow-sm" style={{ color: "#334155" }} 
-                                />
-                              </div>
-                              <div className="md:col-span-2 space-y-4">
-                                <label className="text-[10px] font-black uppercase tracking-[0.25em]" style={{ color: "#64748B" }}>Organization Narrative</label>
-                                <textarea 
-                                  rows={5} 
-                                  value={employerBio}
-                                  onChange={(e) => setEmployerBio(e.target.value)}
-                                  placeholder="Describe your organization's mission..."
-                                  className="w-full px-8 py-6 bg-white border border-[#E2E8F0] rounded-[32px] outline-none transition-all font-medium text-lg leading-relaxed focus:border-[#F7B980] shadow-sm resize-none" style={{ color: "#334155" }} 
-                                />
-                              </div>
-                              <div className="md:col-span-2 flex justify-end">
-                                 <button
-                                   onClick={handleSaveEmployerProfile}
-                                   disabled={isSavingProfile}
-                                   className="px-12 py-4 bg-[#334155] hover:bg-[#454749] text-white font-black text-[10px] uppercase tracking-widest rounded-2xl shadow-xl transition-all active:scale-95 disabled:opacity-50 flex items-center gap-3 cursor-pointer"
-                                 >
-                                   {isSavingProfile ? "Synchronizing..." : "Save Brand Protocol"}
-                                 </button>
+                                  Delete Data
+                                </button>
                               </div>
                             </div>
                           </div>
-                        )}
+                        </div>
+                      )}
 
-                        {settingsSection === "strategy" && (
-                          <div className="space-y-12">
-                            <div className="pb-8 border-b border-[#E2E8F0]">
-                               <h3 className="text-3xl font-black tracking-tight mb-2" style={{ color: "#334155" }}>Recruitment Strategy</h3>
-                               <p className="font-medium text-base leading-relaxed" style={{ color: "#64748B" }}>Configure your hiring mobility and workplace culture signals.</p>
-                            </div>
-
-                            <div className="grid grid-cols-1 gap-12">
-                               <div className="space-y-8">
-                                  <div>
-                                    <label className="text-[10px] font-black uppercase tracking-[0.25em] mb-6 block" style={{ color: "#64748B" }}>Operational protocols</label>
-                                    <div className="space-y-6">
-                                      <div className="bg-white border border-[#E2E8F0] rounded-[32px] p-8 flex items-center justify-between shadow-sm">
-                                        <div className="space-y-1">
-                                          <p className="font-bold text-sm" style={{ color: "#334155" }}>Hiring Active</p>
-                                          <p className="text-xs font-medium" style={{ color: "#64748B" }}>Signal that your pipeline is currently open for applications.</p>
-                                        </div>
-                                        <Toggle enabled={prefs.hiringActive} setEnabled={(val) => setPrefs({...prefs, hiringActive: val})} />
-                                      </div>
-                                      <div className="bg-white border border-[#E2E8F0] rounded-[32px] p-8 flex items-center justify-between shadow-sm">
-                                        <div className="space-y-1">
-                                          <p className="font-bold text-sm" style={{ color: "#334155" }}>Remote Operations</p>
-                                          <p className="text-xs font-medium" style={{ color: "#64748B" }}>Showcase your company as a distributed-first workspace.</p>
-                                        </div>
-                                        <Toggle enabled={prefs.remoteFriendly} setEnabled={(val) => setPrefs({...prefs, remoteFriendly: val})} />
-                                      </div>
-                                      <div className="bg-white border border-[#E2E8F0] rounded-[32px] p-8 flex items-center justify-between shadow-sm">
-                                        <div className="space-y-1">
-                                          <p className="font-bold text-sm" style={{ color: "#334155" }}>Relocation Support</p>
-                                          <p className="text-xs font-medium" style={{ color: "#64748B" }}>Offer logistical assistance for global talent transitions.</p>
-                                        </div>
-                                        <Toggle enabled={prefs.relocationSupport} setEnabled={(val) => setPrefs({...prefs, relocationSupport: val})} />
-                                      </div>
-                                    </div>
-                                  </div>
-                               </div>
-                            </div>
+                      {/* ── Notifications ── */}
+                      {settingsSection === "notifications" && (
+                        <div className="space-y-10">
+                          <div className="pb-6 border-b border-[#E2E8F0]">
+                            <h3 className="text-2xl font-black tracking-tight mb-1" style={{ color: "#334155" }}>Notifications</h3>
+                            <p className="text-sm font-medium" style={{ color: "#64748B" }}>Choose how you want to be notified about talent activity.</p>
                           </div>
-                        )}
 
-                        {settingsSection === "notifications" && (
-                          <div className="space-y-12">
-                            <div className="pb-8 border-b border-[#E2E8F0]">
-                               <h3 className="text-3xl font-black tracking-tight mb-2" style={{ color: "#334155" }}>Alert Protocols</h3>
-                               <p className="font-medium text-base leading-relaxed" style={{ color: "#64748B" }}>Configure your real-time signal preferences for talent activity.</p>
-                            </div>
-
-                            <div className="space-y-6">
-                              <div className="bg-white border border-[#E2E8F0] rounded-[32px] p-8 flex items-start gap-8 shadow-sm group hover:shadow-md transition-all">
-                                <div className="p-4 rounded-2xl bg-[#E2E8F0] text-[#64748B] group-hover:bg-[#F7B980]/10 group-hover:text-[#F7B980] transition-colors">
-                                  <Mail className="w-6 h-6" />
-                                </div>
-                                <div className="flex-1">
-                                  <div className="flex items-center justify-between">
-                                    <div className="space-y-1">
-                                      <p className="font-bold text-sm" style={{ color: "#334155" }}>Email Sync</p>
-                                      <p className="text-xs font-medium" style={{ color: "#64748B" }}>Weekly candidate digests and mission-critical updates.</p>
-                                    </div>
-                                    <Toggle enabled={prefs.emailAlerts} setEnabled={(val) => setPrefs({...prefs, emailAlerts: val})} />
-                                  </div>
-                                </div>
+                          <div className="space-y-4">
+                            <div className="bg-white border border-[#E2E8F0] rounded-2xl p-6 flex items-center gap-5 shadow-sm">
+                              <div className="p-3 rounded-xl bg-[#F1F5F9] text-[#64748B] shrink-0">
+                                <Mail className="w-5 h-5" />
                               </div>
-
-                              <div className="bg-white border border-[#E2E8F0] rounded-[32px] p-8 flex items-start gap-8 shadow-sm group hover:shadow-md transition-all">
-                                <div className="p-4 rounded-2xl bg-[#E2E8F0] text-[#64748B] group-hover:bg-[#F7B980]/10 group-hover:text-[#F7B980] transition-colors">
-                                  <Bell className="w-6 h-6" />
-                                </div>
-                                <div className="flex-1">
-                                  <div className="flex items-center justify-between">
-                                    <div className="space-y-1">
-                                      <p className="font-bold text-sm" style={{ color: "#334155" }}>Desktop Signals</p>
-                                      <p className="text-xs font-medium" style={{ color: "#64748B" }}>Instant push notifications for new Video CV uploads.</p>
-                                    </div>
-                                    <Toggle enabled={prefs.browserAlerts} setEnabled={(val) => setPrefs({...prefs, browserAlerts: val})} />
-                                  </div>
-                                </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="font-black text-sm" style={{ color: "#334155" }}>Email Notifications</p>
+                                <p className="text-xs font-medium" style={{ color: "#64748B" }}>Candidate updates, interview reminders, and weekly digests.</p>
                               </div>
+                              <Toggle enabled={prefs.emailAlerts} setEnabled={(val) => setPrefs({ ...prefs, emailAlerts: val })} />
+                            </div>
+
+                            <div className="bg-white border border-[#E2E8F0] rounded-2xl p-6 flex items-center gap-5 shadow-sm">
+                              <div className="p-3 rounded-xl bg-[#F1F5F9] text-[#64748B] shrink-0">
+                                <Bell className="w-5 h-5" />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="font-black text-sm" style={{ color: "#334155" }}>Browser Push Notifications</p>
+                                <p className="text-xs font-medium" style={{ color: "#64748B" }}>Instant alerts when candidates apply or message you.</p>
+                              </div>
+                              <Toggle enabled={prefs.browserAlerts} setEnabled={(val) => setPrefs({ ...prefs, browserAlerts: val })} />
                             </div>
                           </div>
-                        )}
 
-                        {settingsSection === "privacy" && (
-                          <div className="space-y-12">
-                            <div className="pb-8 border-b border-[#E2E8F0]">
-                               <h3 className="text-3xl font-black tracking-tight mb-2" style={{ color: "#334155" }}>Data Pipeline</h3>
-                               <p className="font-medium text-base leading-relaxed" style={{ color: "#64748B" }}>Control your corporate visibility and recruitment data footprint.</p>
-                            </div>
-
-                            <div className="grid grid-cols-1 gap-8">
-                                <div className="bg-[#334155] rounded-[40px] p-10 text-white relative overflow-hidden shadow-2xl">
-                                    <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-10">
-                                      <div className="max-w-md space-y-4">
-                                         <h4 className="text-2xl font-black">Public Presence</h4>
-                                         <p className="text-white/60 font-medium leading-relaxed">When active, your company profile is promoted to top-tier candidates on the global network.</p>
-                                         <div className="flex items-center gap-3 p-4 rounded-2xl bg-white/10 border border-white/10">
-                                            <Shield className="w-5 h-5 text-[#F7B980]" />
-                                            <p className="text-[10px] font-black uppercase tracking-widest">Secured by Corporate Privacy Protocols</p>
-                                         </div>
-                                      </div>
-                                      <div className="bg-white/10 p-8 rounded-[32px] border border-white/20">
-                                        <Toggle 
-                                          enabled={prefs.publicProfile} 
-                                          setEnabled={(val) => setPrefs({...prefs, publicProfile: val})} 
-                                          dark
-                                        />
-                                      </div>
-                                    </div>
-                                    <div className="absolute top-0 right-0 w-96 h-96 bg-[#F7B980]/10 rounded-full blur-[120px] -mr-48 -mt-48" />
-                                </div>
-
-                                <div className="p-8 rounded-[32px] border-2 border-dashed border-[#E2E8F0] flex items-center justify-between">
-                                   <div className="flex items-center gap-6">
-                                      <div className="p-4 rounded-2xl bg-[#E2E8F0] text-[#64748B]">
-                                        <Trash2 className="w-6 h-6" />
-                                      </div>
-                                      <div>
-                                        <p className="font-bold text-sm" style={{ color: "#334155" }}>Recruitment Narrative Wipe</p>
-                                        <p className="text-xs font-medium" style={{ color: "#64748B" }}>Irreversibly delete your job postings and inbound applicant data.</p>
-                                      </div>
-                                   </div>
-                                   <button className="px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest text-red-400 hover:bg-red-50 hover:text-red-500 transition-all cursor-pointer">Execute Wipe</button>
-                                </div>
-                            </div>
+                          <div className="flex items-center justify-end gap-4">
+                            {prefsSuccess && <p className="text-sm font-bold text-green-500">Preferences saved.</p>}
+                            <button
+                              onClick={handleSavePrefs}
+                              disabled={isSavingPrefs}
+                              className="px-8 py-3.5 bg-[#334155] hover:bg-[#454749] text-white font-black text-[10px] uppercase tracking-widest rounded-2xl shadow-lg transition-all active:scale-95 disabled:opacity-50 cursor-pointer"
+                            >
+                              {isSavingPrefs ? "Saving..." : "Save Changes"}
+                            </button>
                           </div>
-                        )}
+                        </div>
+                      )}
 
-                        {settingsSection === "security" && (
-                          <div className="space-y-12">
-                            <div className="pb-8 border-b border-[#E2E8F0]">
-                               <h3 className="text-3xl font-black tracking-tight mb-2" style={{ color: "#334155" }}>Security Hub</h3>
-                               <p className="font-medium text-base leading-relaxed" style={{ color: "#64748B" }}>Manage organizational authentication and active workspace sessions.</p>
-                            </div>
-                            <div className="bg-white border border-[#E2E8F0] rounded-[32px] p-10 flex items-center justify-between">
-                               <div className="flex items-center gap-6">
-                                  <div className="w-14 h-14 rounded-2xl bg-[#E2E8F0] flex items-center justify-center text-[#64748B]">
-                                     <Lock className="w-6 h-6" />
-                                  </div>
-                                  <div>
-                                     <p className="font-bold text-sm" style={{ color: "#334155" }}>Master Access Key</p>
-                                     <p className="text-xs font-medium" style={{ color: "#64748B" }}>Update your corporate credential periodically for high security.</p>
-                                  </div>
-                               </div>
-                               <button className="px-8 py-3.5 border-2 border-[#E2E8F0] rounded-xl font-bold text-[10px] tracking-widest uppercase hover:bg-[#E2E8F0] transition-all cursor-pointer">Update Key</button>
-                            </div>
-                          </div>
-                        )}
-                      </motion.div>
-                    </AnimatePresence>
+                    </motion.div>
+                  </AnimatePresence>
                 </div>
               </div>
-            )}            {activeTab === "messages" && (
+            )}
+
+            {/* Wipe Confirmation Modal */}
+            <AnimatePresence>
+              {isWipeConfirmOpen && (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="fixed inset-0 z-50 flex items-center justify-center p-6"
+                  style={{ background: "rgba(15,23,42,0.5)", backdropFilter: "blur(8px)" }}
+                  onClick={() => setIsWipeConfirmOpen(false)}
+                >
+                  <motion.div
+                    initial={{ scale: 0.95, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    exit={{ scale: 0.95, opacity: 0 }}
+                    transition={{ duration: 0.2 }}
+                    className="bg-white rounded-3xl p-8 shadow-2xl max-w-md w-full"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <div className="flex items-center gap-4 mb-5">
+                      <div className="w-12 h-12 rounded-2xl bg-red-100 flex items-center justify-center shrink-0">
+                        <Trash2 className="w-5 h-5 text-red-500" />
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-black" style={{ color: "#334155" }}>Delete All Job Data?</h3>
+                        <p className="text-xs font-semibold" style={{ color: "#94A3B8" }}>This action is permanent and cannot be undone.</p>
+                      </div>
+                    </div>
+                    <p className="text-sm font-medium mb-8 leading-relaxed" style={{ color: "#64748B" }}>
+                      This will permanently delete all your job postings, applicant records, and associated data from the platform. Your account will remain active.
+                    </p>
+                    <div className="flex gap-3">
+                      <button
+                        onClick={() => setIsWipeConfirmOpen(false)}
+                        className="flex-1 px-6 py-3.5 bg-[#F1F5F9] hover:bg-[#E2E8F0] text-[#334155] font-black text-[10px] uppercase tracking-widest rounded-2xl transition-all cursor-pointer"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={() => setIsWipeConfirmOpen(false)}
+                        className="flex-1 px-6 py-3.5 bg-red-500 hover:bg-red-600 text-white font-black text-[10px] uppercase tracking-widest rounded-2xl shadow-lg transition-all active:scale-95 cursor-pointer"
+                      >
+                        Yes, Delete All
+                      </button>
+                    </div>
+                  </motion.div>
+                </motion.div>
+              )}
+            </AnimatePresence>            {activeTab === "messages" && (
               <div className="space-y-12">
                  <div 
                     className="border border-white rounded-[40px] p-8 lg:p-12 shadow-2xl relative overflow-hidden"
