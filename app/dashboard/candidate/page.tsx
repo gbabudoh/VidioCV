@@ -172,6 +172,8 @@ export default function CandidateDashboard() {
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
   const [selectedMessage, setSelectedMessage] = useState<Message | null>(null);
+  const [selectedSentMessage, setSelectedSentMessage] = useState<DirectMessage | null>(null);
+  const [selectedInterview, setSelectedInterview] = useState<Interview | null>(null);
   const [isReplying, setIsReplying] = useState(false);
   const [replyText, setReplyText] = useState("");
   const [isSendingReply, setIsSendingReply] = useState(false);
@@ -859,23 +861,23 @@ export default function CandidateDashboard() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
               transition={{ duration: 0.3 }}
-              className="mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-6"
+              className="mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4"
             >
               <div>
-                <div className="flex items-center gap-3 text-sm font-bold mb-3" style={{ color: "#64748B" }}>
+                <div className="flex items-center gap-2 text-xs sm:text-sm font-bold mb-2" style={{ color: "#64748B" }}>
                   <button onClick={() => setActiveTab("profile")} className="hover:text-[#F7B980] transition-colors cursor-pointer">Dashboard</button>
-                  <ChevronRight className="w-4 h-4" />
+                  <ChevronRight className="w-3.5 h-3.5" />
                   <span style={{ color: "#334155" }}>Workspace Settings</span>
                 </div>
-                <h1 className="text-4xl font-black tracking-tight" style={{ color: "#334155" }}>Account Workspace</h1>
+                <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight" style={{ color: "#334155" }}>Account Workspace</h1>
               </div>
-              <div className="flex items-center gap-4">
-                 <button onClick={() => setActiveTab("profile")} className="px-6 py-3 rounded-2xl border-2 font-bold text-sm transition-all hover:bg-[#E2E8F0] cursor-pointer" style={{ borderColor: "#E0E4E3", color: "#8A8C8E" }}>
-                   Discard Changes
-                 </button>
-                 <Button onClick={handleSyncGlobal} size="lg" className="px-10 shadow-lg shadow-[#F7B980]/20">
-                   Sync Global VidioCV
-                 </Button>
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-4">
+                <button onClick={() => setActiveTab("profile")} className="px-5 py-2.5 sm:py-3 rounded-2xl border-2 font-bold text-sm transition-all hover:bg-[#E2E8F0] cursor-pointer text-center" style={{ borderColor: "#E0E4E3", color: "#8A8C8E" }}>
+                  Discard Changes
+                </button>
+                <Button onClick={handleSyncGlobal} size="lg" className="px-6 sm:px-10 shadow-lg shadow-[#F7B980]/20">
+                  Sync Global VidioCV
+                </Button>
               </div>
             </motion.div>
           )}
@@ -915,9 +917,9 @@ export default function CandidateDashboard() {
             transition={{ duration: 0.3 }}
           >
             {activeTab === "messages" && (
-              <div className="bg-white border border-[gainsboro] rounded-2xl p-6">
+              <div className="max-w-7xl mx-auto bg-white border border-[gainsboro] rounded-2xl p-6">
                 {/* Header + tabs */}
-                <div className="flex items-center justify-between mb-6">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
                   <div>
                     <h3 className="text-sm font-semibold text-slate-800 flex items-center gap-2">
                       <Mail className="w-4 h-4 text-[#F7B980]" />
@@ -925,12 +927,12 @@ export default function CandidateDashboard() {
                     </h3>
                     <p className="text-xs text-slate-400 mt-0.5">Employer inquiries and direct outreach</p>
                   </div>
-                  <div className="flex items-center gap-1 bg-slate-100 rounded-xl p-1">
+                  <div className="flex items-center gap-1 bg-slate-100 rounded-xl p-1 w-full sm:w-auto">
                     {(["inbox", "sent", "compose"] as const).map((sub) => (
                       <button
                         key={sub}
                         onClick={() => setMessageSubTab(sub)}
-                        className={`px-4 py-1.5 rounded-lg text-xs font-semibold capitalize transition-all cursor-pointer ${
+                        className={`flex-1 sm:flex-none px-3 sm:px-4 py-1.5 rounded-lg text-xs font-semibold capitalize transition-all cursor-pointer ${
                           messageSubTab === sub
                             ? "bg-white text-slate-800 shadow-sm"
                             : "text-slate-500 hover:text-slate-700"
@@ -958,32 +960,36 @@ export default function CandidateDashboard() {
                             setSelectedMessage(msg);
                             setMessages(prev => prev.map(m => m.id === msg.id ? { ...m, unread: false } : m));
                           }}
-                          className={`group flex items-center gap-4 rounded-2xl px-5 py-4 border transition-all duration-200 cursor-pointer hover:shadow-md ${
+                          className={`group flex items-center gap-3 rounded-2xl px-4 py-3.5 border transition-all duration-200 cursor-pointer hover:shadow-md ${
                             msg.unread
                               ? "bg-white border-[#F7B980]/40 hover:border-[#F7B980]/60"
                               : "bg-white border-[gainsboro] hover:border-slate-300"
                           }`}
                         >
-                          <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-500 font-semibold text-sm shrink-0">
+                          <div className="w-9 h-9 rounded-xl bg-slate-100 flex items-center justify-center text-slate-500 font-semibold text-sm shrink-0">
                             {msg.company.charAt(0).toUpperCase()}
                           </div>
                           <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2">
-                              <h4 className="text-sm font-semibold text-slate-800 truncate group-hover:text-[#F7B980] transition-colors">
-                                {msg.company}
-                              </h4>
-                              {msg.unread && <span className="w-2 h-2 rounded-full bg-[#F7B980] shrink-0" />}
-                              {msg.replied && (
-                                <span className="px-2 py-0.5 rounded-lg text-[11px] font-medium bg-emerald-50 text-emerald-600 border border-emerald-100 shrink-0">
-                                  Replied
-                                </span>
-                              )}
+                            <div className="flex items-center justify-between gap-2 mb-0.5">
+                              <div className="flex items-center gap-1.5 min-w-0">
+                                <h4 className="text-sm font-semibold text-slate-800 truncate group-hover:text-[#F7B980] transition-colors">
+                                  {msg.company}
+                                </h4>
+                                {msg.unread && <span className="w-2 h-2 rounded-full bg-[#F7B980] shrink-0" />}
+                              </div>
+                              <span className="text-[11px] text-slate-400 shrink-0">{msg.time}</span>
                             </div>
-                            <p className="text-xs text-slate-400 mt-0.5 truncate">{msg.subject}</p>
-                          </div>
-                          <div className="flex items-center gap-3 shrink-0">
-                            <span className="text-[11px] text-slate-400">{msg.time}</span>
-                            <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-slate-500 group-hover:translate-x-0.5 transition-all" />
+                            <div className="flex items-center justify-between gap-2">
+                              <div className="flex items-center gap-1.5 min-w-0">
+                                <p className="text-xs text-slate-400 truncate">{msg.subject}</p>
+                                {msg.replied && (
+                                  <span className="px-1.5 py-0.5 rounded-md text-[10px] font-medium bg-emerald-50 text-emerald-600 border border-emerald-100 shrink-0">
+                                    Replied
+                                  </span>
+                                )}
+                              </div>
+                              <ChevronRight className="w-3.5 h-3.5 text-slate-300 group-hover:text-slate-500 group-hover:translate-x-0.5 transition-all shrink-0" />
+                            </div>
                           </div>
                         </div>
                       ))
@@ -1009,18 +1015,24 @@ export default function CandidateDashboard() {
                       sentMessages.map((msg: DirectMessage) => (
                         <div
                           key={msg.id}
-                          className="flex items-center gap-4 bg-white border border-[gainsboro] rounded-2xl px-5 py-4 hover:border-slate-300 hover:shadow-md transition-all duration-200"
+                          onClick={() => setSelectedSentMessage(msg)}
+                          className="group flex items-center gap-3 bg-white border border-[gainsboro] rounded-2xl px-4 py-3.5 hover:border-slate-300 hover:shadow-md transition-all duration-200 cursor-pointer"
                         >
-                          <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-500 font-semibold text-sm shrink-0">
+                          <div className="w-9 h-9 rounded-xl bg-slate-100 flex items-center justify-center text-slate-500 font-semibold text-sm shrink-0">
                             {msg.receiver.name.charAt(0).toUpperCase()}
                           </div>
                           <div className="flex-1 min-w-0">
-                            <h4 className="text-sm font-semibold text-slate-800 truncate">{msg.receiver.name}</h4>
-                            <p className="text-xs text-slate-400 mt-0.5 truncate">{msg.subject || "No subject"}</p>
+                            <div className="flex items-center justify-between gap-2 mb-0.5">
+                              <h4 className="text-sm font-semibold text-slate-800 truncate group-hover:text-[#F7B980] transition-colors">{msg.receiver.name}</h4>
+                              <span className="text-[11px] text-slate-400 shrink-0">
+                                {msg.createdAt ? new Date(msg.createdAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short" }) : "—"}
+                              </span>
+                            </div>
+                            <div className="flex items-center justify-between gap-2">
+                              <p className="text-xs text-slate-400 truncate">{msg.subject || "No subject"}</p>
+                              <ChevronRight className="w-3.5 h-3.5 text-slate-300 group-hover:text-slate-500 group-hover:translate-x-0.5 transition-all shrink-0" />
+                            </div>
                           </div>
-                          <span className="text-[11px] text-slate-400 shrink-0">
-                            {msg.createdAt ? new Date(msg.createdAt).toLocaleDateString() : "—"}
-                          </span>
                         </div>
                       ))
                     ) : (
@@ -1187,50 +1199,99 @@ export default function CandidateDashboard() {
                       </div>
                     </motion.div>
                   ) : activeVideoUrl ? (
-                    <div className="relative w-full aspect-video rounded-xl overflow-hidden bg-slate-900 group">
-                      <LiveKitPlayer src={activeVideoUrl} candidateName="Candidate" />
-                      <button
-                        onClick={() => {
-                          setModalConfig({
-                            isOpen: true,
-                            title: "Delete VidioCV?",
-                            message: "This will permanently remove your active Video CV from your profile. Are you sure?",
-                            type: "confirm",
-                            onConfirm: async () => {
-                              try {
-                                const response = await fetch("/api/profile/video/delete", {
-                                  method: "DELETE",
-                                  headers: { "Authorization": `Bearer ${localStorage.getItem("token")}` }
-                                });
-                                if (response.ok) {
-                                  setActiveVideoUrl(null);
-                                  setModalConfig({ isOpen: true, title: "Success", message: "Video deleted.", type: "success" });
-                                } else {
-                                  setModalConfig({ isOpen: true, title: "Failed", message: "Failed to delete video.", type: "error" });
+                    <div className="flex flex-col sm:flex-row gap-4 items-start">
+                      {/* Constrained video player */}
+                      <div className="relative w-full sm:w-96 shrink-0 aspect-video rounded-xl overflow-hidden bg-slate-900 group">
+                        <LiveKitPlayer src={activeVideoUrl} candidateName={userName} showBranding={false} />
+                        <button
+                          onClick={() => {
+                            setModalConfig({
+                              isOpen: true,
+                              title: "Delete VidioCV?",
+                              message: "This will permanently remove your active Video CV from your profile. Are you sure?",
+                              type: "confirm",
+                              onConfirm: async () => {
+                                try {
+                                  const response = await fetch("/api/profile/video/delete", {
+                                    method: "DELETE",
+                                    headers: { "Authorization": `Bearer ${localStorage.getItem("token")}` }
+                                  });
+                                  if (response.ok) {
+                                    setActiveVideoUrl(null);
+                                    setModalConfig({ isOpen: true, title: "Success", message: "Video deleted.", type: "success" });
+                                  } else {
+                                    setModalConfig({ isOpen: true, title: "Failed", message: "Failed to delete video.", type: "error" });
+                                  }
+                                } catch (error) {
+                                  console.error("Deletion error:", error);
                                 }
-                              } catch (error) {
-                                console.error("Deletion error:", error);
                               }
-                            }
-                          });
-                        }}
-                        className="absolute top-3 right-3 bg-red-500/90 hover:bg-red-600 text-white p-2 rounded-lg transition-all cursor-pointer opacity-0 group-hover:opacity-100"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                            });
+                          }}
+                          className="absolute top-2 right-2 bg-red-500/90 hover:bg-red-600 text-white p-1.5 rounded-lg transition-all cursor-pointer opacity-0 group-hover:opacity-100"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                      {/* Info panel */}
+                      <div className="flex flex-col gap-3 flex-1 py-1">
+                        <div className="flex items-center gap-2">
+                          <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-700">Live</span>
+                          <span className="text-xs text-slate-400">Visible to employers</span>
+                        </div>
+                        <p className="text-xs text-slate-500 leading-relaxed">Your 60-second video introduction is active on your public profile. Employers can view it when browsing candidates.</p>
+                        <div className="flex gap-2 mt-1">
+                          <button
+                            onClick={() => setShowVideoCreator(true)}
+                            className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-[#F7B980] hover:bg-[#F0A060] text-black transition-all cursor-pointer"
+                          >
+                            Re-record
+                          </button>
+                          <button
+                            onClick={() => {
+                              setModalConfig({
+                                isOpen: true,
+                                title: "Delete VidioCV?",
+                                message: "This will permanently remove your active Video CV from your profile. Are you sure?",
+                                type: "confirm",
+                                onConfirm: async () => {
+                                  try {
+                                    const response = await fetch("/api/profile/video/delete", {
+                                      method: "DELETE",
+                                      headers: { "Authorization": `Bearer ${localStorage.getItem("token")}` }
+                                    });
+                                    if (response.ok) {
+                                      setActiveVideoUrl(null);
+                                      setModalConfig({ isOpen: true, title: "Success", message: "Video deleted.", type: "success" });
+                                    } else {
+                                      setModalConfig({ isOpen: true, title: "Failed", message: "Failed to delete video.", type: "error" });
+                                    }
+                                  } catch (error) {
+                                    console.error("Deletion error:", error);
+                                  }
+                                }
+                              });
+                            }}
+                            className="px-3 py-1.5 rounded-lg text-xs font-semibold border border-red-200 text-red-500 hover:bg-red-50 transition-all cursor-pointer"
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </div>
                     </div>
                   ) : (
                     <div
                       onClick={() => setShowVideoCreator(true)}
-                      className="w-full aspect-video rounded-xl border border-dashed border-[gainsboro] bg-slate-50 flex flex-col items-center justify-center gap-3 cursor-pointer hover:bg-slate-100 transition-all group"
+                      className="w-full rounded-xl border border-dashed border-[gainsboro] bg-slate-50 flex items-center gap-4 px-5 py-4 cursor-pointer hover:bg-slate-100 transition-all group"
                     >
-                      <div className="w-12 h-12 rounded-xl bg-white border border-[gainsboro] flex items-center justify-center group-hover:scale-105 transition-transform">
-                        <Video className="w-5 h-5 text-slate-400" />
+                      <div className="w-10 h-10 rounded-xl bg-white border border-[gainsboro] flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                        <Video className="w-4 h-4 text-slate-400" />
                       </div>
-                      <div className="text-center">
+                      <div>
                         <p className="text-sm font-semibold text-slate-600">No VidioCV yet</p>
                         <p className="text-xs text-slate-400 mt-0.5">Click to open the studio and record your introduction</p>
                       </div>
+                      <ChevronRight className="w-4 h-4 text-slate-300 ml-auto shrink-0" />
                     </div>
                   )}
                 </div>
@@ -1646,37 +1707,32 @@ export default function CandidateDashboard() {
                     {interviews.map((interview) => (
                       <div
                         key={interview.id}
-                        className="group flex items-center gap-4 bg-white border border-[gainsboro] rounded-2xl px-5 py-4 hover:border-slate-300 hover:shadow-md transition-all duration-200"
+                        onClick={() => setSelectedInterview(interview)}
+                        className="group flex items-center gap-3 bg-white border border-[gainsboro] rounded-2xl px-4 py-3.5 hover:border-[#F7B980]/40 hover:shadow-md transition-all duration-200 cursor-pointer"
                       >
                         {/* Company initial */}
-                        <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-500 font-semibold text-sm shrink-0">
+                        <div className="w-9 h-9 rounded-xl bg-slate-100 flex items-center justify-center text-slate-500 font-semibold text-sm shrink-0">
                           {interview.company.charAt(0).toUpperCase()}
                         </div>
 
-                        {/* Info */}
+                        {/* Info — two lines */}
                         <div className="flex-1 min-w-0">
-                          <h4 className="text-sm font-semibold text-slate-800 truncate group-hover:text-[#F7B980] transition-colors">
-                            {interview.company}
-                          </h4>
-                          <p className="text-xs text-slate-400 mt-0.5 truncate">{interview.jobTitle}</p>
+                          <div className="flex items-center justify-between gap-2 mb-0.5">
+                            <h4 className="text-sm font-semibold text-slate-800 truncate group-hover:text-[#F7B980] transition-colors">
+                              {interview.company}
+                            </h4>
+                            <InterviewTypeBadge type={interview.type} />
+                          </div>
+                          <div className="flex items-center justify-between gap-2">
+                            <p className="text-xs text-slate-400 truncate">{interview.jobTitle}</p>
+                            <span className="text-[11px] text-slate-400 shrink-0 flex items-center gap-1">
+                              <CalendarIcon className="w-3 h-3" />
+                              {interview.date}
+                            </span>
+                          </div>
                         </div>
 
-                        {/* Date + time */}
-                        <div className="hidden sm:flex items-center gap-3 shrink-0">
-                          <span className="flex items-center gap-1.5 text-[11px] text-slate-500 bg-slate-50 border border-[gainsboro] px-2.5 py-1 rounded-lg">
-                            <CalendarIcon className="w-3 h-3" />
-                            {interview.date}
-                          </span>
-                          <span className="flex items-center gap-1.5 text-[11px] text-slate-500 bg-slate-50 border border-[gainsboro] px-2.5 py-1 rounded-lg">
-                            <Bell className="w-3 h-3" />
-                            {interview.time}
-                          </span>
-                        </div>
-
-                        {/* Type badge */}
-                        <InterviewTypeBadge type={interview.type} />
-
-                        <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-slate-500 group-hover:translate-x-0.5 transition-all shrink-0" />
+                        <ChevronRight className="w-3.5 h-3.5 text-slate-300 group-hover:text-slate-500 group-hover:translate-x-0.5 transition-all shrink-0" />
                       </div>
                     ))}
                   </div>
@@ -1697,26 +1753,26 @@ export default function CandidateDashboard() {
             )}
             
             {activeTab === "notifications" && (
-              <div 
-                className="border border-white rounded-[40px] p-8 lg:p-12 shadow-2xl relative overflow-hidden"
-                style={{ 
-                  background: "rgba(255, 255, 255, 0.7)", 
+              <div
+                className="border border-white rounded-2xl lg:rounded-[40px] p-5 sm:p-8 lg:p-12 shadow-2xl relative overflow-hidden"
+                style={{
+                  background: "rgba(255, 255, 255, 0.7)",
                   backdropFilter: "blur(24px)",
                   boxShadow: "0 24px 64px rgba(87,89,91,0.06)"
                 }}
               >
-                <h3 className="text-3xl font-bold mb-10" style={{ color: "#334155" }}>Alerts & Activity</h3>
-                <div className="space-y-6">
-                  <div className="bg-white/40 border border-[#E0E4E3] rounded-[32px] p-8 flex items-start gap-6 transition-all hover:bg-white cursor-pointer">
-                    <div className="w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 shadow-lg" style={{ background: "#E2E8F0" }}>
-                      <Bell className="w-6 h-6 text-[#F7B980]" />
+                <h3 className="text-xl sm:text-2xl lg:text-3xl font-bold mb-6 lg:mb-10" style={{ color: "#334155" }}>Alerts & Activity</h3>
+                <div className="space-y-4">
+                  <div className="bg-white/40 border border-[#E0E4E3] rounded-2xl lg:rounded-[32px] p-4 sm:p-6 lg:p-8 flex items-start gap-4 lg:gap-6 transition-all hover:bg-white cursor-pointer">
+                    <div className="w-10 h-10 sm:w-12 sm:h-12 lg:w-14 lg:h-14 rounded-xl lg:rounded-2xl flex items-center justify-center shrink-0 shadow-md" style={{ background: "#E2E8F0" }}>
+                      <Bell className="w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6 text-[#F7B980]" />
                     </div>
-                    <div className="flex-1">
-                      <div className="flex justify-between items-start mb-2">
-                        <h4 className="text-xl font-bold" style={{ color: "#334155" }}>Welcome to VidioCV</h4>
-                        <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: "#64748B" }}>Just now</span>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex flex-wrap justify-between items-start gap-1 mb-1.5">
+                        <h4 className="text-sm sm:text-base lg:text-xl font-bold" style={{ color: "#334155" }}>Welcome to VidioCV</h4>
+                        <span className="text-[10px] font-bold uppercase tracking-widest shrink-0" style={{ color: "#64748B" }}>Just now</span>
                       </div>
-                      <p className="font-medium text-base" style={{ color: "#64748B" }}>Your account is verified. Start by customizing your profile and recording your first intro.</p>
+                      <p className="text-xs sm:text-sm lg:text-base font-medium leading-relaxed" style={{ color: "#64748B" }}>Your account is verified. Start by customizing your profile and recording your first intro.</p>
                     </div>
                   </div>
                 </div>
@@ -1724,44 +1780,35 @@ export default function CandidateDashboard() {
             )}
 
             {activeTab === "settings" && (
-              <div className="bg-white border border-[gainsboro] rounded-2xl flex flex-col lg:flex-row overflow-hidden">
-                {/* Settings Sidebar */}
-                <div className="w-full lg:w-52 border-b lg:border-b-0 lg:border-r border-[gainsboro] p-4 flex flex-col gap-1">
-                  <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-widest px-3 py-2 mb-1">Settings</p>
-                  {[
-                    { id: "general",       label: "Profile",       icon: UserCircle },
-                    { id: "career",        label: "Career",        icon: Briefcase  },
-                    { id: "security",      label: "Security",      icon: Shield     },
-                    { id: "privacy",       label: "Privacy",       icon: Lock       },
-                    { id: "notifications", label: "Notifications", icon: Bell       },
-                  ].map((item) => (
-                    <button
-                      key={item.id}
-                      onClick={() => setSettingsSection(item.id as "general" | "career" | "security" | "privacy" | "notifications")}
-                      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all cursor-pointer text-left text-xs font-medium ${
-                        settingsSection === item.id
-                          ? "bg-slate-100 text-slate-800"
-                          : "text-slate-500 hover:text-slate-700 hover:bg-slate-50"
-                      }`}
-                    >
-                      <item.icon className="w-4 h-4 shrink-0" />
-                      {item.label}
-                    </button>
-                  ))}
-
-                  <div className="mt-auto pt-4 border-t border-[gainsboro]">
-                    <button
-                      onClick={() => setIsLogoutModalOpen(true)}
-                      className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-medium text-red-400 hover:text-red-500 hover:bg-red-50 transition-all cursor-pointer"
-                    >
-                      <LogOut className="w-4 h-4 shrink-0" />
-                      Sign Out
-                    </button>
+              <div className="bg-white border border-[gainsboro] rounded-2xl flex flex-col overflow-hidden">
+                {/* Settings Tab Bar — horizontal, full width */}
+                <div className="border-b border-[gainsboro] p-1.5">
+                  <div className="flex items-center gap-1">
+                    {[
+                      { id: "general",       label: "Profile",   icon: UserCircle },
+                      { id: "career",        label: "Career",    icon: Briefcase  },
+                      { id: "security",      label: "Security",  icon: Shield     },
+                      { id: "privacy",       label: "Privacy",   icon: Lock       },
+                      { id: "notifications", label: "Alerts",    icon: Bell       },
+                    ].map((item) => (
+                      <button
+                        key={item.id}
+                        onClick={() => setSettingsSection(item.id as "general" | "career" | "security" | "privacy" | "notifications")}
+                        className={`flex-1 flex items-center justify-center gap-1.5 py-2 px-1 rounded-xl transition-all cursor-pointer text-[10px] sm:text-xs font-medium ${
+                          settingsSection === item.id
+                            ? "bg-slate-100 text-slate-800"
+                            : "text-slate-400 hover:text-slate-600 hover:bg-slate-50"
+                        }`}
+                      >
+                        <item.icon className="w-3.5 h-3.5 shrink-0" />
+                        <span className="truncate">{item.label}</span>
+                      </button>
+                    ))}
                   </div>
                 </div>
 
                 {/* Settings Content */}
-                <div className="flex-1 p-6 overflow-y-auto">
+                <div className="flex-1 p-4 sm:p-6 overflow-y-auto">
                   <AnimatePresence mode="wait">
                     <motion.div
                       key={settingsSection}
@@ -1769,7 +1816,7 @@ export default function CandidateDashboard() {
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: -6 }}
                       transition={{ duration: 0.2 }}
-                      className="max-w-2xl space-y-8"
+                      className="max-w-2xl space-y-6 sm:space-y-8"
                     >
                       {settingsSection === "general" && (
                         <div className="space-y-6">
@@ -1894,19 +1941,19 @@ export default function CandidateDashboard() {
                               <Toggle enabled={prefs.videoPublic} setEnabled={(val) => setPrefs({...prefs, videoPublic: val})} label="Public VidioCV" description="Make your video resume visible to employers on the network." />
                             </div>
                           </div>
-                          <div className="flex items-center justify-between px-4 py-3.5 bg-white border border-red-100 rounded-xl">
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-4 py-3.5 bg-white border border-red-100 rounded-xl">
                             <div>
                               <p className="text-sm font-medium text-slate-800">Delete VidioCV</p>
                               <p className="text-xs text-slate-400 mt-0.5">Permanently remove your video resume from your profile.</p>
                             </div>
-                            <button className="px-4 py-2 rounded-lg text-xs font-semibold text-red-500 bg-red-50 hover:bg-red-100 border border-red-100 transition-all cursor-pointer shrink-0">Delete</button>
+                            <button className="px-4 py-2 rounded-lg text-xs font-semibold text-red-500 bg-red-50 hover:bg-red-100 border border-red-100 transition-all cursor-pointer shrink-0 self-start sm:self-auto">Delete</button>
                           </div>
-                          <div className="flex items-center justify-between px-4 py-3.5 bg-white border border-red-100 rounded-xl">
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-4 py-3.5 bg-white border border-red-100 rounded-xl">
                             <div>
                               <p className="text-sm font-medium text-slate-800">Deactivate Account</p>
                               <p className="text-xs text-slate-400 mt-0.5">Permanently delete your profile and all associated data.</p>
                             </div>
-                            <button onClick={() => setIsLogoutModalOpen(true)} className="px-4 py-2 rounded-lg text-xs font-semibold text-red-500 bg-red-50 hover:bg-red-100 border border-red-100 transition-all cursor-pointer shrink-0">Deactivate</button>
+                            <button onClick={() => setIsLogoutModalOpen(true)} className="px-4 py-2 rounded-lg text-xs font-semibold text-red-500 bg-red-50 hover:bg-red-100 border border-red-100 transition-all cursor-pointer shrink-0 self-start sm:self-auto">Deactivate</button>
                           </div>
                         </div>
                       )}
@@ -1966,6 +2013,17 @@ export default function CandidateDashboard() {
                       )}
                     </motion.div>
                   </AnimatePresence>
+
+                  {/* Sign Out — footer of content area */}
+                  <div className="mt-8 pt-4 border-t border-[gainsboro]">
+                    <button
+                      onClick={() => setIsLogoutModalOpen(true)}
+                      className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium text-red-400 hover:text-red-500 hover:bg-red-50 transition-all cursor-pointer"
+                    >
+                      <LogOut className="w-4 h-4 shrink-0" />
+                      Sign Out
+                    </button>
+                  </div>
                 </div>
               </div>
             )}
@@ -2193,6 +2251,117 @@ export default function CandidateDashboard() {
                   </button>
                 </div>
               </>
+            )}
+          </div>
+        )}
+      </Modal>
+
+      {/* Sent Message Detail Modal */}
+      <Modal
+        isOpen={!!selectedSentMessage}
+        onClose={() => setSelectedSentMessage(null)}
+        type="info"
+        closeActionLabel="Back to Sent"
+        maxWidth="max-w-3xl"
+        align="left"
+      >
+        {selectedSentMessage && (
+          <div className="space-y-4 -mt-2">
+            <div className="flex justify-between items-center border-b border-[#E2E8F0] pb-5">
+              <div className="flex gap-3 items-center">
+                <div
+                  className="w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm shadow-sm"
+                  style={{ background: "linear-gradient(135deg, #94A3B8, #64748B)", color: "white" }}
+                >
+                  {selectedSentMessage.receiver.name.charAt(0).toUpperCase()}
+                </div>
+                <div>
+                  <p className="text-base font-black leading-tight" style={{ color: "#334155" }}>To: {selectedSentMessage.receiver.name}</p>
+                  <p className="text-[10px] font-black uppercase tracking-widest mt-0.5" style={{ color: "#64748B" }}>{selectedSentMessage.receiver.email}</p>
+                </div>
+              </div>
+              <div className="text-right">
+                <p className="text-[9px] font-black uppercase tracking-[0.2em] opacity-40 mb-1">
+                  {selectedSentMessage.createdAt ? new Date(selectedSentMessage.createdAt).toLocaleDateString() : "—"}
+                </p>
+                <div className="px-2 py-0.5 bg-slate-100 text-slate-500 rounded-full text-[8px] font-black uppercase tracking-widest inline-block border border-slate-200">Sent</div>
+              </div>
+            </div>
+
+            {selectedSentMessage.subject && (
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-widest">{selectedSentMessage.subject}</p>
+            )}
+
+            <div className="p-6 rounded-[24px] border border-[#E2E8F0] relative overflow-hidden shadow-inner" style={{ background: "rgba(249, 249, 249, 0.4)" }}>
+              <div className="text-sm font-medium whitespace-pre-wrap relative z-10 leading-relaxed" style={{ color: "#334155" }}>
+                {selectedSentMessage.body}
+              </div>
+            </div>
+
+          </div>
+        )}
+      </Modal>
+
+      {/* Interview Detail Modal */}
+      <Modal
+        isOpen={!!selectedInterview}
+        onClose={() => setSelectedInterview(null)}
+        type="info"
+        closeActionLabel="Close"
+        maxWidth="max-w-lg"
+        align="left"
+      >
+        {selectedInterview && (
+          <div className="space-y-5 -mt-2">
+            {/* Header */}
+            <div className="flex items-center gap-3 pb-4 border-b border-[#E2E8F0]">
+              <div
+                className="w-11 h-11 rounded-xl flex items-center justify-center font-bold text-sm shadow-sm shrink-0"
+                style={{ background: "linear-gradient(135deg, #F7B980, #F0A060)", color: "white" }}
+              >
+                {selectedInterview.company.charAt(0).toUpperCase()}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-base font-black leading-tight truncate" style={{ color: "#334155" }}>{selectedInterview.company}</p>
+                <p className="text-xs text-slate-400 truncate mt-0.5">{selectedInterview.jobTitle}</p>
+              </div>
+              <InterviewTypeBadge type={selectedInterview.type} />
+            </div>
+
+            {/* Details grid */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="bg-slate-50 border border-[gainsboro] rounded-xl px-4 py-3">
+                <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest mb-1">Date</p>
+                <p className="text-sm font-semibold text-slate-800 flex items-center gap-1.5">
+                  <CalendarIcon className="w-3.5 h-3.5 text-[#F7B980]" />
+                  {selectedInterview.date}
+                </p>
+              </div>
+              <div className="bg-slate-50 border border-[gainsboro] rounded-xl px-4 py-3">
+                <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest mb-1">Time</p>
+                <p className="text-sm font-semibold text-slate-800 flex items-center gap-1.5">
+                  <Bell className="w-3.5 h-3.5 text-[#F7B980]" />
+                  {selectedInterview.time}
+                </p>
+              </div>
+              <div className="bg-slate-50 border border-[gainsboro] rounded-xl px-4 py-3">
+                <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest mb-1">Format</p>
+                <p className="text-sm font-semibold text-slate-800 capitalize">{selectedInterview.type}</p>
+              </div>
+              <div className="bg-slate-50 border border-[gainsboro] rounded-xl px-4 py-3">
+                <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest mb-1">Status</p>
+                <span className="px-2 py-0.5 rounded-lg bg-amber-50 text-amber-600 border border-amber-100 text-xs font-semibold capitalize">
+                  {selectedInterview.status}
+                </span>
+              </div>
+            </div>
+
+            {/* Notes */}
+            {selectedInterview.notes && (
+              <div className="p-4 rounded-xl border border-[#E2E8F0] bg-slate-50/60">
+                <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest mb-2">Notes from Employer</p>
+                <p className="text-sm text-slate-600 leading-relaxed">{selectedInterview.notes}</p>
+              </div>
             )}
           </div>
         )}

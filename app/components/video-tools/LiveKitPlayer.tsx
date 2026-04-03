@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect } from "react";
 import Hls from "hls.js";
 
 interface LiveKitPlayerProps {
@@ -98,7 +98,7 @@ export default function LiveKitPlayer({
   return (
     <div
       ref={containerRef}
-      className="relative group bg-[#0F172A] w-full rounded-none md:rounded-[32px] overflow-hidden border-y-4 md:border-4 border-white isolate shadow-[0_32px_64px_-16px_rgba(0,0,0,0.5)] aspect-video select-none transition-all duration-700"
+      className="relative group bg-[#0F172A] w-full rounded-none md:rounded-2xl overflow-hidden border-y-2 md:border-2 border-white/20 isolate shadow-[0_16px_40px_-8px_rgba(0,0,0,0.4)] aspect-video select-none transition-all duration-700"
     >
       {/* Main Video Engine */}
       <div className="w-full h-full" onClick={togglePlay}>
@@ -110,7 +110,7 @@ export default function LiveKitPlayer({
                 let base = src;
                 if (src.includes("/videos/watch/")) base = src.replace("/videos/watch/", "/videos/embed/");
                 else if (src.includes("/w/")) base = src.replace("/w/", "/videos/embed/");
-                
+
                 base = base.split("?")[0];
                 const params = new URLSearchParams(src.split("?")[1] || "");
                 params.set("title", "0");
@@ -142,22 +142,45 @@ export default function LiveKitPlayer({
             <div className="text-white/40 text-sm font-bold uppercase tracking-[0.2em] animate-pulse">Waiting for Stream...</div>
           </div>
         )}
-      </div>      {/* Glassmorphic Branding Tag */}
+      </div>
+
+      {/* Play / Pause overlay button */}
+      {src && !isEmbed && (
+        <div
+          onClick={togglePlay}
+          className={`absolute inset-0 flex items-center justify-center cursor-pointer transition-opacity duration-300 ${isPlaying ? "opacity-0 group-hover:opacity-100" : "opacity-100"}`}
+        >
+          <div className="w-12 h-12 rounded-full bg-black/50 backdrop-blur-sm border border-white/20 flex items-center justify-center shadow-lg transition-transform group-hover:scale-110">
+            {isPlaying ? (
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="white">
+                <rect x="5" y="3" width="4" height="18" rx="1" />
+                <rect x="15" y="3" width="4" height="18" rx="1" />
+              </svg>
+            ) : (
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="white" style={{ marginLeft: "2px" }}>
+                <polygon points="5,3 19,12 5,21" />
+              </svg>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Branding Tag */}
       {showBranding && (
-        <div className="absolute top-4 left-4 md:top-8 md:left-8 z-[60] flex items-center gap-3 md:gap-4 pointer-events-none drop-shadow-2xl translate-y-0 opacity-100 transition-all duration-700">
-          <div className="w-8 h-8 md:w-12 md:h-12 rounded-xl md:rounded-2xl bg-white/10 backdrop-blur-2xl flex items-center justify-center border border-white/20 shadow-2xl">
-             <div className="w-6 h-6 bg-white rounded-lg flex items-center justify-center shadow-lg transform -rotate-12">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#0F172A" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round">
+        <div className="absolute top-3 left-3 md:top-5 md:left-5 z-[60] flex items-center gap-2 pointer-events-none drop-shadow-lg">
+          <div className="w-7 h-7 rounded-lg bg-white/10 backdrop-blur-xl flex items-center justify-center border border-white/20 shadow-lg">
+             <div className="w-4 h-4 bg-white rounded-md flex items-center justify-center transform -rotate-12">
+                <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#0F172A" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M15 18l-6-6 6-6" />
                 </svg>
              </div>
           </div>
           <div className="flex flex-col">
-            <span className="text-white font-[Inter] font-black text-lg md:text-2xl tracking-tighter drop-shadow-xl flex items-center gap-2">
-              VidioCV 
-              <span className="text-[10px] bg-sky-500/80 px-2 py-0.5 rounded-full uppercase tracking-widest font-black">Pro</span>
+            <span className="text-white font-black text-sm tracking-tighter drop-shadow flex items-center gap-1.5">
+              VidioCV
+              <span className="text-[8px] bg-sky-500/80 px-1.5 py-0.5 rounded-full uppercase tracking-widest font-black">Pro</span>
             </span>
-            <span className="text-white/40 text-[9px] uppercase tracking-[0.3em] font-black">{candidateName} Cinematic Hub</span>
+            <span className="text-white/40 text-[8px] uppercase tracking-[0.25em] font-bold">{candidateName}</span>
           </div>
         </div>
       )}

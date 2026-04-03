@@ -29,6 +29,7 @@ import {
   createLocalAudioTrack
 } from "livekit-client";
 import Modal from "@/app/components/common/Modal";
+import LiveKitPlayer from "@/app/components/video-tools/LiveKitPlayer";
 import type { ImageSegmenter, ImageSegmenterResult } from "@mediapipe/tasks-vision";
 
 interface VideoCreatorProps {
@@ -42,7 +43,7 @@ export default function VideoCreator({
   onVideoUpload, 
   initialVideoUrl, 
   onVideoDelete,
-  maxDuration = 300
+  maxDuration = 90
 }: VideoCreatorProps) {
   const [isRecording, setIsRecording] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
@@ -664,21 +665,19 @@ export default function VideoCreator({
   };
 
   if (videoUrl && !recordedBlob && !isRecording) {
-    const urlMime = videoUrl.endsWith(".mp4") ? "video/mp4" : "video/webm";
     return (
-      <div className="w-full max-w-4xl mx-auto space-y-4 text-center">
-        <div className="bg-black rounded-2xl overflow-hidden border border-slate-700 aspect-video relative">
-          <video
-            controls
-            playsInline
-            className="w-full h-full object-contain absolute inset-0"
+      <div className="w-full max-w-4xl mx-auto space-y-4">
+        <LiveKitPlayer src={videoUrl} showBranding={false} />
+        <div className="flex items-center justify-between px-1">
+          <p className="text-xs text-slate-400">Your current Video CV. Re-record to replace it.</p>
+          <button
+            onClick={handleDelete}
+            className="flex items-center gap-1.5 text-xs font-semibold text-red-500 hover:text-red-600 transition-colors cursor-pointer"
           >
-            <source src={videoUrl} type={urlMime} />
-          </video>
+            <Trash2 className="w-3.5 h-3.5" />
+            Delete &amp; Retake
+          </button>
         </div>
-        <button onClick={handleDelete} className="text-red-500 font-semibold hover:underline cursor-pointer">
-          Delete Video CV &amp; Retake
-        </button>
       </div>
     );
   }

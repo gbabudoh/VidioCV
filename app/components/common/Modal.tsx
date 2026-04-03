@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect } from "react";
+import { useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, CheckCircle2, AlertCircle, Info, HelpCircle } from "lucide-react";
 
@@ -21,6 +21,39 @@ interface ModalProps {
   align?: "left" | "center";
 }
 
+const typeConfig = {
+  success: {
+    icon: <CheckCircle2 className="w-5 h-5 text-emerald-500" />,
+    accent: "from-emerald-400 to-emerald-500",
+    iconBg: "bg-emerald-50 border-emerald-100",
+    primaryBg: "bg-emerald-500 hover:bg-emerald-600 text-white",
+  },
+  error: {
+    icon: <AlertCircle className="w-5 h-5 text-red-500" />,
+    accent: "from-red-400 to-red-500",
+    iconBg: "bg-red-50 border-red-100",
+    primaryBg: "bg-red-500 hover:bg-red-600 text-white",
+  },
+  info: {
+    icon: <Info className="w-5 h-5 text-[#F7B980]" />,
+    accent: "from-[#F7B980] to-[#F0A060]",
+    iconBg: "bg-[#F7B980]/10 border-[#F7B980]/20",
+    primaryBg: "bg-linear-to-r from-[#F7B980] to-[#F0A060] text-slate-800",
+  },
+  warning: {
+    icon: <HelpCircle className="w-5 h-5 text-amber-500" />,
+    accent: "from-amber-400 to-amber-500",
+    iconBg: "bg-amber-50 border-amber-100",
+    primaryBg: "bg-amber-500 hover:bg-amber-600 text-white",
+  },
+  default: {
+    icon: null,
+    accent: "from-slate-200 to-slate-300",
+    iconBg: "bg-slate-50 border-slate-100",
+    primaryBg: "bg-linear-to-r from-[#F7B980] to-[#F0A060] text-slate-800",
+  },
+};
+
 export default function Modal({
   isOpen,
   onClose,
@@ -32,146 +65,94 @@ export default function Modal({
   maxWidth = "max-w-lg",
   align = "center",
 }: ModalProps) {
-  
-  // Close on Escape key
+
   useEffect(() => {
-    const handleEsc = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
+    const handleEsc = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
     if (isOpen) window.addEventListener("keydown", handleEsc);
     return () => window.removeEventListener("keydown", handleEsc);
   }, [isOpen, onClose]);
 
-  // Prevent background scrolling when open
   useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "unset";
-    }
-    return () => {
-      document.body.style.overflow = "unset";
-    };
+    document.body.style.overflow = isOpen ? "hidden" : "unset";
+    return () => { document.body.style.overflow = "unset"; };
   }, [isOpen]);
-
-  const typeConfig: Record<ModalType, { icon: React.ReactNode; bg: string; border: string }> = {
-    success: {
-      icon: <CheckCircle2 className="w-8 h-8 text-[#10B981]" />,
-      bg: "bg-[#10B981]/10",
-      border: "border-[#10B981]/20",
-    },
-    error: {
-      icon: <AlertCircle className="w-8 h-8 text-[#EF4444]" />,
-      bg: "bg-[#EF4444]/10",
-      border: "border-[#EF4444]/20",
-    },
-    info: {
-      icon: <Info className="w-8 h-8 text-[#F7B980]" />,
-      bg: "bg-[#F7B980]/10",
-      border: "border-[#F7B980]/20",
-    },
-    warning: {
-      icon: <HelpCircle className="w-8 h-8 text-[#F59E0B]" />,
-      bg: "bg-[#F59E0B]/10",
-      border: "border-[#F59E0B]/20",
-    },
-    default: {
-      icon: null,
-      bg: "bg-white/5",
-      border: "border-[#E0E4E3]",
-    },
-  };
 
   const config = typeConfig[type];
 
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 font-sans">
+        <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-6 font-sans">
+
           {/* Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
             onClick={onClose}
-            className="absolute inset-0 bg-[#57595B]/20 backdrop-blur-md cursor-pointer"
+            className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm cursor-pointer"
           />
 
-          {/* Modal Content */}
+          {/* Modal Panel */}
           <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            transition={{ type: "spring", duration: 0.5, bounce: 0.3 }}
-            className={`relative w-full ${maxWidth} bg-white/95 backdrop-blur-2xl rounded-[32px] shadow-2xl overflow-hidden border border-white z-10 flex flex-col`}
-            style={{ boxShadow: "0 24px 64px rgba(87,89,91,0.12)" }}
+            initial={{ opacity: 0, y: 40, scale: 0.97 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 24, scale: 0.97 }}
+            transition={{ type: "spring", stiffness: 400, damping: 32 }}
+            className={`relative w-full ${maxWidth} bg-white z-10 flex flex-col
+              rounded-t-3xl sm:rounded-3xl
+              max-h-[92vh] sm:max-h-[88vh]
+              shadow-[0_32px_80px_-12px_rgba(0,0,0,0.22)]`}
           >
-            {/* Top decorative gradient based on type */}
-            {type !== "default" && (
-              <div className={`absolute top-0 left-0 right-0 h-1.5 ${
-                type === "success" ? "bg-[#10B981]" :
-                type === "error" ? "bg-[#EF4444]" :
-                "bg-gradient-to-r from-[#F7B980] to-[#F0A060]"
-              }`} />
-            )}
 
-            <button
-              onClick={onClose}
-              className="absolute top-6 right-6 p-2 rounded-xl text-[#ACBAC4] hover:text-[#57595B] hover:bg-[#F2F4F4]/50 transition-colors z-20 cursor-pointer"
-            >
-              <X className="w-5 h-5" />
-            </button>
+            {/* Colour accent bar */}
+            <div className={`h-1 w-full rounded-t-3xl sm:rounded-t-3xl bg-linear-to-r ${config.accent} shrink-0`} />
 
-            <div className="p-6 sm:p-10">
-              <div className={`flex flex-col ${align === "center" ? "items-center text-center" : "items-start text-left"}`}>
+            {/* Header */}
+            <div className="flex items-center justify-between px-6 pt-5 pb-4 border-b border-slate-100 shrink-0">
+              <div className={`flex items-center gap-3 ${align === "center" ? "mx-auto" : ""}`}>
                 {config.icon && (
-                  <div className={`p-4 rounded-2xl mb-6 shadow-inner ${config.bg} ${config.border} border`}>
+                  <div className={`w-8 h-8 rounded-xl flex items-center justify-center border ${config.iconBg} shrink-0`}>
                     {config.icon}
                   </div>
                 )}
-                
                 {title && (
-                  <h2 className="text-xl font-bold text-[#57595B] mb-2 tracking-tight">
-                    {title}
-                  </h2>
+                  <h2 className="text-sm font-bold text-slate-800 tracking-tight">{title}</h2>
                 )}
-                
-                <div className="text-[#ACBAC4] text-sm leading-relaxed mb-6 w-full font-medium">
-                  {children}
-                </div>
-
-                <div className="flex flex-col sm:flex-row gap-3 w-full mt-auto">
-                  {primaryAction && (
-                    <button
-                      onClick={primaryAction.onClick}
-                      className="flex-1 py-3.5 px-6 rounded-2xl font-bold transition-all shadow-lg hover:-translate-y-1 cursor-pointer"
-                      style={{ 
-                        background: "linear-gradient(135deg, #F7B980 0%, #F0A060 100%)", 
-                        color: "#57595B",
-                        boxShadow: "0 8px 24px rgba(247,185,128,0.3)"
-                      }}
-                    >
-                      {primaryAction.label}
-                    </button>
-                  )}
-                  <button
-                    onClick={onClose}
-                    className={`font-bold rounded-2xl py-3.5 px-6 transition-all duration-300 cursor-pointer ${
-                      primaryAction 
-                        ? "flex-1 bg-[#F2F4F4] hover:bg-[#E8ECED] text-[#ACBAC4] hover:text-[#57595B]"
-                        : "w-full shadow-lg hover:-translate-y-1"
-                    }`}
-                    style={primaryAction ? {} : { 
-                      background: "#57595B", 
-                      color: "#FFFFFF",
-                      boxShadow: "0 8px 24px rgba(87,89,91,0.18)"
-                    }}
-                  >
-                    {primaryAction ? "Cancel" : (closeActionLabel || "Got it")}
-                  </button>
-                </div>
               </div>
+              <button
+                onClick={onClose}
+                className="ml-auto p-1.5 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-all cursor-pointer shrink-0"
+              >
+                <X className="w-4 h-4" />
+              </button>
             </div>
+
+            {/* Scrollable body */}
+            <div className={`flex-1 overflow-y-auto px-6 py-5 text-sm text-slate-600 leading-relaxed
+              ${align === "center" ? "text-center" : "text-left"}`}>
+              {children}
+            </div>
+
+            {/* Footer — action buttons, always visible */}
+            <div className="px-6 py-4 border-t border-slate-100 flex flex-col sm:flex-row gap-2 shrink-0 bg-slate-50/60 rounded-b-3xl">
+              {primaryAction && (
+                <button
+                  onClick={primaryAction.onClick}
+                  className={`flex-1 py-3 px-5 rounded-2xl text-xs font-bold transition-all active:scale-95 cursor-pointer shadow-sm ${config.primaryBg}`}
+                >
+                  {primaryAction.label}
+                </button>
+              )}
+              <button
+                onClick={onClose}
+                className={`py-3 px-5 rounded-2xl text-xs font-bold transition-all active:scale-95 cursor-pointer border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 hover:text-slate-800 ${primaryAction ? "flex-1" : "w-full"}`}
+              >
+                {closeActionLabel || (primaryAction ? "Cancel" : "Got it")}
+              </button>
+            </div>
+
           </motion.div>
         </div>
       )}
