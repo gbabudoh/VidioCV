@@ -1,10 +1,21 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/app/lib/prisma";
+import { getTokenFromRequest, verifyToken } from "@/app/lib/auth";
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
+    const token = getTokenFromRequest(request);
+    if (!token) {
+      return NextResponse.json({ success: false, message: "Unauthorized" }, { status: 401 });
+    }
+
+    const payload = verifyToken(token);
+    if (!payload) {
+      return NextResponse.json({ success: false, message: "Invalid token" }, { status: 401 });
+    }
+
     const body = await request.json();
-    const { cvProfileId, requesterUserId, requesterName, requesterEmail, requesterCompany, message } = body;
+    const { cvProfileId, requesterName, requesterEmail, requesterCompany, message } = body;
 
     if (!cvProfileId || !requesterName || !requesterEmail || !message) {
       return NextResponse.json({ success: false, message: "Missing required fields." }, { status: 400 });
@@ -13,7 +24,7 @@ export async function POST(request: Request) {
     const contactRequest = await prisma.contactRequest.create({
       data: {
         cvProfileId,
-        requesterUserId,
+        requesterUserId: payload.userId,
         requesterName,
         requesterEmail,
         requesterCompany,

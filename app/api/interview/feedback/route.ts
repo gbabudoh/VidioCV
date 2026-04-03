@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { connectDB } from "@/app/lib/mongodb";
 import { getTokenFromRequest, verifyToken } from "@/app/lib/auth";
+import prisma from "@/app/lib/prisma";
 import { z } from "zod";
 
 const feedbackSchema = z.object({
@@ -34,13 +34,24 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const feedbackData = feedbackSchema.parse(body);
 
-    await connectDB();
+    // Verify the interview belongs to a job owned by this employer
+    const interview = await prisma.interview.findUnique({
+      where: { id: feedbackData.interviewId },
+      include: { job: { select: { employerId: true } } },
+    });
+
+    if (!interview || interview.job.employerId !== payload.userId) {
+      return NextResponse.json(
+        { success: false, message: "You do not have permission to submit feedback for this interview" },
+        { status: 403 },
+      );
+    }
 
     return NextResponse.json(
       {
         success: true,
         message: "Feedback submitted successfully",
-        feedbackId: Math.random().toString(36).substr(2, 9),
+        feedbackId: crypto.randomUUID(),
         feedback: {
           ...feedbackData,
           submittedAt: new Date().toISOString(),

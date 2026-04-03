@@ -23,10 +23,10 @@ export async function POST(request: NextRequest) {
     }
 
     const payload = verifyToken(token);
-    if (!payload) {
+    if (!payload || payload.role !== "employer") {
       return NextResponse.json(
-        { success: false, message: "Invalid token" },
-        { status: 401 },
+        { success: false, message: "Only employers can schedule interviews" },
+        { status: 403 },
       );
     }
 
@@ -44,6 +44,14 @@ export async function POST(request: NextRequest) {
         include: { employer: { include: { profile: true } } },
       }),
     ]);
+
+    // Ensure the logged-in employer owns the job
+    if (!job || job.employerId !== payload.userId) {
+      return NextResponse.json(
+        { success: false, message: "You do not have permission to schedule interviews for this job" },
+        { status: 403 },
+      );
+    }
 
     const interview = await prisma.interview.create({
       data: {
