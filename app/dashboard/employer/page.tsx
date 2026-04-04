@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { 
   Plus, Settings, LogOut, Bell, Filter, Video, Users, Calendar as CalendarIcon, 
   MapPin, Building2, Briefcase, Search, Mail, Lock, Shield, Sparkles,
-  Trash2, ArrowLeft, ArrowRight, Archive, LayoutDashboard, AlertCircle, LayoutGrid, List
+  Trash2, ArrowLeft, ArrowRight, Archive, LayoutDashboard, AlertCircle, LayoutGrid, List, X
 } from "lucide-react";
 import MobileBottomNav from "@/app/components/common/MobileBottomNav";
 import Link from "next/link";
@@ -18,7 +18,24 @@ import Toggle from "@/app/components/common/Toggle";
 import { useRouter } from "next/navigation";
 import { useSessionSync } from "@/app/lib/hooks/useSessionSync";
 
-type Tab = "overview" | "candidates" | "jobs" | "interviews" | "messages" | "settings";
+type Tab = "overview" | "candidates" | "jobs" | "interviews" | "messages" | "submitted" | "settings";
+
+interface SubmittedApplication {
+  id: string;
+  jobId: string;
+  jobTitle: string;
+  jobDepartment: string;
+  jobLocation: string;
+  candidateId: string;
+  candidateName: string;
+  candidateTitle: string;
+  candidateAvatar: string | null;
+  candidateSkills: string[];
+  videoUrl: string | null;
+  message: string | null;
+  status: string;
+  submittedAt: string;
+}
 
 // interface Option {
 //   value: string;
@@ -189,6 +206,8 @@ export default function EmployerDashboard() {
   const [composeSubject, setComposeSubject] = useState("");
   const [composeBody, setComposeBody] = useState("");
   const [isSendingDirect, setIsSendingDirect] = useState(false);
+  const [candidateSearchQuery, setCandidateSearchQuery] = useState("");
+  const [showCandidateDropdown, setShowCandidateDropdown] = useState(false);
 
   // New Scheduling States
   const [scheduleTime, setScheduleTime] = useState("");
@@ -198,6 +217,12 @@ export default function EmployerDashboard() {
   const [isScheduling, setIsScheduling] = useState(false);
   const [scheduleError, setScheduleError] = useState("");
   const [isGeneralScheduleModalOpen, setIsGeneralScheduleModalOpen] = useState(false);
+
+  // Submitted Applications States
+  const [submittedApplications, setSubmittedApplications] = useState<SubmittedApplication[]>([]);
+  const [isLoadingSubmitted, setIsLoadingSubmitted] = useState(false);
+  const [selectedApplication, setSelectedApplication] = useState<SubmittedApplication | null>(null);
+  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
 
   // New Post Job States
   const [postJobTitle, setPostJobTitle] = useState("");
@@ -401,6 +426,53 @@ export default function EmployerDashboard() {
     };
     fetchInterviews();
   }, [activeTab]);
+
+  useEffect(() => {
+    if (activeTab !== "submitted") return;
+    const fetchSubmitted = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        if (!token) return;
+        setIsLoadingSubmitted(true);
+        const res = await fetch("/api/applications/employer", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = await res.json();
+        if (data.success) setSubmittedApplications(data.applications || []);
+      } catch (error) {
+        console.error("Failed to fetch submitted applications:", error);
+      } finally {
+        setIsLoadingSubmitted(false);
+      }
+    };
+    fetchSubmitted();
+  }, [activeTab]);
+
+  const handleUpdateApplicationStatus = async (applicationId: string, status: string) => {
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) return;
+      setIsUpdatingStatus(true);
+      const res = await fetch("/api/applications/employer", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ applicationId, status }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setSubmittedApplications(prev =>
+          prev.map(a => a.id === applicationId ? { ...a, status } : a)
+        );
+        if (selectedApplication?.id === applicationId) {
+          setSelectedApplication(prev => prev ? { ...prev, status } : null);
+        }
+      }
+    } catch (error) {
+      console.error("Failed to update application status:", error);
+    } finally {
+      setIsUpdatingStatus(false);
+    }
+  };
 
   const handleLogout = () => {
     localStorage.removeItem("token");
@@ -846,7 +918,7 @@ export default function EmployerDashboard() {
         </div>
       </nav>
 
-      <div className="max-w-7xl mx-auto px-6 py-12 relative z-10">
+      <div className="max-w-[1400px] mx-auto px-4 md:px-10 py-12 relative z-10">
         
         {/* Settings Context Header */}
         {activeTab === "settings" && (
@@ -893,38 +965,38 @@ export default function EmployerDashboard() {
               boxShadow: "0 24px 64px rgba(87,89,91,0.06)"
             }}
           >
-            <div className="flex flex-col md:flex-row items-center md:items-start gap-10">
-              <div className="w-32 h-32 bg-white rounded-[32px] shadow-2xl flex items-center justify-center shrink-0 border border-[#E2E8F0] relative group">
-                 <Building2 className="w-14 h-14" style={{ color: "#F7B980" }} />
-                 <div className="absolute inset-0 bg-[#F7B980]/5 rounded-[32px] opacity-0 group-hover:opacity-100 transition-opacity" />
+            <div className="flex flex-col md:flex-row items-center md:items-start gap-6 md:gap-10">
+              <div className="w-20 h-20 md:w-32 md:h-32 bg-white rounded-2xl md:rounded-[32px] shadow-xl flex items-center justify-center shrink-0 border border-[#E2E8F0] relative group">
+                 <Building2 className="w-9 h-9 md:w-14 md:h-14" style={{ color: "#F7B980" }} />
+                 <div className="absolute inset-0 bg-[#F7B980]/5 rounded-2xl md:rounded-[32px] opacity-0 group-hover:opacity-100 transition-opacity" />
               </div>
-              <div className="text-center md:text-left space-y-4">
-                <div className="space-y-1">
+              <div className="text-center md:text-left space-y-3">
+                <div className="space-y-0.5">
                   <p className="text-[10px] font-black uppercase tracking-[0.3em]" style={{ color: "#64748B" }}>Enterprise Partner</p>
-                  <h2 className="text-4xl font-black tracking-tight" style={{ color: "#334155" }}>TechNova Solutions</h2>
+                  <h2 className="text-2xl sm:text-3xl md:text-4xl font-black tracking-tight" style={{ color: "#334155" }}>TechNova Solutions</h2>
                 </div>
-                <p className="text-lg font-bold" style={{ color: "#64748B" }}>Software Development Hub • Global Operations</p>
-                <div className="flex flex-wrap justify-center md:justify-start gap-6 pt-2">
-                  <div className="flex items-center gap-2 px-4 py-2 bg-white/50 rounded-xl border border-[#E2E8F0] shadow-sm">
-                    <MapPin className="w-4 h-4" style={{ color: "#F7B980" }} />
+                <p className="text-sm sm:text-base md:text-lg font-bold" style={{ color: "#64748B" }}>Software Development Hub • Global Operations</p>
+                <div className="flex flex-wrap justify-center md:justify-start gap-2 md:gap-4 pt-1">
+                  <div className="flex items-center gap-1.5 px-3 py-1.5 bg-white/50 rounded-xl border border-[#E2E8F0] shadow-sm">
+                    <MapPin className="w-3.5 h-3.5 shrink-0" style={{ color: "#F7B980" }} />
                     <span className="text-xs font-bold" style={{ color: "#334155" }}>San Francisco, CA</span>
                   </div>
-                  <div className="flex items-center gap-2 px-4 py-2 bg-white/50 rounded-xl border border-[#E2E8F0] shadow-sm">
-                    <Users className="w-4 h-4" style={{ color: "#F7B980" }} />
+                  <div className="flex items-center gap-1.5 px-3 py-1.5 bg-white/50 rounded-xl border border-[#E2E8F0] shadow-sm">
+                    <Users className="w-3.5 h-3.5 shrink-0" style={{ color: "#F7B980" }} />
                     <span className="text-xs font-bold" style={{ color: "#334155" }}>500+ professionals</span>
                   </div>
-                  <div className="flex items-center gap-2 px-4 py-2 bg-white/50 rounded-xl border border-[#E2E8F0] shadow-sm">
-                    <Briefcase className="w-4 h-4" style={{ color: "#F7B980" }} />
+                  <div className="flex items-center gap-1.5 px-3 py-1.5 bg-white/50 rounded-xl border border-[#E2E8F0] shadow-sm">
+                    <Briefcase className="w-3.5 h-3.5 shrink-0" style={{ color: "#F7B980" }} />
                     <span className="text-xs font-bold" style={{ color: "#334155" }}>Active Hiring</span>
                   </div>
                 </div>
               </div>
             </div>
-            <button 
-              onClick={() => setIsPostJobModalOpen(true)} 
-              className="px-10 py-5 bg-[#334155] hover:bg-[#454749] text-white rounded-3xl font-black text-[10px] uppercase tracking-[0.2em] shadow-2xl transition-all hover:-translate-y-1 active:scale-95 flex items-center gap-3 shrink-0 cursor-pointer"
+            <button
+              onClick={() => setIsPostJobModalOpen(true)}
+              className="w-full md:w-auto px-7 py-3.5 md:px-10 md:py-5 bg-[#334155] hover:bg-[#454749] text-white rounded-2xl md:rounded-3xl font-black text-[10px] uppercase tracking-[0.2em] shadow-xl transition-all hover:-translate-y-1 active:scale-95 flex items-center justify-center gap-2 md:gap-3 shrink-0 cursor-pointer"
             >
-              <Plus className="w-5 h-5" /> Post Opportunity
+              <Plus className="w-4 h-4 md:w-5 md:h-5" /> Post Opportunity
             </button>
           </div>
         )}
@@ -932,7 +1004,7 @@ export default function EmployerDashboard() {
         {/* Navigation Tabs - Hidden in Settings and on Mobile */}
         {activeTab !== "settings" && (
           <div className="hidden md:flex gap-4 mb-12 p-2 bg-white/30 backdrop-blur-xl border border-white rounded-[32px] shadow-xl w-full md:w-max overflow-x-auto hide-scrollbar">
-            {(["overview", "candidates", "jobs", "interviews", "messages", "settings"] as Tab[]).map((tab) => (
+            {(["overview", "candidates", "jobs", "interviews", "messages", "submitted", "settings"] as Tab[]).map((tab) => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
@@ -949,13 +1021,14 @@ export default function EmployerDashboard() {
         )}
 
         {/* Mobile Hub Navigation */}
-        <MobileBottomNav 
+        <MobileBottomNav
           activeTab={activeTab}
           onTabChange={(id) => setActiveTab(id as Tab)}
           items={[
             { id: "overview", label: "Hub", icon: LayoutDashboard },
             { id: "candidates", label: "Talent", icon: Users },
             { id: "jobs", label: "Jobs", icon: Briefcase },
+            { id: "submitted", label: "Submit", icon: Video },
             { id: "messages", label: "Mail", icon: Mail },
             { id: "settings", label: "Control", icon: Settings },
           ]}
@@ -1417,14 +1490,14 @@ export default function EmployerDashboard() {
                 }}
               >
                 {/* Header */}
-                <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-6 border-b border-[#E2E8F0] pb-10">
-                  <div className="space-y-1">
-                    <h3 className="text-3xl font-black tracking-tight" style={{ color: "#334155" }}>Opportunity Pipeline</h3>
-                    <p className="font-medium text-base" style={{ color: "#64748B" }}>Manage your active roles and track talent resonance.</p>
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 md:mb-10 gap-4 border-b border-[#E2E8F0] pb-6 md:pb-10">
+                  <div className="space-y-0.5">
+                    <h3 className="text-xl sm:text-2xl md:text-3xl font-black tracking-tight" style={{ color: "#334155" }}>Opportunity Pipeline</h3>
+                    <p className="font-medium text-sm md:text-base" style={{ color: "#64748B" }}>Manage your active roles and track talent resonance.</p>
                   </div>
                   <button
                     onClick={() => setIsPostJobModalOpen(true)}
-                    className="flex items-center gap-3 px-8 py-4 bg-[#334155] hover:bg-[#454749] text-white font-black text-[10px] uppercase tracking-widest rounded-2xl shadow-xl transition-all hover:-translate-y-0.5 active:scale-95 cursor-pointer shrink-0"
+                    className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3 bg-[#334155] hover:bg-[#454749] text-white font-black text-[10px] uppercase tracking-widest rounded-2xl shadow-xl transition-all hover:-translate-y-0.5 active:scale-95 cursor-pointer shrink-0"
                   >
                     <Plus className="w-4 h-4" /> Post New Role
                   </button>
@@ -1482,45 +1555,45 @@ export default function EmployerDashboard() {
                           {filtered.map((job) => (
                             <div
                               key={job.id}
-                              className="group bg-white/50 border border-[#E2E8F0] rounded-[28px] p-7 transition-all hover:bg-white hover:border-[#F7B980]/40 hover:shadow-xl"
+                              className="group bg-white/50 border border-[#E2E8F0] rounded-2xl md:rounded-[28px] p-4 md:p-7 transition-all hover:bg-white hover:border-[#F7B980]/40 hover:shadow-xl"
                             >
-                              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-5">
-
-                                {/* Left: Title + Meta */}
-                                <div className="space-y-3 min-w-0">
-                                  <h4 className="text-xl font-black group-hover:text-[#F7B980] transition-colors truncate" style={{ color: "#334155" }}>
-                                    {job.title}
-                                  </h4>
-                                  <div className="flex flex-wrap items-center gap-2">
-                                    <span className="px-3 py-1.5 bg-[#F0FDF4] text-[#16A34A] border border-[#BBF7D0] rounded-lg text-[10px] font-black uppercase tracking-widest">
-                                      Active
-                                    </span>
-                                    <span className="px-3 py-1.5 bg-[#F1F5F9] text-[#64748B] rounded-lg text-[10px] font-black uppercase tracking-widest">
-                                      Posted {job.days}d ago
-                                    </span>
+                              <div className="flex flex-col gap-4">
+                                {/* Top row: Title + badges */}
+                                <div className="flex items-start justify-between gap-3">
+                                  <div className="space-y-2 min-w-0">
+                                    <h4 className="text-base sm:text-xl font-black group-hover:text-[#F7B980] transition-colors leading-tight" style={{ color: "#334155" }}>
+                                      {job.title}
+                                    </h4>
+                                    <div className="flex flex-wrap items-center gap-2">
+                                      <span className="px-2.5 py-1 bg-[#F0FDF4] text-[#16A34A] border border-[#BBF7D0] rounded-lg text-[10px] font-black uppercase tracking-widest">
+                                        Active
+                                      </span>
+                                      <span className="px-2.5 py-1 bg-[#F1F5F9] text-[#64748B] rounded-lg text-[10px] font-black uppercase tracking-widest">
+                                        Posted {job.days}d ago
+                                      </span>
+                                    </div>
                                   </div>
                                 </div>
 
-                                {/* Right: Metrics + Action */}
-                                <div className="flex items-center gap-6 shrink-0">
-                                  {/* Applicants */}
-                                  <div className="text-center min-w-[52px]">
-                                    <p className="text-2xl font-black leading-none" style={{ color: "#334155" }}>{job.applicants}</p>
-                                    <p className="text-[10px] font-black uppercase tracking-widest mt-1" style={{ color: "#94A3B8" }}>Applied</p>
+                                {/* Bottom row: Metrics + Action */}
+                                <div className="flex items-center justify-between gap-3">
+                                  <div className="flex items-center gap-4 sm:gap-6">
+                                    {/* Applicants */}
+                                    <div className="text-center">
+                                      <p className="text-xl sm:text-2xl font-black leading-none" style={{ color: "#334155" }}>{job.applicants}</p>
+                                      <p className="text-[10px] font-black uppercase tracking-widest mt-1" style={{ color: "#94A3B8" }}>Applied</p>
+                                    </div>
+                                    <div className="w-px h-6 bg-[#E2E8F0]" />
+                                    {/* Views */}
+                                    <div className="text-center">
+                                      <p className="text-xl sm:text-2xl font-black leading-none" style={{ color: "#64748B" }}>{job.views}</p>
+                                      <p className="text-[10px] font-black uppercase tracking-widest mt-1" style={{ color: "#94A3B8" }}>Views</p>
+                                    </div>
                                   </div>
-                                  {/* Divider */}
-                                  <div className="w-px h-8 bg-[#E2E8F0]" />
-                                  {/* Views */}
-                                  <div className="text-center min-w-[52px]">
-                                    <p className="text-2xl font-black leading-none" style={{ color: "#64748B" }}>{job.views}</p>
-                                    <p className="text-[10px] font-black uppercase tracking-widest mt-1" style={{ color: "#94A3B8" }}>Views</p>
-                                  </div>
-                                  {/* Divider */}
-                                  <div className="w-px h-8 bg-[#E2E8F0]" />
                                   {/* Action */}
                                   <button
                                     onClick={() => setSelectedJob(job)}
-                                    className="px-7 py-3.5 bg-[#334155] hover:bg-[#454749] text-white font-black text-[10px] tracking-widest uppercase rounded-xl transition-all shadow-lg active:scale-95 cursor-pointer"
+                                    className="px-5 py-2.5 sm:px-7 sm:py-3.5 bg-[#334155] hover:bg-[#454749] text-white font-black text-[10px] tracking-widest uppercase rounded-xl transition-all shadow-lg active:scale-95 cursor-pointer shrink-0"
                                   >
                                     Manage
                                   </button>
@@ -1613,8 +1686,80 @@ export default function EmployerDashboard() {
               </div>
             )}
 
+            {activeTab === "submitted" && (
+              <div className="space-y-4">
+                {/* Header */}
+                <div className="bg-white/80 backdrop-blur border border-white rounded-2xl px-6 py-4 flex items-center justify-between shadow-sm">
+                  <div>
+                    <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2">
+                      <Video className="w-4 h-4 text-[#F7B980]" />
+                      Submitted VidioCVs
+                    </h3>
+                    <p className="text-xs text-slate-400 mt-0.5">Review candidate video applications for your roles</p>
+                  </div>
+                  {submittedApplications.length > 0 && (
+                    <span className="px-2.5 py-1 rounded-full bg-slate-100 text-slate-600 text-xs font-semibold">
+                      {submittedApplications.length} received
+                    </span>
+                  )}
+                </div>
+
+                {/* List */}
+                {isLoadingSubmitted ? (
+                  <div className="flex flex-col items-center justify-center py-20 bg-white/80 border border-white rounded-2xl shadow-sm">
+                    <div className="w-8 h-8 border-4 border-[#E2E8F0] border-t-[#F7B980] rounded-full animate-spin mb-3" />
+                    <p className="text-slate-400 text-sm">Loading applications…</p>
+                  </div>
+                ) : submittedApplications.length > 0 ? (
+                  <div className="space-y-2">
+                    {submittedApplications.map((app) => (
+                      <div
+                        key={app.id}
+                        onClick={() => setSelectedApplication(app)}
+                        className="group flex items-center gap-3 bg-white/80 backdrop-blur border border-white rounded-2xl px-4 py-3.5 hover:border-[#F7B980]/30 hover:shadow-md transition-all duration-200 cursor-pointer"
+                      >
+                        <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-500 font-semibold text-sm shrink-0">
+                          {app.candidateName.charAt(0).toUpperCase()}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between gap-2 mb-0.5">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <h4 className="text-sm font-semibold text-slate-800 truncate group-hover:text-[#F7B980] transition-colors">
+                                {app.candidateName}
+                              </h4>
+                              {app.videoUrl && (
+                                <span className="px-1.5 py-0.5 rounded-md text-[10px] font-semibold bg-[#F7B980]/10 text-[#F7B980] border border-[#F7B980]/20 shrink-0">
+                                  Video
+                                </span>
+                              )}
+                            </div>
+                            <span className="text-[11px] text-slate-400 shrink-0">
+                              {new Date(app.submittedAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short" })}
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-between gap-2">
+                            <p className="text-xs text-slate-400 truncate">
+                              {app.jobTitle}{app.jobLocation ? ` · ${app.jobLocation}` : ""}
+                            </p>
+                            <ApplicationStatusBadge status={app.status} />
+                          </div>
+                        </div>
+                        <ArrowRight className="w-3.5 h-3.5 text-slate-300 group-hover:text-slate-500 group-hover:translate-x-0.5 transition-all shrink-0" />
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-20 bg-white/80 border border-dashed border-[gainsboro] rounded-2xl">
+                    <Video className="w-8 h-8 text-slate-300 mx-auto mb-3" />
+                    <p className="text-sm font-semibold text-slate-600 mb-1">No applications yet</p>
+                    <p className="text-xs text-slate-400">Candidates will appear here once they submit their VidioCV to your roles.</p>
+                  </div>
+                )}
+              </div>
+            )}
+
             {activeTab === "settings" && (
-              <div 
+              <div
                 className="border border-white rounded-[48px] p-2 shadow-2xl relative overflow-hidden flex flex-col lg:flex-row min-h-[800px]"
                 style={{ 
                   background: "rgba(255, 255, 255, 0.8)", 
@@ -2037,28 +2182,29 @@ export default function EmployerDashboard() {
                 </motion.div>
               )}
             </AnimatePresence>            {activeTab === "messages" && (
-              <div className="space-y-12">
-                 <div 
-                    className="border border-white rounded-[40px] p-8 lg:p-12 shadow-2xl relative overflow-hidden"
-                    style={{ 
-                      background: "rgba(255, 255, 255, 0.7)", 
+              <div className="space-y-8">
+                 <div
+                    className="border border-white rounded-2xl md:rounded-[40px] p-4 sm:p-8 lg:p-12 shadow-2xl relative"
+                    style={{
+                      background: "rgba(255, 255, 255, 0.7)",
                       backdropFilter: "blur(24px)",
                       boxShadow: "0 24px 64px rgba(87,89,91,0.06)"
                     }}
                   >
-                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-6 border-b border-[#E2E8F0] pb-10">
-                      <div className="space-y-1">
-                        <h3 className="text-3xl font-black tracking-tight" style={{ color: "#334155" }}>Recruiter Workspace</h3>
-                        <p className="font-medium text-base" style={{ color: "#64748B" }}>Manage your direct talent communications and inquiries.</p>
+                    {/* Header */}
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 md:mb-10 gap-4 border-b border-[#E2E8F0] pb-6 md:pb-10">
+                      <div className="space-y-0.5">
+                        <h3 className="text-xl sm:text-2xl md:text-3xl font-black tracking-tight" style={{ color: "#334155" }}>Recruiter Workspace</h3>
+                        <p className="font-medium text-sm md:text-base" style={{ color: "#64748B" }}>Manage your direct talent communications and inquiries.</p>
                       </div>
-                      <div className="flex p-1.5 bg-[#E2E8F0] rounded-2xl">
+                      <div className="flex w-full sm:w-auto p-1 bg-[#E2E8F0] rounded-2xl">
                         {(["inbox", "sent", "compose"] as const).map((tab) => (
                           <button
                             key={tab}
                             onClick={() => setMessageSubTab(tab)}
-                            className={`px-8 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all cursor-pointer ${
-                              messageSubTab === tab 
-                                ? "bg-white text-[#F7B980] shadow-lg shadow-[#F7B980]/5" 
+                            className={`flex-1 sm:flex-none px-4 sm:px-8 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all cursor-pointer ${
+                              messageSubTab === tab
+                                ? "bg-white text-[#F7B980] shadow-lg shadow-[#F7B980]/5"
                                 : "text-[#64748B] hover:text-[#334155]"
                             }`}
                           >
@@ -2081,7 +2227,7 @@ export default function EmployerDashboard() {
                               <div
                                 key={thread.id}
                                 onClick={() => setSelectedThread(thread)}
-                                className="p-8 rounded-[32px] border transition-all cursor-pointer group flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6"
+                                className="p-4 sm:p-6 md:p-8 rounded-2xl md:rounded-[32px] border transition-all cursor-pointer group flex items-center gap-3 sm:gap-6"
                                 style={thread.status === "pending" ? {
                                   background: "#FFFFFF",
                                   borderColor: "#F7B980",
@@ -2091,22 +2237,24 @@ export default function EmployerDashboard() {
                                   borderColor: "#E2E8F0"
                                 }}
                               >
-                                <div className="flex gap-6 items-center flex-1">
-                                  <div className="w-14 h-14 rounded-2xl flex items-center justify-center font-black text-xl shrink-0 shadow-inner" style={{ background: "#E2E8F0", color: "#F7B980" }}>
-                                    {thread.candidateName.charAt(0)}
-                                  </div>
-                                  <div>
-                                    <h4 className="font-black text-lg transition-colors group-hover:text-[#F7B980] flex items-center gap-3" style={{ color: "#334155" }}>
-                                      {thread.candidateName}
-                                      {thread.status === "pending" && <span className="inline-block w-2.5 h-2.5 rounded-full bg-[#10B981] shadow-lg shadow-[#10B981]/20" />}
-                                    </h4>
-                                    <p className="text-sm font-bold opacity-60" style={{ color: "#64748B" }}>{thread.candidateTitle}</p>
-                                  </div>
+                                <div className="w-10 h-10 sm:w-14 sm:h-14 rounded-xl sm:rounded-2xl flex items-center justify-center font-black text-base sm:text-xl shrink-0 shadow-inner" style={{ background: "#E2E8F0", color: "#F7B980" }}>
+                                  {thread.candidateName.charAt(0)}
                                 </div>
-                                <div className="flex items-center gap-8">
-                                  <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-40">{new Date(thread.createdAt).toLocaleDateString()}</p>
-                                  <div className="w-10 h-10 rounded-full bg-[#E2E8F0] flex items-center justify-center group-hover:bg-[#F7B980] group-hover:text-white transition-all group-hover:translate-x-1">
-                                    <ArrowRight className="w-5 h-5" />
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center justify-between gap-2 mb-0.5">
+                                    <h4 className="font-black text-sm sm:text-base md:text-lg transition-colors group-hover:text-[#F7B980] flex items-center gap-2 truncate" style={{ color: "#334155" }}>
+                                      {thread.candidateName}
+                                      {thread.status === "pending" && <span className="inline-block w-2 h-2 rounded-full bg-[#10B981] shrink-0" />}
+                                    </h4>
+                                    <p className="text-[10px] font-black uppercase tracking-[0.15em] opacity-40 shrink-0">
+                                      {new Date(thread.createdAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short" })}
+                                    </p>
+                                  </div>
+                                  <div className="flex items-center justify-between gap-2">
+                                    <p className="text-xs sm:text-sm font-bold opacity-60 truncate" style={{ color: "#64748B" }}>{thread.candidateTitle}</p>
+                                    <div className="w-7 h-7 sm:w-10 sm:h-10 rounded-full bg-[#E2E8F0] flex items-center justify-center group-hover:bg-[#F7B980] group-hover:text-white transition-all group-hover:translate-x-0.5 shrink-0">
+                                      <ArrowRight className="w-3.5 h-3.5 sm:w-5 sm:h-5" />
+                                    </div>
                                   </div>
                                 </div>
                               </div>
@@ -2133,26 +2281,26 @@ export default function EmployerDashboard() {
                             {directSentMessages.map((msg) => (
                               <div
                                 key={msg.id}
-                                className="p-8 rounded-[32px] border bg-white/40 border-[#E2E8F0] transition-all hover:bg-white hover:shadow-xl group"
+                                className="p-4 sm:p-6 md:p-8 rounded-2xl md:rounded-[32px] border bg-white/40 border-[#E2E8F0] transition-all hover:bg-white hover:shadow-xl group"
                               >
-                                <div className="flex justify-between items-start mb-4">
-                                  <div className="flex gap-4 items-center">
-                                     <div className="w-10 h-10 rounded-xl bg-[#334155] text-white flex items-center justify-center font-bold shadow-lg">
-                                       {msg.receiver.name.charAt(0)}
-                                     </div>
-                                     <div>
-                                       <h4 className="font-bold text-[#334155]">{msg.receiver.name}</h4>
-                                       <p className="text-[10px] font-bold opacity-40 uppercase tracking-widest">{msg.receiver.email}</p>
-                                     </div>
+                                <div className="flex items-center gap-3 mb-3">
+                                  <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-[#334155] text-white flex items-center justify-center font-bold shadow-lg shrink-0">
+                                    {msg.receiver.name.charAt(0)}
                                   </div>
-                                  <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-40">{new Date(msg.createdAt).toLocaleDateString()}</p>
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-center justify-between gap-2">
+                                      <h4 className="font-bold text-sm sm:text-base text-[#334155] truncate">{msg.receiver.name}</h4>
+                                      <p className="text-[10px] font-black uppercase tracking-[0.15em] opacity-40 shrink-0">
+                                        {new Date(msg.createdAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short" })}
+                                      </p>
+                                    </div>
+                                    <p className="text-[10px] font-bold opacity-40 uppercase tracking-widest truncate">{msg.receiver.email}</p>
+                                  </div>
                                 </div>
-                                <div className="pl-14">
-                                   <p className="text-sm font-medium leading-relaxed opacity-60 italic" style={{ color: "#334155" }}>&quot;{msg.body}&quot;</p>
-                                   <div className="mt-4 flex items-center gap-2">
-                                      <span className="w-1.5 h-1.5 rounded-full bg-[#10B981]" />
-                                      <p className="text-[8px] font-black uppercase tracking-[0.2em] text-[#10B981]">Signal Successfully Transmitted</p>
-                                   </div>
+                                <p className="text-xs sm:text-sm font-medium leading-relaxed opacity-60 italic pl-0 sm:pl-12 md:pl-14" style={{ color: "#334155" }}>&quot;{msg.body}&quot;</p>
+                                <div className="mt-3 flex items-center gap-2 pl-0 sm:pl-12 md:pl-14">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-[#10B981] shrink-0" />
+                                  <p className="text-[8px] font-black uppercase tracking-[0.2em] text-[#10B981]">Sent</p>
                                 </div>
                               </div>
                             ))}
@@ -2167,49 +2315,88 @@ export default function EmployerDashboard() {
                     )}
 
                     {messageSubTab === "compose" && (
-                      <div className="max-w-3xl mx-auto space-y-8">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                           <div className="space-y-4">
-                              <label className="text-[10px] font-black uppercase tracking-widest block pl-2" style={{ color: "#64748B" }}>Target Candidate</label>
-                              <select 
-                                value={selectedRecipientId}
-                                onChange={(e) => setSelectedRecipientId(e.target.value)}
-                                className="w-full px-6 py-4 bg-white border border-[#E2E8F0] rounded-2xl outline-none font-bold text-sm focus:border-[#F7B980] transition-all shadow-sm"
-                                style={{ color: "#334155" }}
-                              >
-                                <option value="">Select Candidate...</option>
-                                {candidates.map(candidate => (
-                                  <option key={candidate.id} value={candidate.userId}>{candidate.name} — {candidate.title}</option>
-                                ))}
-                              </select>
+                      <div className="max-w-3xl mx-auto space-y-5">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                           <div className="space-y-2 relative">
+                              <label className="text-[10px] font-black uppercase tracking-widest block" style={{ color: "#64748B" }}>Target Candidate</label>
+                              {/* Search input */}
+                              <div className="relative">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                                <input
+                                  type="text"
+                                  value={candidateSearchQuery || (selectedRecipientId ? (candidates.find(c => c.userId === selectedRecipientId)?.name || "") : "")}
+                                  onChange={(e) => { setCandidateSearchQuery(e.target.value); setSelectedRecipientId(""); setShowCandidateDropdown(true); }}
+                                  onFocus={() => setShowCandidateDropdown(true)}
+                                  onBlur={() => setTimeout(() => setShowCandidateDropdown(false), 150)}
+                                  placeholder="Search candidates..."
+                                  className="w-full pl-9 pr-4 py-3 bg-white border border-[#E2E8F0] rounded-2xl outline-none text-sm font-bold focus:border-[#F7B980] transition-all shadow-sm"
+                                  style={{ color: "#334155" }}
+                                />
+                                {selectedRecipientId && (
+                                  <button
+                                    onClick={() => { setSelectedRecipientId(""); setCandidateSearchQuery(""); }}
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                                  >
+                                    <X className="w-3.5 h-3.5" />
+                                  </button>
+                                )}
+                              </div>
+                              {/* Dropdown list */}
+                              {showCandidateDropdown && (
+                                <div className="absolute z-30 w-full mt-1 bg-white border border-[#E2E8F0] rounded-2xl shadow-xl overflow-hidden">
+                                  <div className="max-h-52 overflow-y-auto divide-y divide-[#F1F5F9]">
+                                    {candidates
+                                      .filter(c => !candidateSearchQuery || c.name.toLowerCase().includes(candidateSearchQuery.toLowerCase()) || c.title.toLowerCase().includes(candidateSearchQuery.toLowerCase()))
+                                      .slice(0, 8)
+                                      .map(candidate => (
+                                        <button
+                                          key={candidate.id}
+                                          onMouseDown={() => { setSelectedRecipientId(candidate.userId); setCandidateSearchQuery(""); setShowCandidateDropdown(false); }}
+                                          className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-[#F7B980]/10 transition-colors text-left cursor-pointer"
+                                        >
+                                          <div className="w-8 h-8 rounded-xl bg-[#E2E8F0] flex items-center justify-center font-black text-sm shrink-0" style={{ color: "#F7B980" }}>
+                                            {candidate.name.charAt(0)}
+                                          </div>
+                                          <div className="min-w-0">
+                                            <p className="text-sm font-bold text-[#334155] truncate">{candidate.name}</p>
+                                            <p className="text-[11px] text-slate-400 truncate">{candidate.title}</p>
+                                          </div>
+                                        </button>
+                                      ))}
+                                    {candidates.filter(c => !candidateSearchQuery || c.name.toLowerCase().includes(candidateSearchQuery.toLowerCase()) || c.title.toLowerCase().includes(candidateSearchQuery.toLowerCase())).length === 0 && (
+                                      <p className="px-4 py-3 text-sm text-slate-400 text-center">No candidates found</p>
+                                    )}
+                                  </div>
+                                </div>
+                              )}
                            </div>
-                           <div className="space-y-4">
-                              <label className="text-[10px] font-black uppercase tracking-widest block pl-2" style={{ color: "#64748B" }}>Inquiry Subject</label>
-                              <input 
+                           <div className="space-y-2">
+                              <label className="text-[10px] font-black uppercase tracking-widest block" style={{ color: "#64748B" }}>Inquiry Subject</label>
+                              <input
                                 type="text"
                                 value={composeSubject}
                                 onChange={(e) => setComposeSubject(e.target.value)}
                                 placeholder="Corporate Inquiry"
-                                className="w-full px-6 py-4 bg-white border border-[#E2E8F0] rounded-2xl outline-none font-bold text-sm focus:border-[#F7B980] transition-all shadow-sm"
+                                className="w-full px-4 py-3 bg-white border border-[#E2E8F0] rounded-2xl outline-none font-bold text-sm focus:border-[#F7B980] transition-all shadow-sm"
                                 style={{ color: "#334155" }}
                               />
                            </div>
                         </div>
-                        <div className="space-y-4">
-                           <label className="text-[10px] font-black uppercase tracking-widest block pl-2" style={{ color: "#64748B" }}>Message Blueprint</label>
-                           <textarea 
-                             rows={6}
+                        <div className="space-y-2">
+                           <label className="text-[10px] font-black uppercase tracking-widest block" style={{ color: "#64748B" }}>Message</label>
+                           <textarea
+                             rows={5}
                              value={composeBody}
                              onChange={(e) => setComposeBody(e.target.value)}
-                             placeholder="Draft your professional outreach signal..."
-                             className="w-full px-8 py-6 bg-white border border-[#E2E8F0] rounded-[32px] outline-none font-medium text-base leading-relaxed focus:border-[#F7B980] shadow-sm resize-none"
+                             placeholder="Draft your professional outreach..."
+                             className="w-full px-5 py-4 bg-white border border-[#E2E8F0] rounded-2xl outline-none font-medium text-sm leading-relaxed focus:border-[#F7B980] shadow-sm resize-none"
                              style={{ color: "#334155" }}
                            />
                         </div>
-                        <button 
+                        <button
                           onClick={handleSendComposeDirect}
                           disabled={!selectedRecipientId || !composeBody.trim() || isSendingDirect}
-                          className="w-full py-5 bg-[#334155] hover:bg-[#454749] text-white rounded-[24px] font-black text-[10px] uppercase tracking-[0.2em] shadow-2xl transition-all hover:-translate-y-1 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer group flex items-center justify-center gap-3"
+                          className="w-full py-3.5 bg-[#334155] hover:bg-[#454749] text-white rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] shadow-xl transition-all hover:-translate-y-0.5 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer group flex items-center justify-center gap-3"
                         >
                            {isSendingDirect ? "Transmitting..." : (
                              <>
@@ -2685,8 +2872,121 @@ export default function EmployerDashboard() {
         </div>
       </Modal>
 
+      {/* Submitted Application Detail Modal */}
+      <Modal
+        isOpen={!!selectedApplication}
+        onClose={() => setSelectedApplication(null)}
+        type="info"
+        closeActionLabel="Close"
+        maxWidth="max-w-xl"
+        align="left"
+      >
+        {selectedApplication && (
+          <div className="space-y-5 -mt-2">
+            {/* Header */}
+            <div className="flex items-center gap-3 pb-4 border-b border-[#E2E8F0]">
+              <div
+                className="w-11 h-11 rounded-xl flex items-center justify-center font-bold text-sm shadow-sm shrink-0"
+                style={{ background: "linear-gradient(135deg, #F7B980, #F0A060)", color: "white" }}
+              >
+                {selectedApplication.candidateName.charAt(0).toUpperCase()}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-base font-black leading-tight truncate" style={{ color: "#334155" }}>{selectedApplication.candidateName}</p>
+                <p className="text-xs text-slate-400 truncate mt-0.5">{selectedApplication.candidateTitle || "Candidate"}</p>
+              </div>
+              <ApplicationStatusBadge status={selectedApplication.status} />
+            </div>
+
+            {/* Job info */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="bg-slate-50 border border-[gainsboro] rounded-xl px-4 py-3 col-span-2 sm:col-span-1">
+                <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest mb-1">Applied For</p>
+                <p className="text-sm font-semibold text-slate-800 truncate">{selectedApplication.jobTitle}</p>
+              </div>
+              <div className="bg-slate-50 border border-[gainsboro] rounded-xl px-4 py-3">
+                <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest mb-1">Submitted</p>
+                <p className="text-sm font-semibold text-slate-800">
+                  {new Date(selectedApplication.submittedAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}
+                </p>
+              </div>
+            </div>
+
+            {/* Skills */}
+            {selectedApplication.candidateSkills.length > 0 && (
+              <div>
+                <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest mb-2">Skills</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {selectedApplication.candidateSkills.slice(0, 8).map((skill) => (
+                    <span key={skill} className="px-2.5 py-1 rounded-lg bg-slate-100 text-slate-600 text-xs font-medium border border-[gainsboro]">
+                      {skill}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Video */}
+            {selectedApplication.videoUrl && (
+              <div>
+                <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest mb-2">VidioCV</p>
+                <div className="rounded-xl overflow-hidden aspect-video bg-slate-900">
+                  <VideoPlayer src={selectedApplication.videoUrl} title={selectedApplication.candidateName} />
+                </div>
+              </div>
+            )}
+
+            {/* Cover note */}
+            {selectedApplication.message && (
+              <div className="p-4 rounded-xl border border-[#E2E8F0] bg-slate-50/60">
+                <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest mb-2">Cover Note</p>
+                <p className="text-sm text-slate-600 leading-relaxed">{selectedApplication.message}</p>
+              </div>
+            )}
+
+            {/* Status actions */}
+            <div>
+              <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest mb-2">Update Status</p>
+              <div className="flex flex-wrap gap-2">
+                {(["submitted", "reviewing", "shortlisted", "rejected"] as const).map((s) => (
+                  <button
+                    key={s}
+                    onClick={() => handleUpdateApplicationStatus(selectedApplication.id, s)}
+                    disabled={isUpdatingStatus || selectedApplication.status === s}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold capitalize transition-all cursor-pointer border ${
+                      selectedApplication.status === s
+                        ? "bg-slate-800 text-white border-slate-800"
+                        : "bg-white text-slate-600 border-[gainsboro] hover:border-slate-400"
+                    } disabled:opacity-50`}
+                  >
+                    {s}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+      </Modal>
+
       <div className="h-32 md:hidden" />
     </div>
+  );
+}
+
+function ApplicationStatusBadge({ status }: { status: string }) {
+  const s = status.toLowerCase();
+  const styles =
+    s.includes("shortlist") || s.includes("offer")
+      ? "bg-emerald-50 text-emerald-700 border-emerald-100"
+      : s.includes("review") || s.includes("screen")
+      ? "bg-amber-50 text-amber-600 border-amber-100"
+      : s.includes("reject") || s.includes("declined")
+      ? "bg-rose-50 text-rose-500 border-rose-100"
+      : "bg-slate-50 text-slate-500 border-slate-100";
+  return (
+    <span className={`px-2.5 py-1 rounded-lg border text-[11px] font-medium shrink-0 capitalize ${styles}`}>
+      {status}
+    </span>
   );
 }
 

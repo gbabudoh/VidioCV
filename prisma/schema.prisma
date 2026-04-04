@@ -27,6 +27,7 @@ model User {
   cvProfile           CvProfile?   @relation("UserCvProfile")
   sentDirectMessages     DirectMessage[] @relation("SentDirectMessages")
   receivedDirectMessages DirectMessage[] @relation("ReceivedDirectMessages")
+  applications        Application[]
 
   @@map("users")
 }
@@ -304,10 +305,27 @@ model Job {
   employerId  String      @map("employer_id") @db.Uuid
   createdAt   DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt   DateTime    @default(now()) @map("updated_at") @db.Timestamptz(6)
-  interviews  Interview[]
-  employer    User        @relation(fields: [employerId], references: [id], onDelete: Cascade)
+  interviews   Interview[]
+  applications Application[]
+  employer     User        @relation(fields: [employerId], references: [id], onDelete: Cascade)
 
   @@map("jobs")
+}
+
+model Application {
+  id          String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  jobId       String   @map("job_id") @db.Uuid
+  candidateId String   @map("candidate_id") @db.Uuid
+  videoUrl    String?  @map("video_url")
+  status      String   @default("submitted")
+  message     String?
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
+  job         Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  candidate   User     @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+
+  @@unique([jobId, candidateId])
+  @@map("applications")
 }
 
 model Interview {

@@ -25,7 +25,7 @@ import Link from "next/link";
 import NextImage from "next/image";
 import { useSessionSync } from "@/app/lib/hooks/useSessionSync";
 
-type Tab = "profile" | "jobs" | "applications" | "interviews" | "messages" | "notifications" | "settings";
+type Tab = "profile" | "jobs" | "applications" | "interviews" | "messages" | "submissions" | "notifications" | "settings";
 
 const countryOptions = countryList.getData().map((country) => ({
   value: country.code,
@@ -82,6 +82,19 @@ export default function CandidateDashboard() {
     description: string;
     color: string;
     timeline: { date: string; event: string }[];
+  }
+
+  interface Submission {
+    id: string;
+    jobId: string;
+    jobTitle: string;
+    company: string;
+    location: string;
+    department: string;
+    status: string;
+    videoUrl: string | null;
+    message: string | null;
+    submittedAt: string;
   }
 
   interface MessageRequest {
@@ -174,6 +187,9 @@ export default function CandidateDashboard() {
   const [selectedMessage, setSelectedMessage] = useState<Message | null>(null);
   const [selectedSentMessage, setSelectedSentMessage] = useState<DirectMessage | null>(null);
   const [selectedInterview, setSelectedInterview] = useState<Interview | null>(null);
+  const [submissions, setSubmissions] = useState<Submission[]>([]);
+  const [isLoadingSubmissions, setIsLoadingSubmissions] = useState(false);
+  const [selectedSubmission, setSelectedSubmission] = useState<Submission | null>(null);
   const [isReplying, setIsReplying] = useState(false);
   const [replyText, setReplyText] = useState("");
   const [isSendingReply, setIsSendingReply] = useState(false);
@@ -341,6 +357,26 @@ export default function CandidateDashboard() {
       if (messageSubTab === "compose") fetchEmployers();
     }
   }, [activeTab, messageSubTab]);
+
+  useEffect(() => {
+    const fetchSubmissions = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        if (!token) return;
+        setIsLoadingSubmissions(true);
+        const res = await fetch("/api/applications/candidate", {
+          headers: { "Authorization": `Bearer ${token}` }
+        });
+        const data = await res.json();
+        if (data.success) setSubmissions(data.applications || []);
+      } catch (err) {
+        console.error("Failed to fetch submissions:", err);
+      } finally {
+        setIsLoadingSubmissions(false);
+      }
+    };
+    if (activeTab === "submissions") fetchSubmissions();
+  }, [activeTab]);
 
   useEffect(() => {
     const fetchInterviews = async () => {
@@ -679,12 +715,25 @@ export default function CandidateDashboard() {
     return matchesCountry && matchesQuery;
   });
 
-  const handleApply = (jobId: string) => {
-    setSelectedJob(null);
-    setSuccessMessage({
-      title: "Application Successful!",
-      message: `Successfully submitted Video CV for Job ID: ${jobId}`,
-    });
+  const handleApply = async (jobId: string) => {
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) return;
+      const res = await fetch("/api/applications/submit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+        body: JSON.stringify({ jobId }),
+      });
+      const data = await res.json();
+      setSelectedJob(null);
+      if (data.success) {
+        setSuccessMessage({ title: "VidioCV Submitted!", message: "Your video CV has been sent to the employer. Check Submissions for updates." });
+      } else {
+        setModalConfig({ isOpen: true, title: "Already Applied", message: data.message || "You have already submitted to this role.", type: "error" });
+      }
+    } catch {
+      setModalConfig({ isOpen: true, title: "Error", message: "Failed to submit application. Please try again.", type: "error" });
+    }
   };
 
   const handleLogout = () => {
@@ -886,7 +935,7 @@ export default function CandidateDashboard() {
         {activeTab !== "settings" && (
           <>
             <div className="hidden md:flex gap-2 mb-10 p-1.5 rounded-2xl max-w-fit overflow-x-auto border border-white shadow-lg" style={{ background: "rgba(255, 255, 255, 0.6)", backdropFilter: "blur(10px)" }}>
-              {(["profile", "jobs", "applications", "interviews", "messages", "settings"] as Tab[]).map((tab) => (
+              {(["profile", "jobs", "applications", "interviews", "messages", "submissions", "settings"] as Tab[]).map((tab) => (
                 <button
                   key={tab}
                   onClick={() => setActiveTab(tab)}
@@ -1148,6 +1197,77 @@ export default function CandidateDashboard() {
               </div>
             )}
             
+            {activeTab === "submissions" && (
+              <div className="max-w-7xl mx-auto space-y-4">
+                {/* Header */}
+                <div className="bg-white border border-[gainsboro] rounded-2xl px-6 py-4 flex items-center justify-between">
+                  <div>
+                    <h3 className="text-sm font-semibold text-slate-800 flex items-center gap-2">
+                      <Video className="w-4 h-4 text-[#F7B980]" />
+                      Submitted VidioCVs
+                    </h3>
+                    <p className="text-xs text-slate-400 mt-0.5">Track your applications and their current status</p>
+                  </div>
+                  {submissions.length > 0 && (
+                    <span className="px-2.5 py-1 rounded-full bg-slate-100 text-slate-600 text-xs font-semibold">
+                      {submissions.length} submitted
+                    </span>
+                  )}
+                </div>
+
+                {/* List */}
+                {isLoadingSubmissions ? (
+                  <div className="flex flex-col items-center justify-center py-20 bg-white border border-[gainsboro] rounded-2xl">
+                    <div className="w-8 h-8 border-4 border-[#E2E8F0] border-t-[#F7B980] rounded-full animate-spin mb-3" />
+                    <p className="text-slate-400 text-sm">Loading submissions…</p>
+                  </div>
+                ) : submissions.length > 0 ? (
+                  <div className="space-y-2">
+                    {submissions.map((sub) => (
+                      <div
+                        key={sub.id}
+                        onClick={() => setSelectedSubmission(sub)}
+                        className="group flex items-center gap-3 bg-white border border-[gainsboro] rounded-2xl px-4 py-3.5 hover:border-slate-300 hover:shadow-md transition-all duration-200 cursor-pointer"
+                      >
+                        <div className="w-9 h-9 rounded-xl bg-slate-100 flex items-center justify-center text-slate-500 font-semibold text-sm shrink-0">
+                          {sub.company.charAt(0).toUpperCase()}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between gap-2 mb-0.5">
+                            <h4 className="text-sm font-semibold text-slate-800 truncate group-hover:text-[#F7B980] transition-colors">
+                              {sub.jobTitle}
+                            </h4>
+                            <span className="text-[11px] text-slate-400 shrink-0">
+                              {new Date(sub.submittedAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-1.5 min-w-0">
+                              <p className="text-xs text-slate-400 truncate">{sub.company}{sub.location ? ` · ${sub.location}` : ""}</p>
+                            </div>
+                            <StatusBadge status={sub.status} />
+                          </div>
+                        </div>
+                        <ChevronRight className="w-3.5 h-3.5 text-slate-300 group-hover:text-slate-500 group-hover:translate-x-0.5 transition-all shrink-0" />
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-20 bg-white border border-dashed border-[gainsboro] rounded-2xl">
+                    <Video className="w-8 h-8 text-slate-300 mx-auto mb-3" />
+                    <p className="text-sm font-semibold text-slate-600 mb-1">No submissions yet</p>
+                    <p className="text-xs text-slate-400 mb-4">Browse jobs and submit your VidioCV to employers.</p>
+                    <button
+                      onClick={() => setActiveTab("jobs")}
+                      className="px-4 py-2 rounded-xl bg-[#F7B980] hover:bg-[#F0A060] text-black text-xs font-semibold transition-all cursor-pointer"
+                    >
+                      Browse Jobs
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+
             {activeTab === "profile" && (
               <div className="space-y-6">
 
@@ -1780,7 +1900,7 @@ export default function CandidateDashboard() {
             )}
 
             {activeTab === "settings" && (
-              <div className="bg-white border border-[gainsboro] rounded-2xl flex flex-col overflow-hidden">
+              <div className="bg-white border border-[gainsboro] rounded-2xl flex flex-col">
                 {/* Settings Tab Bar — horizontal, full width */}
                 <div className="border-b border-[gainsboro] p-1.5">
                   <div className="flex items-center gap-1">
@@ -2076,15 +2196,7 @@ export default function CandidateDashboard() {
         type="info"
         primaryAction={{
           label: "Submit VidioCV",
-          onClick: () => {
-             setModalConfig({
-               isOpen: true,
-               title: "Application Synced",
-               message: "Your VidioCV has been successfully transmitted to " + selectedJob?.company + ". Good luck!",
-               type: "success"
-             });
-             setSelectedJob(null);
-          }
+          onClick: () => selectedJob && handleApply(selectedJob.id)
         }}
         closeActionLabel="Close"
         maxWidth="max-w-3xl"
@@ -2137,8 +2249,8 @@ export default function CandidateDashboard() {
         primaryAction={{ label: "Confirm Logout", onClick: handleLogout }}
         closeActionLabel="Stay Logged In"
       >
-        <div className="py-6 text-center">
-          <p className="text-lg font-medium" style={{ color: "#8A8C8E" }}>Are you ready to sign out of your professional workspace?</p>
+        <div className="py-3 text-center">
+          <p className="text-sm font-medium text-slate-500">Are you ready to sign out of your professional workspace?</p>
         </div>
       </Modal>
 
@@ -2367,6 +2479,67 @@ export default function CandidateDashboard() {
         )}
       </Modal>
 
+      {/* Submission Detail Modal */}
+      <Modal
+        isOpen={!!selectedSubmission}
+        onClose={() => setSelectedSubmission(null)}
+        type="info"
+        closeActionLabel="Close"
+        maxWidth="max-w-xl"
+        align="left"
+      >
+        {selectedSubmission && (
+          <div className="space-y-5 -mt-2">
+            {/* Header */}
+            <div className="flex items-center gap-3 pb-4 border-b border-[#E2E8F0]">
+              <div
+                className="w-11 h-11 rounded-xl flex items-center justify-center font-bold text-sm shadow-sm shrink-0"
+                style={{ background: "linear-gradient(135deg, #F7B980, #F0A060)", color: "white" }}
+              >
+                {selectedSubmission.company.charAt(0).toUpperCase()}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-base font-black leading-tight truncate" style={{ color: "#334155" }}>{selectedSubmission.jobTitle}</p>
+                <p className="text-xs text-slate-400 truncate mt-0.5">{selectedSubmission.company}{selectedSubmission.location ? ` · ${selectedSubmission.location}` : ""}</p>
+              </div>
+              <StatusBadge status={selectedSubmission.status} />
+            </div>
+
+            {/* Details grid */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="bg-slate-50 border border-[gainsboro] rounded-xl px-4 py-3">
+                <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest mb-1">Submitted</p>
+                <p className="text-sm font-semibold text-slate-800">
+                  {new Date(selectedSubmission.submittedAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}
+                </p>
+              </div>
+              <div className="bg-slate-50 border border-[gainsboro] rounded-xl px-4 py-3">
+                <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest mb-1">Department</p>
+                <p className="text-sm font-semibold text-slate-800">{selectedSubmission.department || "—"}</p>
+              </div>
+            </div>
+
+            {/* Video preview */}
+            {selectedSubmission.videoUrl && (
+              <div>
+                <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest mb-2">VidioCV Sent</p>
+                <div className="rounded-xl overflow-hidden aspect-video bg-slate-900">
+                  <LiveKitPlayer src={selectedSubmission.videoUrl} showBranding={false} />
+                </div>
+              </div>
+            )}
+
+            {/* Message */}
+            {selectedSubmission.message && (
+              <div className="p-4 rounded-xl border border-[#E2E8F0] bg-slate-50/60">
+                <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest mb-2">Cover Note</p>
+                <p className="text-sm text-slate-600 leading-relaxed">{selectedSubmission.message}</p>
+              </div>
+            )}
+          </div>
+        )}
+      </Modal>
+
       {/* Application Details Modal */}
       <Modal
         isOpen={!!selectedApplication}
@@ -2449,13 +2622,13 @@ export default function CandidateDashboard() {
         )}
       </Modal>
 
-      <MobileBottomNav 
+      <MobileBottomNav
         activeTab={activeTab}
         onTabChange={(id) => setActiveTab(id as Tab)}
         items={[
           { id: "profile", label: "ME", icon: UserCircle },
           { id: "jobs", label: "MATCH", icon: Search },
-          { id: "applications", label: "PATH", icon: Briefcase },
+          { id: "submissions", label: "SENT", icon: Video },
           { id: "interviews", label: "INTERVIEW", icon: Calendar },
           { id: "messages", label: "INBOX", icon: Mail },
           { id: "settings", label: "CONTROL", icon: Settings },

@@ -82,7 +82,7 @@ export default function Modal({
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-6 font-sans">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 font-sans">
 
           {/* Backdrop */}
           <motion.div
@@ -101,13 +101,13 @@ export default function Modal({
             exit={{ opacity: 0, y: 24, scale: 0.97 }}
             transition={{ type: "spring", stiffness: 400, damping: 32 }}
             className={`relative w-full ${maxWidth} bg-white z-10 flex flex-col
-              rounded-t-3xl sm:rounded-3xl
-              max-h-[92vh] sm:max-h-[88vh]
+              rounded-3xl
+              max-h-[80vh]
               shadow-[0_32px_80px_-12px_rgba(0,0,0,0.22)]`}
           >
 
             {/* Colour accent bar */}
-            <div className={`h-1 w-full rounded-t-3xl sm:rounded-t-3xl bg-linear-to-r ${config.accent} shrink-0`} />
+            <div className={`h-1 w-full rounded-t-3xl bg-linear-to-r ${config.accent} shrink-0`} />
 
             {/* Header */}
             <div className="flex items-center justify-between px-6 pt-5 pb-4 border-b border-slate-100 shrink-0">
@@ -130,13 +130,13 @@ export default function Modal({
             </div>
 
             {/* Scrollable body */}
-            <div className={`flex-1 overflow-y-auto px-6 py-5 text-sm text-slate-600 leading-relaxed
+            <div className={`flex-1 overflow-y-auto px-6 py-4 text-sm text-slate-600 leading-relaxed
               ${align === "center" ? "text-center" : "text-left"}`}>
               {children}
             </div>
 
             {/* Footer — action buttons, always visible */}
-            <div className="px-6 py-4 border-t border-slate-100 flex flex-col sm:flex-row gap-2 shrink-0 bg-slate-50/60 rounded-b-3xl">
+            <div className="px-6 py-3 border-t border-slate-100 flex flex-col sm:flex-row gap-2 shrink-0 bg-slate-50/60 rounded-b-3xl">
               {primaryAction && (
                 <button
                   onClick={primaryAction.onClick}
