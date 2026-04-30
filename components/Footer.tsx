@@ -2,9 +2,9 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { 
-  Shield, 
-  Linkedin, Twitter, Github, ArrowUp 
+import {
+  Shield,
+  Linkedin, Twitter, Github, ArrowUp
 } from "lucide-react";
 
 export function Footer() {
@@ -39,9 +39,13 @@ export function Footer() {
               The future of professional identity is kinetic. Bridging the gap between digital presence and human connection.
             </p>
             <div className="flex gap-4">
-              {[Linkedin, Twitter, Github].map((Icon, i) => (
-                <Link key={i} href="#" className="p-2.5 rounded-xl bg-white border border-[#E0E4E3] text-[#57595B] hover:text-[#F7B980] hover:border-[#F7B980]/30 transition-all hover:-translate-y-1 shadow-sm">
-                  <Icon className="w-5 h-5" />
+              {[
+                { Icon: Linkedin, href: "https://linkedin.com" },
+                { Icon: Twitter, href: "https://twitter.com" },
+                { Icon: Github, href: "https://github.com" }
+              ].map((item, i) => (
+                <Link key={i} href={item.href} target="_blank" className="p-2.5 rounded-xl bg-white border border-[#E0E4E3] text-[#57595B] hover:text-[#F7B980] hover:border-[#F7B980]/30 transition-all hover:-translate-y-1 shadow-sm">
+                  <item.Icon className="w-5 h-5" />
                 </Link>
               ))}
             </div>
@@ -52,15 +56,16 @@ export function Footer() {
             <h4 className="text-xs font-black uppercase tracking-[0.2em] text-[#57595B]">Platform</h4>
             <ul className="space-y-4">
               {[
-                { label: "Home", href: "#", action: scrollToTop },
-                { label: "How It Works", href: "#how-it-works" },
-                { label: "Features", href: "#features" },
-                { label: "Neural Matching", href: "#" }
+                { label: "Home", href: "/", action: scrollToTop },
+                { label: "How It Works", href: "/#how-it-works" },
+                { label: "Features", href: "/#features" },
+                { label: "Neural Matching", href: "/#features" }
               ].map((link, i) => (
                 <li key={i}>
                   <Link 
                     href={link.href} 
                     onClick={link.action}
+                    suppressHydrationWarning
                     className="text-sm font-semibold text-[#8A8C8E] hover:text-[#57595B] transition-colors"
                   >
                     {link.label}
@@ -75,14 +80,15 @@ export function Footer() {
             <h4 className="text-xs font-black uppercase tracking-[0.2em] text-[#57595B]">Intelligence</h4>
             <ul className="space-y-4">
               {[
-                { label: "Verified Portfolios", href: "#" },
-                { label: "AI Sourcing", href: "#" },
-                { label: "Global Network", href: "#" },
-                { label: "Partner Program", href: "#" }
+                { label: "Verified Portfolios", href: "/portfolios" },
+                { label: "AI Sourcing", href: "/pricing" },
+                { label: "Global Network", href: "/auth/signup" },
+                { label: "Partner Program", href: "/terms" }
               ].map((link, i) => (
                 <li key={i}>
                   <Link 
                     href={link.href} 
+                    suppressHydrationWarning
                     className="text-sm font-semibold text-[#8A8C8E] hover:text-[#57595B] transition-colors"
                   >
                     {link.label}
@@ -113,14 +119,14 @@ export function Footer() {
         {/* Bottom Bar */}
         <div className="pt-12 border-t border-[#E0E4E3] flex flex-col md:flex-row justify-between items-center gap-8">
           <p className="text-xs font-bold text-[#ACBAC4] tracking-wide">
-            © 2024 VidioCV. All rights reserved. Kinetic Identity Systems v1.0.1
+            © 2024 VidioCV. All rights reserved.
           </p>
           <div className="flex items-center gap-10">
-            <Link href="#" className="text-xs font-bold text-[#ACBAC4] hover:text-[#57595B] transition-colors">Privacy Privacy</Link>
-            <Link href="#" className="text-xs font-bold text-[#ACBAC4] hover:text-[#57595B] transition-colors">Terms of Meta</Link>
+            <Link href="/privacy" suppressHydrationWarning className="text-xs font-bold text-[#ACBAC4] hover:text-[#57595B] transition-colors">Privacy Policy</Link>
+            <Link href="/terms" suppressHydrationWarning className="text-xs font-bold text-[#ACBAC4] hover:text-[#57595B] transition-colors">Terms of Service</Link>
             <button 
               onClick={scrollToTop}
-              className="p-3 rounded-2xl bg-[#57595B] text-white hover:bg-[#F7B980] transition-all hover:shadow-xl hover:shadow-[#F7B980]/20 active:scale-95 group"
+              className="p-3 rounded-2xl bg-[#57595B] text-white hover:bg-[#F7B980] transition-all hover:shadow-xl hover:shadow-[#F7B980]/20 active:scale-95 group cursor-pointer"
             >
               <ArrowUp className="w-4 h-4 transition-transform group-hover:-translate-y-1" />
             </button>

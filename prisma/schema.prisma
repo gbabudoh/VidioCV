@@ -19,6 +19,8 @@ model User {
   emailVerified       Boolean      @default(false) @map("email_verified")
   verificationToken   String?      @unique @map("verification_token")
   verificationExpires DateTime?    @map("verification_expires")
+  resetToken          String?      @unique @map("reset_token")
+  resetExpires        DateTime?    @map("reset_expires")
   createdAt           DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt           DateTime     @default(now()) @map("updated_at") @db.Timestamptz(6)
   interviews          Interview[]  @relation("CandidateInterviews")
@@ -28,6 +30,9 @@ model User {
   sentDirectMessages     DirectMessage[] @relation("SentDirectMessages")
   receivedDirectMessages DirectMessage[] @relation("ReceivedDirectMessages")
   applications        Application[]
+  stripeCustomerId    String?      @unique @map("stripe_customer_id")
+  subscriptions       Subscription[]
+  transactions        Transaction[]
 
   @@map("users")
 }
@@ -78,6 +83,7 @@ model CvProfile {
   likesCount             Int?             @default(0) @map("likes_count")
   isPublished            Boolean?         @default(false) @map("is_published")
   isFeatured             Boolean?         @default(false) @map("is_featured")
+  aiMatchScore           Int?             @default(0) @map("ai_match_score")
   metaTitle              String?          @map("meta_title")
   metaDescription        String?          @map("meta_description")
   publishedAt            DateTime?        @map("published_at") @db.Timestamptz(6)
@@ -122,6 +128,7 @@ model CvSkill {
   skillId           String    @map("skill_id") @db.Uuid
   proficiencyLevel  String?   @map("proficiency_level")
   yearsOfExperience Int?      @map("years_of_experience")
+  isVerified        Boolean   @default(false) @map("is_verified")
   createdAt         DateTime? @default(now()) @map("created_at") @db.Timestamptz(6)
   cvProfile         CvProfile @relation(fields: [cvProfileId], references: [id], onDelete: Cascade)
   skill             Skill     @relation(fields: [skillId], references: [id], onDelete: Cascade)
@@ -359,4 +366,58 @@ model DirectMessage {
   @@index([senderId], map: "idx_direct_msg_sender")
   @@index([receiverId], map: "idx_direct_msg_receiver")
   @@map("direct_messages")
+}
+
+model Subscription {
+  id                   String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  userId               String    @map("user_id") @db.Uuid
+  stripeSubscriptionId String    @unique @map("stripe_subscription_id")
+  stripePriceId        String    @map("stripe_price_id")
+  stripeCustomerId     String    @map("stripe_customer_id")
+  status               String
+  currentPeriodStart   DateTime  @map("current_period_start")
+  currentPeriodEnd     DateTime  @map("current_period_end")
+  cancelAtPeriodEnd    Boolean   @default(false) @map("cancel_at_period_end")
+  createdAt            DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt            DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  user                 User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("subscriptions")
+}
+
+model Transaction {
+  id               String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  userId           String   @map("user_id") @db.Uuid
+  amount           Decimal  @db.Decimal(10, 2)
+  currency         String   @default("USD")
+  status           String
+  stripePaymentId  String   @unique @map("stripe_payment_id")
+  description      String?
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("transactions")
+}
+model SiteConfig {
+  id        String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  key       String   @unique
+  value     Json
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@map("site_config")
+}
+
+model AuditLog {
+  id          String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  adminId     String   @map("admin_id") @db.Uuid
+  action      String
+  entityType  String   @map("entity_type")
+  entityId    String?  @map("entity_id")
+  details     Json?
+  ipAddress   String?  @map("ip_address")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([adminId], map: "idx_audit_log_admin")
+  @@index([createdAt(sort: Desc)], map: "idx_audit_log_date")
+  @@map("audit_logs")
 }

@@ -16,6 +16,7 @@ export interface MatchCandidate {
   yearsOfExperience?: number;
   remotePreference?: string;
   location?: string;
+  isVerified?: boolean;
 }
 
 export interface MatchJob {
@@ -58,13 +59,18 @@ export class MatchEngine {
     const experienceScore = this.scoreExperience(candidate.yearsOfExperience || 0, job.title) ? 100 : 50;
 
     // 🧠 ML: Use Brain.js Neural Network for Final Aggregation
-    const finalScore = await neuralAggregator.predict({
+    let finalScore = await neuralAggregator.predict({
       skillScore: skillScore.score,
       titleScore: semanticTitleScore,
       locationScore: locationScore,
       remoteScore: remoteScore,
       experienceScore: experienceScore
     });
+
+    // 🚀 Intelligence Bonus: Add a fixed boost for AI-Verified candidates
+    if (candidate.isVerified) {
+      finalScore = Math.min(finalScore + 10, 100);
+    }
 
     return {
       score: finalScore,

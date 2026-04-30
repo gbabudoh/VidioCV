@@ -7,7 +7,7 @@ import bcrypt from "bcryptjs";
 const loginSchema = z.object({
   email: z.string().email(),
   password: z.string().min(6),
-  role: z.enum(["candidate", "employer"]).optional(),
+  role: z.enum(["candidate", "employer", "admin", "super_admin"]).optional(),
 });
 
 export async function POST(request: NextRequest) {
@@ -19,7 +19,7 @@ export async function POST(request: NextRequest) {
       where: { email },
     });
 
-    if (!user) {
+    if (!user || !user.password) {
       return NextResponse.json(
         { success: false, message: "Invalid email or password" },
         { status: 401 }
@@ -38,25 +38,35 @@ export async function POST(request: NextRequest) {
     // Bypass verification ONLY for specific demo accounts
     const isDemoUser = user.email === "employer@demo.com" || user.email === "candidate@demo.com";
 
-    // @ts-expect-error - Prisma client needs regeneration to include emailVerified
-    if (!user.emailVerified && !isDemoUser) {
+    if (!(user as unknown as { emailVerified: boolean }).emailVerified && !isDemoUser) {
       return NextResponse.json(
         { success: false, message: "Please verify your email before logging in. Check your inbox for the verification link." },
         { status: 403 }
       );
     }
 
-    if (role && user.role !== role) {
-      return NextResponse.json(
-        { success: false, message: `This account is not registered as ${role === "employer" ? "an employer" : "a candidate"}. Please use the correct login.` },
-        { status: 403 }
-      );
+    // Role check logic
+    if (role) {
+      const isAdminLogin = role === "admin" || role === "super_admin";
+      const userIsAdmin = user.role === "admin" || user.role === "super_admin";
+      
+      if (isAdminLogin && !userIsAdmin) {
+        return NextResponse.json({ success: false, message: "Unauthorized administrative access" }, { status: 403 });
+      }
+      
+      if (!isAdminLogin && user.role !== role) {
+        return NextResponse.json(
+          { success: false, message: `This account is not registered as ${role === "employer" ? "an employer" : "a candidate"}. Please use the correct login.` },
+          { status: 403 }
+        );
+      }
     }
 
     const token = generateToken({
       userId: user.id,
       email: user.email,
-      role: user.role as "candidate" | "employer" | "admin",
+      name: user.name,
+      role: user.role as "candidate" | "employer" | "admin" | "super_admin",
     });
 
     const response = NextResponse.json(

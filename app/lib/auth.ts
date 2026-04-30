@@ -12,7 +12,8 @@ if (process.env.JWT_SECRET) {
 export interface TokenPayload {
   userId: string;
   email: string;
-  role: "candidate" | "employer" | "admin";
+  name: string;
+  role: "candidate" | "employer" | "admin" | "super_admin";
 }
 
 export function generateToken(payload: TokenPayload): string {

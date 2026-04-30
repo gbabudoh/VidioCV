@@ -237,8 +237,8 @@ function LoginContent() {
                   Password
                 </label>
                 <Link
-                  href="#"
-                  className="text-xs font-semibold transition-colors"
+                  href="/auth/forgot-password"
+                  className="text-xs font-semibold transition-colors cursor-pointer"
                   style={{ color: "#F7B980" }}
                 >
                   Forgot password?

@@ -96,6 +96,9 @@ export function Navbar() {
           <a href="#features" className="text-sm font-medium transition-colors" style={{ color: "#ACBAC4" }} onMouseOver={e => (e.currentTarget.style.color = "#57595B")} onMouseOut={e => (e.currentTarget.style.color = "#ACBAC4")}>
             Features
           </a>
+          <Link href="/pricing" className="text-sm font-medium transition-colors" style={{ color: "#ACBAC4" }} onMouseOver={e => (e.currentTarget.style.color = "#57595B")} onMouseOut={e => (e.currentTarget.style.color = "#ACBAC4")}>
+            Pricing
+          </Link>
         </div>
 
         {/* Desktop Auth */}
@@ -167,6 +170,9 @@ export function Navbar() {
             <a href="#features" onClick={() => setMobileMenuOpen(false)} className="px-4 py-3 text-sm font-medium rounded-xl transition-all" style={{ color: "#ACBAC4" }}>
               Features
             </a>
+            <Link href="/pricing" onClick={() => setMobileMenuOpen(false)} className="px-4 py-3 text-sm font-medium rounded-xl transition-all" style={{ color: "#ACBAC4" }}>
+              Pricing
+            </Link>
             <div className="h-px my-1" style={{ background: "#E8ECED" }} />
             {isLoggedIn ? (
               <Link href={dashboardUrl} onClick={() => setMobileMenuOpen(false)} className="px-4 py-3 text-center rounded-xl font-semibold text-sm" style={{ background: "linear-gradient(135deg, #F7B980, #F0A060)", color: "#57595B" }}>
