@@ -1,0 +1,164 @@
+{
+  "Index": {
+    "title": "VidioCV - Transform Your Recruitment",
+    "description": "VidioCV: A revolutionary platform that replaces static resumes with dynamic, AI-enhanced video profiles for modern recruitment.",
+    "nav": {
+      "home": "Home",
+      "howItWorks": "How It Works",
+      "features": "Features",
+      "pricing": "Pricing",
+      "signIn": "Sign In",
+      "getStarted": "Get Started",
+      "dashboard": "Dashboard"
+    },
+    "hero": {
+      "badge": "Human Talent, AI-Verified",
+      "title_part1": "Beyond the",
+      "title_part2": "Static Resume",
+      "subtitle": "Stop sending paper. Start showing your potential with AI-verified video portfolios that capture the human signal.",
+      "getStarted": "Launch Video CV",
+      "recruitTalent": "Recruit Talent",
+      "stats": "10k+ Kinetic Profiles",
+      "substats": "Join 500+ Hiring Partners",
+      "neuralMatch": "Neural Match",
+      "fitScore": "98.4% Fit",
+      "aiVerified": "AI Verified",
+      "topTalent": "Top 2% Talent"
+    },
+    "workflow": {
+      "title": "The Kinetic Workflow",
+      "subtitle": "From digital signal to human connection in three strategic phases.",
+      "step1": {
+        "title": "Record Identity",
+        "desc": "Use our zero-lag studio to capture your professional narration."
+      },
+      "step2": {
+        "title": "AI-Verify",
+        "desc": "Our intelligence engine validates skills and optimizes your match score."
+      },
+      "step3": {
+        "title": "Global Match",
+        "desc": "Unlock high-fidelity inquiries from elite hiring partners."
+      }
+    },
+    "features": {
+      "title": "High Fidelity Sourcing",
+      "description": "Experience the fusion of human personality with predictive analysis. Our engine handles the complexity so you can focus on connection.",
+      "items": {
+        "inquiries": {
+          "title": "Smart Inquiries",
+          "desc": "Recruiters can secure introductions without the overhead of immediate scheduling."
+        },
+        "watchboard": {
+          "title": "CV Watchboard",
+          "desc": "Watch high-definition video portfolios directly from your workspace."
+        },
+        "matching": {
+          "title": "Neural Matching",
+          "desc": "Our AI prioritizes candidates based on true professional chemistry."
+        },
+        "mesh": {
+          "title": "Global Mesh",
+          "desc": "Sync your professional identity with hiring partners worldwide."
+        }
+      }
+    },
+    "cta": {
+      "title": "Ready to evolve your",
+      "subtitle": "Recruitment Journey?",
+      "createFuture": "Create Your Future",
+      "scaleTeam": "Scale Your Team",
+      "goDashboard": "Go to Your Dashboard"
+    }
+  },
+  "Footer": {
+    "tagline": "The future of professional identity is kinetic. Bridging the gap between digital presence and human connection.",
+    "sections": {
+      "platform": {
+        "title": "Platform",
+        "links": {
+          "home": "Home",
+          "howItWorks": "How It Works",
+          "features": "Features",
+          "matching": "Neural Matching"
+        }
+      },
+      "intelligence": {
+        "title": "Intelligence",
+        "links": {
+          "portfolios": "Verified Portfolios",
+          "sourcing": "AI Sourcing",
+          "network": "Global Network",
+          "partner": "Partner Program"
+        }
+      }
+    },
+    "legal": {
+      "encryption": "All video portfolios and neural match data are protected by bank-level encryption.",
+      "trust": "Encrypted Trust",
+      "online": "Systems Online",
+      "privacy": "Privacy Policy",
+      "terms": "Terms of Service",
+      "rights": "All rights reserved."
+    }
+  },
+  "Dashboard": {
+    "title": "Recruiter Workspace",
+    "biasShield": "Bias Shield",
+    "identityFilter": "Identity Filter",
+    "anonymize": "Anonymize Identity"
+  },
+  "Legal": {
+    "cookie": {
+      "title": "Cookie Preference",
+      "description": "We use cookies to synchronize your recruitment experience and optimize our Neural Match AI. Read our {privacyLink} for full details.",
+      "privacyLink": "Privacy Policy",
+      "decline": "Decline",
+      "accept": "Accept All",
+      "gdprBadge": "GDPR Ready"
+    }
+  },
+  "Candidate": {
+    "title": "Talent Command Center",
+    "record": "Record VidioCV",
+    "myJobs": "My Applications"
+  },
+  "Auth": {
+    "login": {
+      "title": "Welcome Back",
+      "subtitle": "Sign in to your account",
+      "verified": "Account verified successfully! You can now sign in.",
+      "candidate": "Candidate",
+      "employer": "Employer",
+      "email": "Email Address",
+      "emailPlaceholder": "you@example.com",
+      "password": "Password",
+      "passwordPlaceholder": "••••••••",
+      "forgotPassword": "Forgot password?",
+      "signIn": "Sign In",
+      "orContinue": "Or continue with",
+      "noAccount": "Don't have an account?",
+      "signUp": "Sign up"
+    },
+    "errors": {
+      "emailRequired": "Email is required",
+      "passwordRequired": "Password is required",
+      "invalidCredentials": "Invalid email or password",
+      "generic": "An error occurred. Please try again.",
+      "googleFailed": "Google authentication failed",
+      "network": "A network error occurred. Please try again."
+    }
+  },
+  "Common": {
+    "save": "Save Changes",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "loading": "Syncing...",
+    "languages": {
+      "en": "English",
+      "fr": "French",
+      "es": "Spanish",
+      "de": "German"
+    }
+  }
+}

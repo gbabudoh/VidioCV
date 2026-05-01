@@ -1,22 +1,43 @@
-import { NextResponse } from 'next/server'
-import type { NextRequest } from 'next/server'
+import createMiddleware from 'next-intl/middleware';
+import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
+
+const locales = ['en', 'fr', 'es', 'de'];
+const defaultLocale = 'en';
+
+const intlMiddleware = createMiddleware({
+  locales,
+  defaultLocale,
+  localePrefix: 'always' // Always show locale in URL for SEO consistency
+});
 
 export function middleware(request: NextRequest) {
-  const token = request.cookies.get('auth_token')?.value
-  const { pathname } = request.nextUrl
+  const { pathname } = request.nextUrl;
 
-  // Define static asset and API exclusions
-  const isStaticAsset = pathname.match(/\.(png|jpg|jpeg|gif|svg|ico|js|css|woff|woff2|ttf|eot)$/) || pathname.startsWith('/_next')
-  const isApiRoute = pathname.startsWith('/api')
+  // 1. Skip static assets and APIs
+  const isStaticAsset = pathname.match(/\.(png|jpg|jpeg|gif|svg|ico|js|css|woff|woff2|ttf|eot)$/) || pathname.startsWith('/_next');
+  const isApiRoute = pathname.startsWith('/api');
 
   if (isStaticAsset || isApiRoute) {
-    return NextResponse.next()
+    return NextResponse.next();
   }
 
-  // Handle Admin Auth Logic
+  // 2. Run next-intl middleware
+  const response = intlMiddleware(request);
+
+  // 3. Handle Auth & Routing Logic (aware of locale prefix)
+  const token = request.cookies.get('auth_token')?.value;
+
+  // Helper to check path regardless of locale
+  const isPath = (target: string) => {
+    return locales.some(locale => pathname === `/${locale}${target}` || pathname === `/${locale}${target}/`);
+  };
+  const startsWithPath = (target: string) => {
+    return locales.some(locale => pathname.startsWith(`/${locale}${target}`));
+  };
+
   if (token) {
     try {
-      // Decode JWT payload (Base64URL)
       const base64Url = token.split('.')[1];
       const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
       const payload = JSON.parse(atob(base64));
@@ -26,57 +47,52 @@ export function middleware(request: NextRequest) {
       const isCandidate = payload.role === 'candidate';
 
       if (isAdmin) {
-        // 1. If trying to access login page while logged in, go to dashboard
-        if (pathname === '/admin/login') {
-          return NextResponse.redirect(new URL('/admin', request.url));
+        if (isPath('/admin/login')) {
+          return NextResponse.redirect(new URL(`/${defaultLocale}/admin`, request.url));
         }
-
-        // 2. "Lock" admin in the admin region: if outside /admin, bounce back
-        if (!pathname.startsWith('/admin')) {
-          return NextResponse.redirect(new URL('/admin', request.url));
+        if (!startsWithPath('/admin')) {
+          return NextResponse.redirect(new URL(`/${defaultLocale}/admin`, request.url));
         }
       }
 
       if (isEmployer) {
-        // "Lock" employer in the dashboard region: if outside /dashboard/employer, bounce back
-        // ONLY allow the homepage (/) as requested.
-        if (!pathname.startsWith('/dashboard/employer') && pathname !== '/') {
-          return NextResponse.redirect(new URL('/dashboard/employer', request.url));
+        if (!startsWithPath('/dashboard/employer') && !isPath('')) {
+          return NextResponse.redirect(new URL(`/${defaultLocale}/dashboard/employer`, request.url));
         }
       }
 
       if (isCandidate) {
-        // "Lock" candidate in the dashboard region: if outside /dashboard/candidate, bounce back
-        // ONLY allow the homepage (/) as requested.
-        if (!pathname.startsWith('/dashboard/candidate') && pathname !== '/') {
-          return NextResponse.redirect(new URL('/dashboard/candidate', request.url));
+        if (!startsWithPath('/dashboard/candidate') && !isPath('')) {
+          return NextResponse.redirect(new URL(`/${defaultLocale}/dashboard/candidate`, request.url));
         }
       }
     } catch {
-      // If token is malformed, clear it and allow next
-      const response = NextResponse.next();
       response.cookies.delete('auth_token');
       return response;
     }
   } else {
-    // No token: Protect /admin routes (except login)
-    if (pathname.startsWith('/admin') && pathname !== '/admin/login') {
-      return NextResponse.redirect(new URL('/admin/login', request.url));
+    if (startsWithPath('/admin') && !isPath('/admin/login')) {
+      return NextResponse.redirect(new URL(`/${defaultLocale}/admin/login`, request.url));
     }
   }
 
-  return NextResponse.next()
+  return response;
 }
 
 export const config = {
   matcher: [
-    /*
-     * Match all request paths except for the ones starting with:
-     * - api (handled internally)
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     */
-    '/((?!api|_next/static|_next/image|favicon.ico).*)',
-  ],
-}
+    // Enable a redirect to a matching locale at the root
+    '/',
+
+    // Set a cookie to remember the last locale for users who visit directly
+    '/(fr|en|es|de)/:path*',
+
+    // Match all pathnames except for
+    // - /api
+    // - /_next
+    // - /_vercel
+    // - /admin (if not prefixed)
+    // - static files
+    '/((?!api|_next|_vercel|.*\\..*).*)'
+  ]
+};

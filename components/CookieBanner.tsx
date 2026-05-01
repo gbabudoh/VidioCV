@@ -3,9 +3,11 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Cookie, Check, ShieldCheck } from "lucide-react";
-import Link from "next/link";
+import { Link } from "@/i18n/navigation";
+import { useTranslations } from "next-intl";
 
 export default function CookieBanner() {
+  const t = useTranslations("Legal.cookie");
   const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
@@ -46,10 +48,15 @@ export default function CookieBanner() {
                 <Cookie className="w-6 h-6" />
               </div>
               <div className="space-y-1">
-                <h3 className="text-lg font-black text-[#57595B]">Cookie Preference</h3>
+                <h3 className="text-lg font-black text-[#57595B]">{t('title')}</h3>
                 <p className="text-sm font-medium text-[#8A8C8E] leading-relaxed">
-                  We use cookies to synchronize your recruitment experience and optimize our Neural Match AI. 
-                  Read our <Link href="/privacy" className="text-[#F7B980] hover:underline">Privacy Policy</Link> for full details.
+                  {t.rich('description', {
+                    privacyLink: (chunks) => (
+                      <Link href="/privacy" className="text-[#F7B980] hover:underline">
+                        {chunks}
+                      </Link>
+                    )
+                  })}
                 </p>
               </div>
             </div>
@@ -60,21 +67,21 @@ export default function CookieBanner() {
                 onClick={handleDecline}
                 className="flex-1 md:flex-none px-6 py-3.5 rounded-xl border border-[#E0E4E3] text-[#ACBAC4] hover:text-[#57595B] hover:border-[#ACBAC4] font-bold text-xs uppercase tracking-widest transition-all cursor-pointer"
               >
-                Decline
+                {t('decline')}
               </button>
               <button
                 onClick={handleAccept}
                 className="flex-1 md:flex-none px-8 py-3.5 rounded-xl bg-[#334155] hover:bg-[#454749] text-white font-black text-xs uppercase tracking-[0.15em] transition-all shadow-xl shadow-[#334155]/10 active:scale-95 flex items-center justify-center gap-2 cursor-pointer"
               >
                 <Check className="w-4 h-4" />
-                Accept All
+                {t('accept')}
               </button>
             </div>
 
             {/* GDPR Badge (Desktop Only) */}
             <div className="hidden lg:flex flex-col items-center gap-1 border-l border-[#E0E4E3] pl-8 shrink-0">
               <ShieldCheck className="w-6 h-6 text-emerald-500" />
-              <span className="text-[10px] font-black uppercase tracking-tighter text-[#ACBAC4]">GDPR Ready</span>
+              <span className="text-[10px] font-black uppercase tracking-tighter text-[#ACBAC4]">{t('gdprBadge')}</span>
             </div>
 
           </div>

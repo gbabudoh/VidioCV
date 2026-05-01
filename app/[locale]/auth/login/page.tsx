@@ -2,13 +2,16 @@
 
 import React, { useState, useEffect, Suspense } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import Link from "next/link";
 import Image from "next/image";
 import { Mail, Lock, ArrowRight, CheckCircle2 } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { GoogleLoginButton } from "@/app/components/common/GoogleLoginButton";
+import { useTranslations } from "next-intl";
+import { Link } from "@/i18n/navigation";
 
 function LoginContent() {
+  const t = useTranslations("Auth.login");
+  const errT = useTranslations("Auth.errors");
   const searchParams = useSearchParams();
   const [formData, setFormData] = useState({ email: "", password: "" });
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -30,8 +33,8 @@ function LoginContent() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const newErrors: Record<string, string> = {};
-    if (!formData.email) newErrors.email = "Email is required";
-    if (!formData.password) newErrors.password = "Password is required";
+    if (!formData.email) newErrors.email = errT("emailRequired");
+    if (!formData.password) newErrors.password = errT("passwordRequired");
     if (Object.keys(newErrors).length > 0) { setErrors(newErrors); return; }
 
     setIsLoading(true);
@@ -47,10 +50,10 @@ function LoginContent() {
         localStorage.setItem("userRole", "candidate");
         window.location.href = "/dashboard/candidate";
       } else {
-        setErrors({ submit: data.message || "Invalid email or password" });
+        setErrors({ submit: data.message || errT("invalidCredentials") });
       }
     } catch {
-      setErrors({ submit: "An error occurred. Please try again." });
+      setErrors({ submit: errT("generic") });
     } finally {
       setIsLoading(false);
     }
@@ -71,10 +74,10 @@ function LoginContent() {
         localStorage.setItem("userRole", "candidate");
         window.location.href = "/dashboard/candidate";
       } else {
-        setErrors({ submit: data.message || "Google authentication failed" });
+        setErrors({ submit: data.message || errT("googleFailed") });
       }
     } catch {
-      setErrors({ submit: "A network error occurred. Please try again." });
+      setErrors({ submit: errT("network") });
     } finally {
       setIsLoading(false);
     }
@@ -141,10 +144,10 @@ function LoginContent() {
           {/* Header */}
           <div className="text-center mb-7">
             <h2 className="text-2xl font-bold tracking-tight" style={{ color: "#57595B" }}>
-              Welcome Back
+              {t('title')}
             </h2>
             <p className="mt-1.5 text-sm" style={{ color: "#ACBAC4" }}>
-              Sign in to your account
+              {t('subtitle')}
             </p>
           </div>
 
@@ -158,7 +161,7 @@ function LoginContent() {
                 style={{ background: "rgba(34,197,94,0.1)", border: "1px solid rgba(34,197,94,0.2)" }}
               >
                 <CheckCircle2 className="w-5 h-5 text-green-600 shrink-0" />
-                <p className="text-sm font-medium text-green-700">Account verified successfully! You can now sign in.</p>
+                <p className="text-sm font-medium text-green-700">{t('verified')}</p>
               </motion.div>
             )}
           </AnimatePresence>
@@ -177,14 +180,14 @@ function LoginContent() {
                 boxShadow: "0 2px 10px rgba(247,185,128,0.28)",
               }}
             >
-              Candidate
+              {t('candidate')}
             </Link>
             <Link
               href="/auth/employer/login"
               className="flex-1 text-center py-2.5 rounded-lg text-sm font-medium transition-all"
               style={{ color: "#ACBAC4" }}
             >
-              Employer
+              {t('employer')}
             </Link>
           </div>
 
@@ -194,7 +197,7 @@ function LoginContent() {
             {/* Email */}
             <div className="space-y-1.5">
               <label className="text-xs font-semibold tracking-wide uppercase ml-0.5" style={{ color: "#8A8C8E" }}>
-                Email Address
+                {t('email')}
               </label>
               <div className="relative group">
                 <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none transition-colors" style={{ color: "#BFC6C4" }}>
@@ -205,7 +208,7 @@ function LoginContent() {
                   type="email"
                   value={formData.email}
                   onChange={handleChange}
-                  placeholder="you@example.com"
+                  placeholder={t('emailPlaceholder')}
                   className="block w-full pl-11 pr-4 py-3.5 rounded-xl text-sm outline-none transition-all"
                   style={{
                     background: errors.email ? "rgba(254,242,242,0.8)" : "rgba(255,255,255,0.7)",
@@ -234,14 +237,14 @@ function LoginContent() {
             <div className="space-y-1.5">
               <div className="flex items-center justify-between ml-0.5">
                 <label className="text-xs font-semibold tracking-wide uppercase" style={{ color: "#8A8C8E" }}>
-                  Password
+                  {t('password')}
                 </label>
                 <Link
                   href="/auth/forgot-password"
                   className="text-xs font-semibold transition-colors cursor-pointer"
                   style={{ color: "#F7B980" }}
                 >
-                  Forgot password?
+                  {t('forgotPassword')}
                 </Link>
               </div>
               <div className="relative group">
@@ -253,7 +256,7 @@ function LoginContent() {
                   type="password"
                   value={formData.password}
                   onChange={handleChange}
-                  placeholder="••••••••"
+                  placeholder={t('passwordPlaceholder')}
                   className="block w-full pl-11 pr-4 py-3.5 rounded-xl text-sm outline-none transition-all"
                   style={{
                     background: errors.password ? "rgba(254,242,242,0.8)" : "rgba(255,255,255,0.7)",
@@ -310,7 +313,7 @@ function LoginContent() {
                 <div className="w-5 h-5 border-2 rounded-full animate-spin" style={{ borderColor: "rgba(87,89,91,0.25)", borderTopColor: "#57595B" }} />
               ) : (
                 <>
-                  Sign In
+                  {t('signIn')}
                   <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                 </>
               )}
@@ -322,7 +325,7 @@ function LoginContent() {
                 <div className="w-full border-t border-[#E8ECED]" />
               </div>
               <div className="relative flex justify-center text-xs uppercase tracking-widest">
-                <span className="bg-white/80 backdrop-blur-md px-4 text-[#ACBAC4] font-black">Or continue with</span>
+                <span className="bg-white/80 backdrop-blur-md px-4 text-[#ACBAC4] font-black">{t('orContinue')}</span>
               </div>
             </div>
 
@@ -341,13 +344,13 @@ function LoginContent() {
             style={{ borderTop: "1px solid #E8ECED" }}
           >
             <p className="text-sm" style={{ color: "#ACBAC4" }}>
-              Don&apos;t have an account?{" "}
+              {t('noAccount')}{" "}
               <Link
                 href="/auth/signup"
                 className="font-bold transition-colors"
                 style={{ color: "#F7B980" }}
               >
-                Sign up
+                {t('signUp')}
               </Link>
             </p>
           </div>

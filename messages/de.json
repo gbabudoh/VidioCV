@@ -1,0 +1,143 @@
+{
+  "Index": {
+    "title": "VidioCV - Transformieren Sie Ihre Personalbeschaffung",
+    "description": "VidioCV: Eine revolutionäre Plattform, die statische Lebensläufe durch dynamische, KI-gestützte Videoprofile ersetzt.",
+    "nav": {
+      "home": "Home",
+      "howItWorks": "So funktioniert's",
+      "features": "Funktionen",
+      "pricing": "Preise",
+      "signIn": "Anmelden",
+      "getStarted": "Loslegen",
+      "dashboard": "Dashboard"
+    },
+    "hero": {
+      "badge": "Menschliches Talent, KI-verifiziert",
+      "title_part1": "Jenseits des",
+      "title_part2": "Statischen Lebenslaufs",
+      "subtitle": "Hören Sie auf, Papier zu schicken. Zeigen Sie Ihr Potenzial mit KI-verifizierten Videoportfolios, die das menschliche Signal einfangen.",
+      "getStarted": "Video CV starten",
+      "recruitTalent": "Talente anwerben",
+      "stats": "Über 10k kinetische Profile",
+      "substats": "Schließen Sie sich über 500 Partnern an",
+      "neuralMatch": "Neural Match",
+      "fitScore": "98.4% Übereinstimmung",
+      "aiVerified": "KI-verifiziert",
+      "topTalent": "Top 2% Talent"
+    },
+    "workflow": {
+      "title": "Der kinetische Workflow",
+      "subtitle": "Vom digitalen Signal zur menschlichen Verbindung in drei strategischen Phasen.",
+      "step1": {
+        "title": "Identität aufzeichnen",
+        "desc": "Nutzen Sie unser Studio ohne Verzögerung, um Ihre professionelle Erzählung festzuhalten."
+      },
+      "step2": {
+        "title": "KI-Verifizierung",
+        "desc": "Unsere Intelligenz-Engine validiert Fähigkeiten und optimiert Ihren Match-Score."
+      },
+      "step3": {
+        "title": "Globaler Match",
+        "desc": "Schalten Sie hochkarätige Anfragen von erstklassigen Einstellungspartnern frei."
+      }
+    },
+    "features": {
+      "title": "High Fidelity Sourcing",
+      "description": "Erleben Sie die Verschmelzung von menschlicher Persönlichkeit mit prädiktiver Analyse. Unsere Engine übernimmt die Komplexität.",
+      "items": {
+        "inquiries": {
+          "title": "Smarte Anfragen",
+          "desc": "Recruiter können Vorstellungen ohne den Aufwand einer sofortigen Planung sichern."
+        },
+        "watchboard": {
+          "title": "CV Watchboard",
+          "desc": "Sehen Sie sich hochauflösende Videoportfolios direkt in Ihrem Arbeitsbereich an."
+        },
+        "matching": {
+          "title": "Neural Matching",
+          "desc": "Unsere KI priorisiert Kandidaten basierend auf echter beruflicher Chemie."
+        },
+        "mesh": {
+          "title": "Globales Netzwerk",
+          "desc": "Synchronisieren Sie Ihre professionelle Identität mit Partnern weltweit."
+        }
+      }
+    },
+    "cta": {
+      "title": "Bereit zur Evolution Ihrer",
+      "subtitle": "Recruiting-Reise?",
+      "createFuture": "Zukunft gestalten",
+      "scaleTeam": "Team skalieren",
+      "goDashboard": "Zum Dashboard"
+    }
+  },
+  "Footer": {
+    "tagline": "Die Zukunft der beruflichen Identität ist kinetisch. Die Lücke zwischen digitaler Präsenz und menschlicher Verbindung schließen.",
+    "sections": {
+      "platform": {
+        "title": "Plattform",
+        "links": {
+          "home": "Home",
+          "howItWorks": "So funktioniert's",
+          "features": "Funktionen",
+          "matching": "Neural Matching"
+        }
+      },
+      "intelligence": {
+        "title": "Intelligenz",
+        "links": {
+          "portfolios": "Verifizierte Portfolios",
+          "sourcing": "KI-Sourcing",
+          "network": "Globales Netzwerk",
+          "partner": "Partnerprogramm"
+        }
+      }
+    },
+    "legal": {
+      "encryption": "Alle Videoportfolios und Neural-Match-Daten sind durch bankenübliche Verschlüsselung geschützt.",
+      "trust": "Verschlüsseltes Vertrauen",
+      "online": "Systeme online",
+      "privacy": "Datenschutz",
+      "terms": "Nutzungsbedingungen",
+      "rights": "Alle Rechte vorbehalten."
+    }
+  },
+  "Auth": {
+    "login": {
+      "title": "Willkommen zurück",
+      "subtitle": "Melden Sie sich bei Ihrem Konto an",
+      "verified": "Konto erfolgreich verifiziert! Sie können sich jetzt anmelden.",
+      "candidate": "Kandidat",
+      "employer": "Arbeitgeber",
+      "email": "E-Mail-Adresse",
+      "emailPlaceholder": "sie@beispiel.de",
+      "password": "Passwort",
+      "passwordPlaceholder": "••••••••",
+      "forgotPassword": "Passwort vergessen?",
+      "signIn": "Anmelden",
+      "orContinue": "Oder fortfahren mit",
+      "noAccount": "Sie haben noch kein Konto?",
+      "signUp": "Registrieren"
+    },
+    "errors": {
+      "emailRequired": "E-Mail ist erforderlich",
+      "passwordRequired": "Passwort ist erforderlich",
+      "invalidCredentials": "Ungültige E-Mail oder Passwort",
+      "generic": "Ein Fehler ist aufgetreten. Bitte versuchen Sie es erneut.",
+      "googleFailed": "Google-Authentifizierung fehlgeschlagen",
+      "network": "Ein Netzwerkfehler ist aufgetreten. Bitte versuchen Sie es erneut."
+    }
+  },
+  "Common": {
+    "save": "Speichern",
+    "cancel": "Abbrechen",
+    "delete": "Löschen",
+    "loading": "Synchronisierung...",
+    "languages": {
+      "en": "Englisch",
+      "fr": "Französisch",
+      "es": "Spanisch",
+      "de": "Deutsch"
+    }
+  }
+}

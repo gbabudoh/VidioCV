@@ -1,13 +1,16 @@
 "use client";
 
-import Link from "next/link";
 import Image from "next/image";
 import {
   Shield,
   Linkedin, Twitter, Github, ArrowUp
 } from "lucide-react";
+import { useTranslations } from "next-intl";
+import { Link } from "@/i18n/navigation";
 
 export function Footer() {
+  const t = useTranslations("Footer");
+  
   const scrollToTop = () => {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
@@ -36,7 +39,7 @@ export function Footer() {
               />
             </Link>
             <p className="text-[#8A8C8E] font-medium leading-relaxed text-sm">
-              The future of professional identity is kinetic. Bridging the gap between digital presence and human connection.
+              {t('tagline')}
             </p>
             <div className="flex gap-4">
               {[
@@ -53,19 +56,18 @@ export function Footer() {
 
           {/* Platform Links */}
           <div className="space-y-6">
-            <h4 className="text-xs font-black uppercase tracking-[0.2em] text-[#57595B]">Platform</h4>
+            <h4 className="text-xs font-black uppercase tracking-[0.2em] text-[#57595B]">{t('sections.platform.title')}</h4>
             <ul className="space-y-4">
               {[
-                { label: "Home", href: "/", action: scrollToTop },
-                { label: "How It Works", href: "/#how-it-works" },
-                { label: "Features", href: "/#features" },
-                { label: "Neural Matching", href: "/#features" }
+                { label: t('sections.platform.links.home'), href: "/", action: scrollToTop },
+                { label: t('sections.platform.links.howItWorks'), href: "/#how-it-works" },
+                { label: t('sections.platform.links.features'), href: "/#features" },
+                { label: t('sections.platform.links.matching'), href: "/#features" }
               ].map((link, i) => (
                 <li key={i}>
                   <Link 
                     href={link.href} 
                     onClick={link.action}
-                    suppressHydrationWarning
                     className="text-sm font-semibold text-[#8A8C8E] hover:text-[#57595B] transition-colors"
                   >
                     {link.label}
@@ -77,18 +79,17 @@ export function Footer() {
 
           {/* Intelligence Links */}
           <div className="space-y-6">
-            <h4 className="text-xs font-black uppercase tracking-[0.2em] text-[#57595B]">Intelligence</h4>
+            <h4 className="text-xs font-black uppercase tracking-[0.2em] text-[#57595B]">{t('sections.intelligence.title')}</h4>
             <ul className="space-y-4">
               {[
-                { label: "Verified Portfolios", href: "/portfolios" },
-                { label: "AI Sourcing", href: "/pricing" },
-                { label: "Global Network", href: "/auth/signup" },
-                { label: "Partner Program", href: "/terms" }
+                { label: t('sections.intelligence.links.portfolios'), href: "/portfolios" },
+                { label: t('sections.intelligence.links.sourcing'), href: "/pricing" },
+                { label: t('sections.intelligence.links.network'), href: "/auth/signup" },
+                { label: t('sections.intelligence.links.partner'), href: "/terms" }
               ].map((link, i) => (
                 <li key={i}>
                   <Link 
                     href={link.href} 
-                    suppressHydrationWarning
                     className="text-sm font-semibold text-[#8A8C8E] hover:text-[#57595B] transition-colors"
                   >
                     {link.label}
@@ -103,15 +104,15 @@ export function Footer() {
             <div className="p-6 rounded-[32px] bg-white/70 backdrop-blur-3xl border border-white/60 shadow-xl shadow-[#F7B980]/5 relative group">
               <div className="flex items-center gap-4 mb-4">
                 <Shield className="w-5 h-5 text-[#F7B980]" />
-                <span className="text-[10px] font-black uppercase tracking-widest text-[#57595B]">Encrypted Trust</span>
+                <span className="text-[10px] font-black uppercase tracking-widest text-[#57595B]">{t('legal.trust')}</span>
               </div>
               <p className="text-xs font-bold text-[#8A8C8E] leading-relaxed">
-                All video portfolios and neural match data are protected by bank-level encryption.
+                {t('legal.encryption')}
               </p>
             </div>
             <div className="flex items-center gap-3 px-4 py-2 bg-emerald-50 text-emerald-600 rounded-full border border-emerald-100 w-fit">
               <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-              <span className="text-[10px] font-black uppercase tracking-widest leading-none pt-0.5">Systems Online</span>
+              <span className="text-[10px] font-black uppercase tracking-widest leading-none pt-0.5">{t('legal.online')}</span>
             </div>
           </div>
         </div>
@@ -119,11 +120,11 @@ export function Footer() {
         {/* Bottom Bar */}
         <div className="pt-12 border-t border-[#E0E4E3] flex flex-col md:flex-row justify-between items-center gap-8">
           <p className="text-xs font-bold text-[#ACBAC4] tracking-wide">
-            © 2024 VidioCV. All rights reserved.
+            © 2024 VidioCV. {t('legal.rights')}
           </p>
           <div className="flex items-center gap-10">
-            <Link href="/privacy" suppressHydrationWarning className="text-xs font-bold text-[#ACBAC4] hover:text-[#57595B] transition-colors">Privacy Policy</Link>
-            <Link href="/terms" suppressHydrationWarning className="text-xs font-bold text-[#ACBAC4] hover:text-[#57595B] transition-colors">Terms of Service</Link>
+            <Link href="/privacy" className="text-xs font-bold text-[#ACBAC4] hover:text-[#57595B] transition-colors">{t('legal.privacy')}</Link>
+            <Link href="/terms" className="text-xs font-bold text-[#ACBAC4] hover:text-[#57595B] transition-colors">{t('legal.terms')}</Link>
             <button 
               onClick={scrollToTop}
               className="p-3 rounded-2xl bg-[#57595B] text-white hover:bg-[#F7B980] transition-all hover:shadow-xl hover:shadow-[#F7B980]/20 active:scale-95 group cursor-pointer"

@@ -1,4 +1,4 @@
-// [HMR Version: 1.0.1 - Resyncing Module Graph]
+// [HMR Version: 1.0.3 - Fully Localized Homepage]
 "use client";
 
 import { useState, useEffect, startTransition } from "react";
@@ -15,10 +15,12 @@ import {
   Eye,
   Award
 } from "lucide-react";
-import Link from "next/link";
 import NextImage from "next/image";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
+import { useTranslations } from "next-intl";
+import { useParams } from "next/navigation";
+import { Link } from "@/i18n/navigation";
 
 // Premium Sage/Amber Design System
 // Background: #F2F4F4 (Muted)
@@ -42,6 +44,10 @@ const staggerContainer = {
 };
 
 export default function Home() {
+  const t = useTranslations("Index");
+  const params = useParams();
+  const locale = params.locale as string;
+
   const [authState, setAuthState] = useState({
     isLoggedIn: false,
     dashboardUrl: "/auth/login",
@@ -59,7 +65,7 @@ export default function Home() {
         });
       });
     }
-  }, []);
+  }, [locale]);
 
   const { isLoggedIn, dashboardUrl } = authState;
 
@@ -109,20 +115,20 @@ export default function Home() {
                   <div className="absolute inset-0 blur-md bg-[#F7B980] opacity-50 animate-pulse" />
                 </div>
                 <span className="text-[11px] font-black uppercase tracking-[0.25em] text-[#57595B] opacity-80">
-                  Human Talent, AI-Verified
+                  {t('hero.badge')}
                 </span>
                 <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-lg shadow-emerald-500/20" />
               </motion.div>
 
               <motion.div variants={fadeUp} transition={springTransition}>
                 <h1 className="text-4xl sm:text-7xl md:text-8xl font-black leading-[1.1] tracking-tighter text-[#57595B] group">
-                  Beyond the <br />
+                  {t('hero.title_part1')} <br />
                   <span className="inline-block py-2 text-transparent bg-clip-text bg-gradient-to-r from-[#57595B] via-[#8A8C8E] to-[#F7B980]">
-                    Static Resume
+                    {t('hero.title_part2')}
                   </span>
                 </h1>
                 <p className="mt-8 text-lg sm:text-xl text-[#8A8C8E] font-medium leading-relaxed max-w-lg">
-                  The future of recruitment is kinetic. VidioCV bridges the gap between digital identity and human presence through AI-verified video portfolios.
+                  {t('hero.subtitle')}
                 </p>
               </motion.div>
 
@@ -134,7 +140,7 @@ export default function Home() {
                 {isLoggedIn ? (
                   <Link href={dashboardUrl} className="group relative px-10 py-5 rounded-2xl bg-[#57595B] text-white font-bold overflow-hidden shadow-2xl shadow-[#57595B]/20 transition-all hover:-translate-y-1">
                     <span className="relative z-10 flex items-center gap-3">
-                      Go to Dashboard <ArrowRight className="w-5 h-5 group-hover:translate-x-1.5 transition-transform" />
+                      {t('cta.goDashboard')} <ArrowRight className="w-5 h-5 group-hover:translate-x-1.5 transition-transform" />
                     </span>
                     <div className="absolute inset-0 bg-[#F7B980] translate-y-full group-hover:translate-y-0 transition-transform duration-500 ease-out z-0" />
                   </Link>
@@ -143,11 +149,11 @@ export default function Home() {
                     <Link href="/auth/signup" className="relative px-10 py-5 rounded-2xl bg-[#F7B980] text-white font-bold shadow-xl shadow-[#F7B980]/25 transition-all hover:-translate-y-1 hover:shadow-2xl overflow-hidden group">
                       <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity" />
                       <span className="flex items-center gap-3">
-                        Launch Video CV <Video className="w-5 h-5" />
+                        {t('hero.getStarted')} <Video className="w-5 h-5" />
                       </span>
                     </Link>
                     <Link href="/auth/employer/signup" className="px-10 py-5 rounded-2xl bg-white/70 backdrop-blur-3xl border-white/40 text-[#57595B] font-bold shadow-soft transition-all hover:bg-white hover:-translate-y-1">
-                      Recruit Talent
+                      {t('hero.recruitTalent')}
                     </Link>
                   </>
                 )}
@@ -176,8 +182,8 @@ export default function Home() {
                   ))}
                 </div>
                 <div>
-                  <p className="text-sm font-black text-[#57595B]">10k+ Kinetic Profiles</p>
-                  <p className="text-xs font-bold text-[#ACBAC4]">Join 500+ Hiring Partners</p>
+                  <p className="text-sm font-black text-[#57595B]">{t('hero.stats')}</p>
+                  <p className="text-xs font-bold text-[#ACBAC4]">{t('hero.substats')}</p>
                 </div>
               </motion.div>
             </motion.div>
@@ -213,8 +219,8 @@ export default function Home() {
                     <TrendingUp className="w-6 lg:w-7 h-6 lg:h-7 text-emerald-600" />
                   </div>
                   <div>
-                    <h4 className="text-[10px] lg:text-xs font-black uppercase tracking-widest text-[#ACBAC4]">Neural Match</h4>
-                    <p className="text-lg lg:text-xl font-black text-[#57595B]">98.4% Fit</p>
+                    <h4 className="text-[10px] lg:text-xs font-black uppercase tracking-widest text-[#ACBAC4]">{t('hero.neuralMatch')}</h4>
+                    <p className="text-lg lg:text-xl font-black text-[#57595B]">{t('hero.fitScore')}</p>
                   </div>
                 </motion.div>
 
@@ -227,8 +233,8 @@ export default function Home() {
                     <Brain className="w-6 lg:w-7 h-6 lg:h-7 text-amber-600" />
                   </div>
                   <div>
-                    <h4 className="text-[10px] lg:text-xs font-black uppercase tracking-widest text-[#ACBAC4]">AI Verified</h4>
-                    <p className="text-lg lg:text-xl font-black text-[#57595B]">Top 2% Talent</p>
+                    <h4 className="text-[10px] lg:text-xs font-black uppercase tracking-widest text-[#ACBAC4]">{t('hero.aiVerified')}</h4>
+                    <p className="text-lg lg:text-xl font-black text-[#57595B]">{t('hero.topTalent')}</p>
                   </div>
                 </motion.div>
               </div>
@@ -240,8 +246,8 @@ export default function Home() {
         <section id="how-it-works" className="py-24 lg:py-40 relative px-6">
           <div className="max-w-7xl mx-auto">
             <div className="text-center mb-20 space-y-4">
-              <h2 className="text-4xl md:text-6xl font-black tracking-tighter text-[#57595B]">The Kinetic Workflow</h2>
-              <p className="text-[#8A8C8E] font-medium text-lg max-w-2xl mx-auto">From digital signal to human connection in three strategic phases.</p>
+              <h2 className="text-4xl md:text-6xl font-black tracking-tighter text-[#57595B]">{t('workflow.title')}</h2>
+              <p className="text-[#8A8C8E] font-medium text-lg max-w-2xl mx-auto">{t('workflow.subtitle')}</p>
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-3 gap-12 relative">
@@ -249,9 +255,9 @@ export default function Home() {
                <div className="hidden md:block absolute top-[68px] left-[15%] right-[15%] h-0.5 border-t-2 border-dashed border-[#F7B980]/30 z-0" />
                
                {[
-                 { step: "01", title: "Record Identity", desc: "Use our zero-lag studio to capture your professional narration.", icon: Video, color: "#F7B980" },
-                 { step: "02", title: "AI-Verify", desc: "Our intelligence engine validates skills and optimizes your match score.", icon: Brain, color: "#ACBAC4" },
-                 { step: "03", title: "Global Match", desc: "Unlock high-fidelity inquiries from elite hiring partners.", icon: Globe, color: "#57595B" }
+                 { step: "01", title: t('workflow.step1.title'), desc: t('workflow.step1.desc'), icon: Video, color: "#F7B980" },
+                 { step: "02", title: t('workflow.step2.title'), desc: t('workflow.step2.desc'), icon: Brain, color: "#ACBAC4" },
+                 { step: "03", title: t('workflow.step3.title'), desc: t('workflow.step3.desc'), icon: Globe, color: "#57595B" }
                ].map((item, i) => (
                  <div key={i} className="relative z-10 flex flex-col items-center text-center group">
                     <div className="w-20 h-20 bg-white rounded-3xl shadow-2xl flex items-center justify-center mb-8 border border-[#E2E8F0] group-hover:scale-110 transition-transform duration-500">
@@ -272,9 +278,9 @@ export default function Home() {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
               <div className="lg:col-span-1 space-y-6">
                  <div className="w-20 h-1 bg-[#F7B980] rounded-full" />
-                 <h2 className="text-3xl sm:text-5xl font-black tracking-tighter text-[#57595B]">High Fidelity <br /> Sourcing</h2>
+                 <h2 className="text-3xl sm:text-5xl font-black tracking-tighter text-[#57595B] leading-tight" dangerouslySetInnerHTML={{ __html: t.raw('features.title').replace(' ', '<br />') }} />
                  <p className="text-[#8A8C8E] font-medium text-base sm:text-lg leading-relaxed">
-                   Experience the fusion of human personality with predictive analysis. Our engine handles the complexity so you can focus on connection.
+                   {t('features.description')}
                  </p>
                  <div className="pt-10 flex gap-4">
                     <div className="p-4 rounded-3xl bg-[#F2F4F4] shadow-soft border-[#E2E8F0] border">
@@ -288,10 +294,10 @@ export default function Home() {
 
               <div className="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-8">
                 {[
-                  { title: "Smart Inquiries", desc: "Recruiters can secure introductions without the overhead of immediate scheduling.", icon: MessageSquare, accent: "#F7B980" },
-                  { title: "CV Watchboard", desc: "Watch high-definition video portfolios directly from your workspace.", icon: Eye, accent: "#ACBAC4" },
-                  { title: "Neural Matching", desc: "Our AI prioritizes candidates based on true professional chemistry.", icon: Brain, accent: "#57595B" },
-                  { title: "Global Mesh", desc: "Sync your professional identity with hiring partners worldwide.", icon: Globe, accent: "#10B981" }
+                  { title: t('features.items.inquiries.title'), desc: t('features.items.inquiries.desc'), icon: MessageSquare, accent: "#F7B980" },
+                  { title: t('features.items.watchboard.title'), desc: t('features.items.watchboard.desc'), icon: Eye, accent: "#ACBAC4" },
+                  { title: t('features.items.matching.title'), desc: t('features.items.matching.desc'), icon: Brain, accent: "#57595B" },
+                  { title: t('features.items.mesh.title'), desc: t('features.items.mesh.desc'), icon: Globe, accent: "#10B981" }
                 ].map((item, i) => (
                   <div key={i} className="p-10 rounded-[40px] border-2 border-[#F2F4F4] hover:border-[#F7B980]/20 transition-all group cursor-pointer hover:shadow-2xl hover:shadow-[#F7B980]/5">
                     <div className="w-14 h-14 rounded-2xl bg-[#F2F4F4] flex items-center justify-center mb-8 group-hover:scale-110 transition-transform">
@@ -317,21 +323,21 @@ export default function Home() {
               
               <div className="relative z-10 px-8 py-16 md:px-10 md:py-24 text-center space-y-10">
                 <h2 className="text-3xl md:text-6xl font-black text-white tracking-tighter">
-                  Ready to evolve your <br />
-                  <span className="text-[#F7B980]">Recruitment Journey?</span>
+                  {t('cta.title')} <br />
+                  <span className="text-[#F7B980]">{t('cta.subtitle')}</span>
                 </h2>
                 <div className="flex flex-col sm:flex-row justify-center gap-6">
                   {isLoggedIn ? (
                      <Link href={dashboardUrl} className="px-12 py-5 rounded-2xl bg-white text-[#57595B] font-bold shadow-xl shadow-white/5 transition-all hover:-translate-y-1">
-                        Go to Your Dashboard
+                        {t('cta.goDashboard')}
                      </Link>
                   ) : (
                     <>
                       <Link href="/auth/signup" className="px-12 py-5 rounded-2xl bg-[#F7B980] text-white font-bold shadow-xl shadow-[#F7B980]/20 transition-all hover:-translate-y-1">
-                        Create Your Future
+                        {t('cta.createFuture')}
                       </Link>
                       <Link href="/auth/employer/signup" className="px-12 py-5 rounded-2xl border-2 border-white/20 text-white font-bold hover:bg-white/10 transition-all">
-                        Scale Your Team
+                        {t('cta.scaleTeam')}
                       </Link>
                     </>
                   )}

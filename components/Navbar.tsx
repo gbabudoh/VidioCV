@@ -1,17 +1,25 @@
 "use client";
 
 import { useState, useEffect, startTransition } from "react";
-import Link from "next/link";
 import Image from "next/image";
-import { motion } from "framer-motion";
-import { Menu, X } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Menu, X, Globe, ChevronDown } from "lucide-react";
 import clsx from "clsx";
+import { useTranslations, useLocale } from "next-intl";
+import { Link, usePathname, useRouter } from "@/i18n/navigation";
 
 export function Navbar() {
+  const t = useTranslations("Index.nav");
+  const common = useTranslations("Common");
+  const currentLocale = useLocale();
+  const pathname = usePathname();
+  const router = useRouter();
+
   const [isScrolled, setIsScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [dashboardUrl, setDashboardUrl] = useState("/auth/login");
+  const [isLangMenuOpen, setIsLangMenuOpen] = useState(false);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -37,6 +45,15 @@ export function Navbar() {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
+  const handleLanguageChange = (locale: string) => {
+    startTransition(() => {
+      router.replace(pathname, { locale });
+      setIsLangMenuOpen(false);
+    });
+  };
+
+  const locales = ['en', 'fr', 'es', 'de'] as const;
+
   return (
     <motion.nav
       initial={{ y: -100, opacity: 0 }}
@@ -54,16 +71,16 @@ export function Navbar() {
     >
       <div className="max-w-7xl mx-auto px-6 flex justify-between items-center">
         {/* Logo */}
-        <Link 
-          href="/" 
-          onClick={(e) => {
-            if (window.location.pathname === "/") {
-              e.preventDefault();
-              window.scrollTo({ top: 0, behavior: "smooth" });
-            }
-          }}
-          className="flex items-center group"
-        >
+          <Link 
+            href="/" 
+            onClick={(e: React.MouseEvent) => {
+              if (pathname === "/") {
+                e.preventDefault();
+                window.scrollTo({ top: 0, behavior: "smooth" });
+              }
+            }}
+            className="flex items-center group"
+          >
           <Image
             src="/logo.png"
             alt="VidioCV Logo"
@@ -77,39 +94,73 @@ export function Navbar() {
 
         {/* Desktop Nav Links */}
         <div className="hidden md:flex items-center gap-7">
-          <a 
-            href="#" 
-            onClick={(e) => {
-              e.preventDefault();
-              window.scrollTo({ top: 0, behavior: "smooth" });
-            }}
+          <Link 
+            href="/" 
             className="text-sm font-medium transition-colors cursor-pointer" 
             style={{ color: "#ACBAC4" }} 
-            onMouseOver={e => (e.currentTarget.style.color = "#57595B")} 
-            onMouseOut={e => (e.currentTarget.style.color = "#ACBAC4")}
+            onMouseOver={(e: React.MouseEvent<HTMLAnchorElement>) => (e.currentTarget.style.color = "#57595B")} 
+            onMouseOut={(e: React.MouseEvent<HTMLAnchorElement>) => (e.currentTarget.style.color = "#ACBAC4")}
           >
-            Home
+            {t('home')}
+          </Link>
+          <a href="#how-it-works" className="text-sm font-medium transition-colors" style={{ color: "#ACBAC4" }} onMouseOver={(e: React.MouseEvent<HTMLAnchorElement>) => (e.currentTarget.style.color = "#57595B")} onMouseOut={(e: React.MouseEvent<HTMLAnchorElement>) => (e.currentTarget.style.color = "#ACBAC4")}>
+            {t('howItWorks')}
           </a>
-          <a href="#how-it-works" className="text-sm font-medium transition-colors" style={{ color: "#ACBAC4" }} onMouseOver={e => (e.currentTarget.style.color = "#57595B")} onMouseOut={e => (e.currentTarget.style.color = "#ACBAC4")}>
-            How It Works
+          <a href="#features" className="text-sm font-medium transition-colors" style={{ color: "#ACBAC4" }} onMouseOver={(e: React.MouseEvent<HTMLAnchorElement>) => (e.currentTarget.style.color = "#57595B")} onMouseOut={(e: React.MouseEvent<HTMLAnchorElement>) => (e.currentTarget.style.color = "#ACBAC4")}>
+            {t('features')}
           </a>
-          <a href="#features" className="text-sm font-medium transition-colors" style={{ color: "#ACBAC4" }} onMouseOver={e => (e.currentTarget.style.color = "#57595B")} onMouseOut={e => (e.currentTarget.style.color = "#ACBAC4")}>
-            Features
-          </a>
-          <Link href="/pricing" className="text-sm font-medium transition-colors" style={{ color: "#ACBAC4" }} onMouseOver={e => (e.currentTarget.style.color = "#57595B")} onMouseOut={e => (e.currentTarget.style.color = "#ACBAC4")}>
-            Pricing
+          <Link href="/pricing" className="text-sm font-medium transition-colors" style={{ color: "#ACBAC4" }} onMouseOver={(e: React.MouseEvent<HTMLAnchorElement>) => (e.currentTarget.style.color = "#57595B")} onMouseOut={(e: React.MouseEvent<HTMLAnchorElement>) => (e.currentTarget.style.color = "#ACBAC4")}>
+            {t('pricing')}
           </Link>
         </div>
 
-        {/* Desktop Auth */}
-        <div className="hidden md:flex items-center gap-3">
+        {/* Desktop Auth & Language */}
+        <div className="hidden md:flex items-center gap-5">
+          {/* Language Switcher */}
+          <div className="relative">
+            <button
+              onClick={() => setIsLangMenuOpen(!isLangMenuOpen)}
+              className="flex items-center gap-2 px-3 py-1.5 rounded-xl hover:bg-[#E2E8F0] transition-all text-[#57595B] font-bold text-xs uppercase tracking-widest cursor-pointer"
+            >
+              <Globe className="w-3.5 h-3.5 text-[#ACBAC4]" />
+              {currentLocale}
+              <ChevronDown className={clsx("w-3 h-3 transition-transform", isLangMenuOpen && "rotate-180")} />
+            </button>
+            
+            <AnimatePresence>
+              {isLangMenuOpen && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                  className="absolute right-0 mt-2 w-40 bg-white rounded-2xl shadow-2xl border border-[#E2E8F0] overflow-hidden py-1"
+                >
+                  {locales.map((loc) => (
+                    <button
+                      key={loc}
+                      onClick={() => handleLanguageChange(loc)}
+                      className={clsx(
+                        "w-full px-4 py-2 text-left text-xs font-bold uppercase tracking-widest transition-colors hover:bg-[#F2F4F4]",
+                        currentLocale === loc ? "text-[#F7B980]" : "text-[#57595B]"
+                      )}
+                    >
+                      {common(`languages.${loc}`)}
+                    </button>
+                  ))}
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
+          <div className="h-6 w-px bg-[#E2E8F0]" />
+
           {isLoggedIn ? (
             <Link
               href={dashboardUrl}
               className="px-5 py-2 rounded-xl font-semibold text-sm transition-all hover:-translate-y-0.5"
               style={{ background: "linear-gradient(135deg, #F7B980, #F0A060)", color: "#57595B", boxShadow: "0 4px 14px rgba(247,185,128,0.30)" }}
             >
-              Dashboard
+              {t('dashboard')}
             </Link>
           ) : (
             <>
@@ -118,14 +169,14 @@ export function Navbar() {
                 className="px-4 py-2 text-sm font-medium transition-colors"
                 style={{ color: "#ACBAC4" }}
               >
-                Sign In
+                {t('signIn')}
               </Link>
               <Link
                 href="/auth/signup"
                 className="px-5 py-2 rounded-xl font-semibold text-sm transition-all hover:-translate-y-0.5"
                 style={{ background: "#57595B", color: "#FFFFFF", boxShadow: "0 4px 14px rgba(87,89,91,0.18)" }}
               >
-                Get Started
+                {t('getStarted')}
               </Link>
             </>
           )}
@@ -152,39 +203,63 @@ export function Navbar() {
           className="absolute top-full left-0 w-full px-4 pb-4 md:hidden"
         >
           <div className="flex flex-col gap-1 p-3 rounded-2xl shadow-xl mt-2" style={{ background: "rgba(253,252,250,0.98)", border: "1px solid #E0E4E3" }}>
-            <a 
-              href="#" 
-              onClick={(e) => {
-                e.preventDefault();
+            <Link 
+              href="/"
+              onClick={(e: React.MouseEvent) => {
                 setMobileMenuOpen(false);
-                window.scrollTo({ top: 0, behavior: "smooth" });
+                if (pathname === "/") {
+                  e.preventDefault();
+                  window.scrollTo({ top: 0, behavior: "smooth" });
+                }
               }}
               className="px-4 py-3 text-sm font-medium rounded-xl transition-all cursor-pointer" 
               style={{ color: "#ACBAC4" }}
             >
-              Home
-            </a>
+              {t('home')}
+            </Link>
             <a href="#how-it-works" onClick={() => setMobileMenuOpen(false)} className="px-4 py-3 text-sm font-medium rounded-xl transition-all" style={{ color: "#ACBAC4" }}>
-              How It Works
+              {t('howItWorks')}
             </a>
             <a href="#features" onClick={() => setMobileMenuOpen(false)} className="px-4 py-3 text-sm font-medium rounded-xl transition-all" style={{ color: "#ACBAC4" }}>
-              Features
+              {t('features')}
             </a>
             <Link href="/pricing" onClick={() => setMobileMenuOpen(false)} className="px-4 py-3 text-sm font-medium rounded-xl transition-all" style={{ color: "#ACBAC4" }}>
-              Pricing
+              {t('pricing')}
             </Link>
+
             <div className="h-px my-1" style={{ background: "#E8ECED" }} />
+
+            {/* Mobile Language Switcher */}
+            <div className="flex flex-wrap gap-2 px-4 py-3">
+              {locales.map((loc) => (
+                <button
+                  key={loc}
+                  onClick={() => handleLanguageChange(loc)}
+                  className={clsx(
+                    "px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest border transition-all",
+                    currentLocale === loc 
+                      ? "bg-[#F7B980] text-white border-[#F7B980]" 
+                      : "text-[#ACBAC4] border-[#E2E8F0]"
+                  )}
+                >
+                  {loc}
+                </button>
+              ))}
+            </div>
+
+            <div className="h-px my-1" style={{ background: "#E8ECED" }} />
+
             {isLoggedIn ? (
               <Link href={dashboardUrl} onClick={() => setMobileMenuOpen(false)} className="px-4 py-3 text-center rounded-xl font-semibold text-sm" style={{ background: "linear-gradient(135deg, #F7B980, #F0A060)", color: "#57595B" }}>
-                Dashboard
+                {t('dashboard')}
               </Link>
             ) : (
               <>
                 <Link href="/auth/login" onClick={() => setMobileMenuOpen(false)} className="px-4 py-3 text-center text-sm font-medium rounded-xl transition-all" style={{ color: "#ACBAC4" }}>
-                  Sign In
+                  {t('signIn')}
                 </Link>
                 <Link href="/auth/signup" onClick={() => setMobileMenuOpen(false)} className="px-4 py-3 text-center rounded-xl font-semibold text-sm" style={{ background: "#57595B", color: "#FFFFFF" }}>
-                  Get Started
+                  {t('getStarted')}
                 </Link>
               </>
             )}

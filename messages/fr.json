@@ -1,0 +1,143 @@
+{
+  "Index": {
+    "title": "VidioCV - Transformez votre recrutement",
+    "description": "VidioCV : Une plateforme révolutionnaire qui remplace les CV statiques par des profils vidéo dynamiques et enrichis par l'IA.",
+    "nav": {
+      "home": "Accueil",
+      "howItWorks": "Comment ça marche",
+      "features": "Fonctionnalités",
+      "pricing": "Tarifs",
+      "signIn": "Se connecter",
+      "getStarted": "Commencer",
+      "dashboard": "Tableau de bord"
+    },
+    "hero": {
+      "badge": "Talent Humain, Vérifié par l'IA",
+      "title_part1": "Au-delà du",
+      "title_part2": "CV Statique",
+      "subtitle": "Arrêtez d'envoyer du papier. Montrez votre potentiel avec des portfolios vidéo vérifiés par l'IA qui capturent le signal humain.",
+      "getStarted": "Lancer votre VidioCV",
+      "recruitTalent": "Recruter des Talents",
+      "stats": "Plus de 10k profils cinétiques",
+      "substats": "Rejoignez plus de 500 partenaires de recrutement",
+      "neuralMatch": "Match Neural",
+      "fitScore": "98.4% de Match",
+      "aiVerified": "Vérifié par IA",
+      "topTalent": "Top 2% des Talents"
+    },
+    "workflow": {
+      "title": "Le Flux de Travail Cinétique",
+      "subtitle": "Du signal numérique à la connexion humaine en trois phases stratégiques.",
+      "step1": {
+        "title": "Enregistrez votre identité",
+        "desc": "Utilisez notre studio sans latence pour capturer votre narration professionnelle."
+      },
+      "step2": {
+        "title": "Vérification IA",
+        "desc": "Notre moteur d'intelligence valide vos compétences et optimise votre score de match."
+      },
+      "step3": {
+        "title": "Match Global",
+        "desc": "Débloquez des demandes de haute fidélité provenant de partenaires de recrutement d'élite."
+      }
+    },
+    "features": {
+      "title": "Sourcing Haute Fidélité",
+      "description": "Découvrez la fusion de la personnalité humaine avec l'analyse prédictive. Notre moteur gère la complexité pour que vous puissiez vous concentrer sur la connexion.",
+      "items": {
+        "inquiries": {
+          "title": "Demandes Intelligentes",
+          "desc": "Les recruteurs peuvent sécuriser les présentations sans la surcharge d'une planification immédiate."
+        },
+        "watchboard": {
+          "title": "Tableau de bord CV",
+          "desc": "Visionnez des portfolios vidéo haute définition directement depuis votre espace de travail."
+        },
+        "matching": {
+          "title": "Match Neural",
+          "desc": "Notre IA priorise les candidats en fonction de la véritable chimie professionnelle."
+        },
+        "mesh": {
+          "title": "Maillage Global",
+          "desc": "Synchronisez votre identité professionnelle avec des partenaires de recrutement du monde entier."
+        }
+      }
+    },
+    "cta": {
+      "title": "Prêt à faire évoluer votre",
+      "subtitle": "Parcours de recrutement ?",
+      "createFuture": "Créez votre avenir",
+      "scaleTeam": "Développez votre équipe",
+      "goDashboard": "Aller au tableau de bord"
+    }
+  },
+  "Footer": {
+    "tagline": "L'avenir de l'identité professionnelle est cinétique. Combler l'écart entre présence numérique et connexion humaine.",
+    "sections": {
+      "platform": {
+        "title": "Plateforme",
+        "links": {
+          "home": "Accueil",
+          "howItWorks": "Comment ça marche",
+          "features": "Fonctionnalités",
+          "matching": "Match Neural"
+        }
+      },
+      "intelligence": {
+        "title": "Intelligence",
+        "links": {
+          "portfolios": "Portfolios vérifiés",
+          "sourcing": "Sourcing IA",
+          "network": "Réseau global",
+          "partner": "Programme partenaire"
+        }
+      }
+    },
+    "legal": {
+      "encryption": "Tous les portfolios vidéo et données de match neural sont protégés par un cryptage de niveau bancaire.",
+      "trust": "Confiance cryptée",
+      "online": "Systèmes en ligne",
+      "privacy": "Politique de confidentialité",
+      "terms": "Conditions d'utilisation",
+      "rights": "Tous droits réservés."
+    }
+  },
+  "Auth": {
+    "login": {
+      "title": "Bon retour",
+      "subtitle": "Connectez-vous à votre compte",
+      "verified": "Compte vérifié avec succès ! Vous pouvez maintenant vous connecter.",
+      "candidate": "Candidat",
+      "employer": "Employeur",
+      "email": "Adresse e-mail",
+      "emailPlaceholder": "vous@exemple.com",
+      "password": "Mot de passe",
+      "passwordPlaceholder": "••••••••",
+      "forgotPassword": "Mot de passe oublié ?",
+      "signIn": "Se connecter",
+      "orContinue": "Ou continuer avec",
+      "noAccount": "Vous n'avez pas de compte ?",
+      "signUp": "S'inscrire"
+    },
+    "errors": {
+      "emailRequired": "L'e-mail est requis",
+      "passwordRequired": "Le mot de passe est requis",
+      "invalidCredentials": "E-mail ou mot de passe invalide",
+      "generic": "Une erreur est survenue. Veuillez réessayer.",
+      "googleFailed": "L'authentification Google a échoué",
+      "network": "Une erreur réseau est survenue. Veuillez réessayer."
+    }
+  },
+  "Common": {
+    "save": "Enregistrer",
+    "cancel": "Annuler",
+    "delete": "Supprimer",
+    "loading": "Synchronisation...",
+    "languages": {
+      "en": "Anglais",
+      "fr": "Français",
+      "es": "Espagnol",
+      "de": "Allemand"
+    }
+  }
+}

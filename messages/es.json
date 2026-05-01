@@ -1,0 +1,143 @@
+{
+  "Index": {
+    "title": "VidioCV - Transforma Tu Reclutamiento",
+    "description": "VidioCV: Una plataforma revolucionaria que reemplaza los currículums estáticos por perfiles de vídeo dinámicos mejorados por IA.",
+    "nav": {
+      "home": "Inicio",
+      "howItWorks": "Cómo Funciona",
+      "features": "Funcionalidades",
+      "pricing": "Precios",
+      "signIn": "Iniciar Sesión",
+      "getStarted": "Empezar",
+      "dashboard": "Panel de Control"
+    },
+    "hero": {
+      "badge": "Talento Humano, Verificado por IA",
+      "title_part1": "Más allá del",
+      "title_part2": "Currículum Estático",
+      "subtitle": "Deja de enviar papel. Empieza a mostrar tu potencial con portfolios de vídeo verificados por IA que capturan la señal humana.",
+      "getStarted": "Lanzar Video CV",
+      "recruitTalent": "Reclutar Talento",
+      "stats": "Más de 10k perfiles cinéticos",
+      "substats": "Únete a más de 500 socios de contratación",
+      "neuralMatch": "Match Neural",
+      "fitScore": "98.4% de Ajuste",
+      "aiVerified": "Verificado por IA",
+      "topTalent": "Top 2% de Talento"
+    },
+    "workflow": {
+      "title": "El Flujo de Trabajo Cinético",
+      "subtitle": "De la señal digital a la conexión humana en tres fases estratégicas.",
+      "step1": {
+        "title": "Registra tu Identidad",
+        "desc": "Utiliza nuestro estudio sin latencia para capturar tu narración profesional."
+      },
+      "step2": {
+        "title": "Verificación IA",
+        "desc": "Nuestro motor de inteligencia valida tus habilidades y optimiza tu puntuación de match."
+      },
+      "step3": {
+        "title": "Match Global",
+        "desc": "Desbloquea solicitudes de alta fidelidad de socios de contratación de élite."
+      }
+    },
+    "features": {
+      "title": "Sourcing de Alta Fidelidad",
+      "description": "Experimenta la fusión de la personalidad humana con el análisis predictivo. Nuestro motor maneja la complejidad para que puedas enfocarte en la conexión.",
+      "items": {
+        "inquiries": {
+          "title": "Consultas Inteligentes",
+          "desc": "Los reclutadores pueden asegurar presentaciones sin la sobrecarga de la programación inmediata."
+        },
+        "watchboard": {
+          "title": "Panel de CV",
+          "desc": "Mira portfolios de vídeo en alta definición directamente desde tu espacio de trabajo."
+        },
+        "matching": {
+          "title": "Match Neural",
+          "desc": "Nuestra IA prioriza candidatos basados en la verdadera química profesional."
+        },
+        "mesh": {
+          "title": "Red Global",
+          "desc": "Sincroniza tu identidad profesional con socios de contratación de todo el mundo."
+        }
+      }
+    },
+    "cta": {
+      "title": "¿Listo para evolucionar tu",
+      "subtitle": "Viaje de Reclutamiento?",
+      "createFuture": "Crea Tu Futuro",
+      "scaleTeam": "Escala Tu Equipo",
+      "goDashboard": "Ir a Tu Panel"
+    }
+  },
+  "Footer": {
+    "tagline": "El futuro de la identidad profesional es cinético. Cerrando la brecha entre la presencia digital y la conexión humana.",
+    "sections": {
+      "platform": {
+        "title": "Plataforma",
+        "links": {
+          "home": "Inicio",
+          "howItWorks": "Cómo Funciona",
+          "features": "Funcionalidades",
+          "matching": "Match Neural"
+        }
+      },
+      "intelligence": {
+        "title": "Inteligencia",
+        "links": {
+          "portfolios": "Portfolios Verificados",
+          "sourcing": "Sourcing IA",
+          "network": "Red Global",
+          "partner": "Programa de Socios"
+        }
+      }
+    },
+    "legal": {
+      "encryption": "Todos los portfolios de vídeo y datos de match neural están protegidos por cifrado de nivel bancario.",
+      "trust": "Confianza Cifrada",
+      "online": "Sistemas en Línea",
+      "privacy": "Política de Privacidad",
+      "terms": "Términos de Servicio",
+      "rights": "Todos los derechos reservados."
+    }
+  },
+  "Auth": {
+    "login": {
+      "title": "Bienvenido de nuevo",
+      "subtitle": "Inicia sesión en tu cuenta",
+      "verified": "¡Cuenta verificada con éxito! Ahora puedes iniciar sesión.",
+      "candidate": "Candidato",
+      "employer": "Empleador",
+      "email": "Correo electrónico",
+      "emailPlaceholder": "tu@ejemplo.com",
+      "password": "Contraseña",
+      "passwordPlaceholder": "••••••••",
+      "forgotPassword": "¿Olvidaste tu contraseña?",
+      "signIn": "Iniciar Sesión",
+      "orContinue": "O continuar con",
+      "noAccount": "¿No tienes una cuenta?",
+      "signUp": "Regístrate"
+    },
+    "errors": {
+      "emailRequired": "El correo electrónico es obligatorio",
+      "passwordRequired": "La contraseña es obligatoria",
+      "invalidCredentials": "Correo electrónico o contraseña incorrectos",
+      "generic": "Ocurrió un error. Por favor, inténtalo de nuevo.",
+      "googleFailed": "La autenticación de Google falló",
+      "network": "Ocurrió un error de red. Por favor, inténtalo de nuevo."
+    }
+  },
+  "Common": {
+    "save": "Guardar",
+    "cancel": "Cancelar",
+    "delete": "Eliminar",
+    "loading": "Sincronizando...",
+    "languages": {
+      "en": "Inglés",
+      "fr": "Francés",
+      "es": "Español",
+      "de": "Alemán"
+    }
+  }
+}
