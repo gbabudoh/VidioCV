@@ -36,6 +36,7 @@ interface CandidateListProps {
   onViewVideo?: (candidate: Candidate) => void;
   onMessage?: (candidate: Candidate) => void;
   onSchedule?: (candidate: Candidate) => void;
+  isAnonymized?: boolean;
 }
 
 function MatchBadge({ score }: { score: number }) {
@@ -63,11 +64,13 @@ function CandidateCard({
   onSelectCandidate,
   onViewVideo,
   onMessage,
+  isAnonymized,
 }: {
   candidate: Candidate & { matchScore?: number };
   onSelectCandidate?: (c: Candidate) => void;
   onViewVideo?: (c: Candidate) => void;
   onMessage?: (c: Candidate) => void;
+  isAnonymized?: boolean;
 }) {
   return (
     <div
@@ -77,12 +80,16 @@ function CandidateCard({
       {/* Header */}
       <div className="flex items-start justify-between gap-4">
         <div className="flex items-center gap-4 min-w-0">
-          <div className="w-14 h-14 bg-gradient-to-br from-slate-700 to-slate-900 rounded-2xl flex items-center justify-center text-white font-bold text-base shrink-0 group-hover:from-slate-600 group-hover:to-slate-800 transition-all">
-            {getInitials(candidate.name)}
+          <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-white font-bold text-base shrink-0 transition-all ${
+            isAnonymized 
+              ? "bg-slate-300 group-hover:bg-slate-400" 
+              : "bg-gradient-to-br from-slate-700 to-slate-900 group-hover:from-slate-600 group-hover:to-slate-800"
+          }`}>
+            {isAnonymized ? "?" : getInitials(candidate.name)}
           </div>
           <div className="min-w-0">
             <h3 className="text-base font-semibold text-slate-800 truncate leading-tight">
-              {candidate.name}
+              {isAnonymized ? `Candidate ${candidate.id.slice(0, 4).toUpperCase()}` : candidate.name}
             </h3>
             <p className="text-xs text-slate-400 mt-1 truncate">{candidate.title}</p>
           </div>
@@ -135,12 +142,14 @@ function CandidateRow({
   onViewVideo,
   onMessage,
   onSchedule,
+  isAnonymized,
 }: {
   candidate: Candidate & { matchScore?: number };
   onSelectCandidate?: (c: Candidate) => void;
   onViewVideo?: (c: Candidate) => void;
   onMessage?: (c: Candidate) => void;
   onSchedule?: (c: Candidate) => void;
+  isAnonymized?: boolean;
 }) {
   return (
     <div
@@ -148,13 +157,19 @@ function CandidateRow({
       className="group bg-white border border-slate-100 rounded-2xl px-5 py-4 hover:shadow-md hover:border-slate-200 transition-all duration-200 cursor-pointer flex items-center gap-5"
     >
       {/* Avatar */}
-      <div className="w-10 h-10 bg-gradient-to-br from-slate-700 to-slate-900 rounded-xl flex items-center justify-center text-white font-bold text-sm shrink-0 group-hover:from-slate-600 group-hover:to-slate-800 transition-all">
-        {getInitials(candidate.name)}
+      <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold text-sm shrink-0 transition-all ${
+        isAnonymized 
+          ? "bg-slate-300 group-hover:bg-slate-400" 
+          : "bg-gradient-to-br from-slate-700 to-slate-900 group-hover:from-slate-600 group-hover:to-slate-800"
+      }`}>
+        {isAnonymized ? "?" : getInitials(candidate.name)}
       </div>
 
       {/* Identity */}
       <div className="w-44 shrink-0 min-w-0">
-        <h3 className="text-sm font-semibold text-slate-800 truncate leading-tight">{candidate.name}</h3>
+        <h3 className="text-sm font-semibold text-slate-800 truncate leading-tight">
+          {isAnonymized ? `Candidate ${candidate.id.slice(0, 4).toUpperCase()}` : candidate.name}
+        </h3>
         <p className="text-[11px] text-slate-400 mt-0.5 truncate">{candidate.title}</p>
       </div>
 
@@ -218,6 +233,7 @@ export default function CandidateList({
   onViewVideo,
   onMessage,
   onSchedule,
+  isAnonymized,
 }: CandidateListProps) {
   if (viewMode === 'list') {
     return (
@@ -230,6 +246,7 @@ export default function CandidateList({
             onViewVideo={onViewVideo}
             onMessage={onMessage}
             onSchedule={onSchedule}
+            isAnonymized={isAnonymized}
           />
         ))}
       </div>
@@ -245,6 +262,7 @@ export default function CandidateList({
           onSelectCandidate={onSelectCandidate}
           onViewVideo={onViewVideo}
           onMessage={onMessage}
+          isAnonymized={isAnonymized}
         />
       ))}
     </div>

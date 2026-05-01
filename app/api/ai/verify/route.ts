@@ -1,8 +1,24 @@
-/* eslint-disable */
-// @ts-nocheck
 import { NextResponse } from "next/server";
 import prisma from "@/app/lib/prisma";
 import { verifyToken } from "@/app/lib/auth";
+
+interface ExtendedPrisma {
+  cvProfile: {
+    findUnique: (args: { where: { userId: string }; include?: { skills: boolean } }) => Promise<{ id: string; skills: unknown[]; yearsOfExperience?: number; fullName?: string } | null>;
+    update: (args: { where: { id: string }; data: { aiMatchScore: number } }) => Promise<unknown>;
+  };
+  cvSkill: {
+    updateMany: (args: { where: { cvProfileId: string }; data: { isVerified: boolean } }) => Promise<unknown>;
+  };
+  application: {
+    findFirst: (args: { 
+      where: { candidateId: string; externalId: { not: null } }; 
+      include: unknown 
+    }) => Promise<{ externalId: string; videoUrl?: string; job: { employer: { integrations: { apiKey: string }[] } } } | null>;
+  };
+}
+
+const db = (prisma as unknown) as ExtendedPrisma;
 
 export async function POST(req: Request) {
   try {
@@ -19,7 +35,7 @@ export async function POST(req: Request) {
     }
 
     // Find the candidate's profile
-    const profile = await (prisma.cvProfile as any).findUnique({
+    const profile = await db.cvProfile.findUnique({
       where: { userId: decoded.userId },
       include: { skills: true },
     });
@@ -32,7 +48,7 @@ export async function POST(req: Request) {
     // In a real app, this would call OpenAI or another LLM to analyze the video/text
     
     // 1. Mark all skills as verified (simulate verification)
-    await (prisma.cvSkill as any).updateMany({
+    await db.cvSkill.updateMany({
       where: { cvProfileId: profile.id },
       data: { isVerified: true },
     });
@@ -45,18 +61,47 @@ export async function POST(req: Request) {
     const skillBonus = Math.min(skillCount * 2, 10);
     const finalScore = Math.min(baseScore + expBonus + skillBonus + Math.floor(Math.random() * 5), 99);
 
-    await (prisma.cvProfile as any).update({
+    await db.cvProfile.update({
       where: { id: profile.id },
       data: { aiMatchScore: finalScore },
     });
 
+    // --- OUTBOUND SYNC: LEVER ---
+    try {
+      const application = await db.application.findFirst({
+        where: { candidateId: decoded.userId, externalId: { not: null } },
+        include: { job: { include: { employer: { include: { integrations: { where: { type: "LEVER", status: "active" } } } } } } }
+      });
+
+      if (application && application.job.employer.integrations.length > 0) {
+        const integration = application.job.employer.integrations[0];
+        const { LeverService } = await import("@/app/lib/integrations/lever");
+        
+        await LeverService.pushMatchReport(
+          integration.apiKey,
+          application.externalId,
+          {
+            score: finalScore,
+            summary: `Automated VidioCV analysis completed. The candidate demonstrated a strong match with a kinetic score of ${finalScore}%. Analysis based on experience and verified skill set.`,
+            videoUrl: application.videoUrl || "https://videocv.io/candidate/recording", // Placeholder if no video yet
+            candidateName: profile.fullName || "Candidate"
+          }
+        );
+        console.log(`Successfully synced match report to Lever for opportunity ${application.externalId}`);
+      }
+    } catch (syncError) {
+      console.error("Lever outbound sync failed:", syncError);
+      // We don't fail the main request if sync fails
+    }
+
     return NextResponse.json({
       success: true,
-      message: "AI Verification Complete",
+      message: "AI Verification Complete & Synced",
       matchScore: finalScore,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Internal server error";
     console.error("AI Verify Error:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

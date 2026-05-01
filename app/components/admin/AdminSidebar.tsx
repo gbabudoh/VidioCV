@@ -26,6 +26,7 @@ export default function AdminSidebar({ adminUser }: { adminUser?: TokenPayload |
     { name: "Employers", href: "/admin/users/employers", icon: Building2 },
     { name: "Hero CMS", href: "/admin/cms", icon: LayoutTemplate },
     { name: "Analytics", href: "/admin/analytics", icon: BarChart3 },
+    { name: "Integrations", href: "/admin/integrations", icon: Sparkles },
     { name: "Audit Logs", href: "/admin/compliance", icon: ShieldCheck },
     ...(adminUser?.role === "super_admin" ? [
       { name: "Management", href: "/admin/management", icon: ShieldAlert }

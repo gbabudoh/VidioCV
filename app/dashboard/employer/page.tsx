@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { 
   Plus, Settings, LogOut, Bell, Filter, Video, Users, Calendar as CalendarIcon, 
   MapPin, Building2, Briefcase, Search, Mail, Lock, Shield, Sparkles,
-  Trash2, ArrowLeft, ArrowRight, Archive, LayoutDashboard, AlertCircle, LayoutGrid, List, X
+  Trash2, ArrowLeft, ArrowRight, Archive, LayoutDashboard, AlertCircle, LayoutGrid, List, X, Network
 } from "lucide-react";
 import MobileBottomNav from "@/app/components/common/MobileBottomNav";
 import Link from "next/link";
@@ -17,8 +17,9 @@ import VideoPlayer from "@/app/components/video-tools/VideoPlayer";
 import Toggle from "@/app/components/common/Toggle";
 import { useRouter } from "next/navigation";
 import { useSessionSync } from "@/app/lib/hooks/useSessionSync";
+import IntegrationsContent from "@/app/components/dashboard/IntegrationsContent";
 
-type Tab = "overview" | "candidates" | "jobs" | "interviews" | "messages" | "submitted" | "settings";
+type Tab = "overview" | "candidates" | "jobs" | "interviews" | "messages" | "submitted" | "settings" | "integrations";
 
 interface SubmittedApplication {
   id: string;
@@ -138,8 +139,27 @@ interface RawInboxSignal {
 export default function EmployerDashboard() {
   const router = useRouter();
   useSessionSync();
-  const [activeTab, setActiveTab] = useState<Tab>("overview");
+  const [activeTab, setActiveTabState] = useState<Tab>("overview");
   const [previousTab, setPreviousTab] = useState<Tab>("overview");
+  const [isBiasShieldActive, setIsBiasShieldActive] = useState(false);
+
+  // --- PERSISTENCE LOGIC: Sync activeTab with URL ---
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const tabParam = params.get("tab") as Tab;
+      if (tabParam && ["overview", "candidates", "jobs", "interviews", "messages", "submitted", "settings", "integrations"].includes(tabParam)) {
+        setActiveTabState(tabParam);
+      }
+    }
+  }, []);
+
+  const setActiveTab = (tab: Tab) => {
+    setActiveTabState(tab);
+    const params = new URLSearchParams(window.location.search);
+    params.set("tab", tab);
+    router.replace(`${window.location.pathname}?${params.toString()}`, { scroll: false });
+  };
   const [settingsSection, setSettingsSection] = useState<"company" | "strategy" | "security" | "privacy" | "notifications">("company");
   const [isPostJobModalOpen, setIsPostJobModalOpen] = useState(false);
   const [successMessage, setSuccessMessage] = useState<{ title: string; message: string } | null>(null);
@@ -474,9 +494,16 @@ export default function EmployerDashboard() {
     }
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    try {
+      await fetch("/api/auth/logout", { method: "POST" });
+    } catch (error) {
+      console.error("Logout API failed:", error);
+    }
     localStorage.removeItem("token");
     localStorage.removeItem("userRole");
+    // Ensure cookie is gone on client side too just in case
+    document.cookie = "auth_token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;";
     router.push("/");
   };
 
@@ -864,7 +891,7 @@ export default function EmployerDashboard() {
       <nav className="sticky top-0 z-50 bg-white/70 backdrop-blur-2xl border-b border-white shadow-sm">
         <div className="max-w-7xl mx-auto px-6 py-2 flex justify-between items-center relative gap-4">
           <div className="flex items-center gap-6">
-            <div onClick={() => router.push("/")} className="flex items-center gap-3 cursor-pointer group shrink-0">
+            <div onClick={() => setActiveTab("overview")} className="flex items-center gap-3 cursor-pointer group shrink-0">
               <NextImage 
                 src="/logo.png" 
                 alt="VidioCV Logo" 
@@ -876,7 +903,7 @@ export default function EmployerDashboard() {
             </div>
             <Link 
               href="/" 
-              className="hidden lg:flex items-center gap-2 px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-[0.2em] text-[#64748B] hover:text-[#334155] hover:bg-[#E2E8F0]/50 transition-all group cursor-pointer"
+              className="flex items-center gap-2 px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-[0.2em] text-[#64748B] hover:text-[#334155] hover:bg-[#E2E8F0]/50 transition-all group cursor-pointer"
             >
               Go to homepage <ArrowRight className="w-3 h-3 group-hover:translate-x-1 transition-transform" />
             </Link>
@@ -1004,7 +1031,7 @@ export default function EmployerDashboard() {
         {/* Navigation Tabs - Hidden in Settings and on Mobile */}
         {activeTab !== "settings" && (
           <div className="hidden md:flex gap-4 mb-12 p-2 bg-white/30 backdrop-blur-xl border border-white rounded-[32px] shadow-xl w-full md:w-max overflow-x-auto hide-scrollbar">
-            {(["overview", "candidates", "jobs", "interviews", "messages", "submitted", "settings"] as Tab[]).map((tab) => (
+            {(["overview", "candidates", "jobs", "interviews", "messages", "submitted", "integrations", "settings"] as Tab[]).map((tab) => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
@@ -1030,6 +1057,7 @@ export default function EmployerDashboard() {
             { id: "jobs", label: "Jobs", icon: Briefcase },
             { id: "submitted", label: "Submit", icon: Video },
             { id: "messages", label: "Mail", icon: Mail },
+            { id: "integrations", label: "Apps", icon: Network },
             { id: "settings", label: "Control", icon: Settings },
           ]}
         />
@@ -1062,9 +1090,23 @@ export default function EmployerDashboard() {
                       <h2 className="text-3xl font-black tracking-tight" style={{ color: "#334155" }}>
                         {employerName ? `Welcome back, ${employerName.split(" ")[0]}.` : "Welcome back."}
                       </h2>
-                      <p className="text-sm font-semibold mt-1" style={{ color: "#64748B" }}>
-                        Here&apos;s your hiring pipeline at a glance.
-                      </p>
+                      <div className="flex items-center gap-4 mt-2">
+                        <p className="text-sm font-semibold" style={{ color: "#64748B" }}>
+                          Here&apos;s your hiring pipeline at a glance.
+                        </p>
+                        <div className="h-4 w-px bg-[#E2E8F0]" />
+                        <div 
+                          onClick={() => setIsBiasShieldActive(!isBiasShieldActive)}
+                          className={`flex items-center gap-2 px-3 py-1.5 rounded-full cursor-pointer transition-all duration-500 border ${
+                            isBiasShieldActive 
+                              ? "bg-emerald-50 border-emerald-200 text-emerald-600 shadow-sm" 
+                              : "bg-slate-50 border-slate-200 text-slate-400 opacity-60 grayscale hover:grayscale-0 hover:opacity-100"
+                          }`}
+                        >
+                          <Shield className={`w-3.5 h-3.5 transition-transform duration-700 ${isBiasShieldActive ? "rotate-[360deg]" : ""}`} />
+                          <span className="text-[9px] font-black uppercase tracking-widest">Bias Shield {isBiasShieldActive ? "Active" : "Ready"}</span>
+                        </div>
+                      </div>
                     </div>
                     <div className="flex flex-wrap gap-3">
                       <button
@@ -1389,6 +1431,7 @@ export default function EmployerDashboard() {
                                 onViewVideo={(c) => setSelectedCandidateVideo(c)}
                                 onMessage={(c) => setSelectedCandidateMessage(c)}
                                 onSchedule={(c) => setSelectedCandidateSchedule(c)}
+                                isAnonymized={isBiasShieldActive}
                               />
                             </div>
                           ))}
@@ -1459,6 +1502,7 @@ export default function EmployerDashboard() {
                           onViewVideo={(c) => setSelectedCandidateVideo(c)}
                           onMessage={(c) => setSelectedCandidateMessage(c)}
                           onSchedule={(c) => setSelectedCandidateSchedule(c)}
+                          isAnonymized={isBiasShieldActive}
                         />
                       ) : (
                         <div className="text-center py-20 bg-white/50 rounded-3xl border border-dashed border-[#E2E8F0]">
@@ -2478,6 +2522,9 @@ export default function EmployerDashboard() {
                  )}
               </div>
             )}
+            {activeTab === "integrations" && (
+              <IntegrationsContent />
+            )}
           </motion.div>
         </AnimatePresence>
       </div>
@@ -2611,8 +2658,14 @@ export default function EmployerDashboard() {
         closeActionLabel=" Return to Pool "
       >
         <div className="bg-[#334155] rounded-[32px] overflow-hidden shadow-2xl border-4 border-white">
-           {selectedCandidateVideo?.videoUrl && selectedCandidateVideo.videoUrl !== "#" ? (
-             <VideoPlayer src={selectedCandidateVideo.videoUrl} title={selectedCandidateVideo.name} />
+           {selectedCandidateVideo?.videoUrl ? (
+             <div className="rounded-[32px] overflow-hidden bg-slate-900 shadow-2xl">
+               <VideoPlayer 
+                 src={selectedCandidateVideo.videoUrl} 
+                 title={selectedCandidateVideo.name} 
+                 isAnonymized={isBiasShieldActive}
+               />
+             </div>
            ) : (
              <div className="aspect-video flex flex-col items-center justify-center gap-6 bg-white/5">
                <div className="p-6 rounded-full bg-white/10">
@@ -2931,7 +2984,11 @@ export default function EmployerDashboard() {
               <div>
                 <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest mb-2">VidioCV</p>
                 <div className="rounded-xl overflow-hidden aspect-video bg-slate-900">
-                  <VideoPlayer src={selectedApplication.videoUrl} title={selectedApplication.candidateName} />
+                  <VideoPlayer 
+                    src={selectedApplication.videoUrl} 
+                    title={selectedApplication.candidateName} 
+                    isAnonymized={isBiasShieldActive}
+                  />
                 </div>
               </div>
             )}

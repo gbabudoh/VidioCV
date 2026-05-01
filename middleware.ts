@@ -22,6 +22,8 @@ export function middleware(request: NextRequest) {
       const payload = JSON.parse(atob(base64));
       
       const isAdmin = payload.role === 'admin' || payload.role === 'super_admin';
+      const isEmployer = payload.role === 'employer';
+      const isCandidate = payload.role === 'candidate';
 
       if (isAdmin) {
         // 1. If trying to access login page while logged in, go to dashboard
@@ -32,6 +34,22 @@ export function middleware(request: NextRequest) {
         // 2. "Lock" admin in the admin region: if outside /admin, bounce back
         if (!pathname.startsWith('/admin')) {
           return NextResponse.redirect(new URL('/admin', request.url));
+        }
+      }
+
+      if (isEmployer) {
+        // "Lock" employer in the dashboard region: if outside /dashboard/employer, bounce back
+        // ONLY allow the homepage (/) as requested.
+        if (!pathname.startsWith('/dashboard/employer') && pathname !== '/') {
+          return NextResponse.redirect(new URL('/dashboard/employer', request.url));
+        }
+      }
+
+      if (isCandidate) {
+        // "Lock" candidate in the dashboard region: if outside /dashboard/candidate, bounce back
+        // ONLY allow the homepage (/) as requested.
+        if (!pathname.startsWith('/dashboard/candidate') && pathname !== '/') {
+          return NextResponse.redirect(new URL('/dashboard/candidate', request.url));
         }
       }
     } catch {
