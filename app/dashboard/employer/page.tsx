@@ -208,6 +208,9 @@ export default function EmployerDashboard() {
   const [isChangingPassword, setIsChangingPassword] = useState(false);
   const [passwordChangeError, setPasswordChangeError] = useState("");
   const [passwordChangeSuccess, setPasswordChangeSuccess] = useState(false);
+  const [isDeleteAccountConfirmOpen, setIsDeleteAccountConfirmOpen] = useState(false);
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false);
+  const [isWipingData, setIsWipingData] = useState(false);
   const [messageText, setMessageText] = useState("");
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
@@ -592,6 +595,50 @@ export default function EmployerDashboard() {
       console.error("Failed to save preferences:", error);
     } finally {
       setIsSavingPrefs(false);
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    try {
+      setIsDeletingAccount(true);
+      const token = localStorage.getItem("token");
+      const res = await fetch("/api/auth/delete-account", {
+        method: "POST",
+        headers: { "Authorization": `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (data.success) {
+        localStorage.clear();
+        window.location.href = "/";
+      }
+    } catch (error) {
+      console.error("Account deletion failed:", error);
+    } finally {
+      setIsDeletingAccount(false);
+    }
+  };
+
+  const handleWipeData = async () => {
+    try {
+      setIsWipingData(true);
+      const token = localStorage.getItem("token");
+      const res = await fetch("/api/jobs/wipe", {
+        method: "POST",
+        headers: { "Authorization": `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (data.success) {
+        setIsWipeConfirmOpen(false);
+        setEmployerJobs([]);
+        setSuccessMessage({
+          title: "Data Purged",
+          message: "All job postings and applicant records have been permanently wiped from your workspace."
+        });
+      }
+    } catch (error) {
+      console.error("Wipe data error:", error);
+    } finally {
+      setIsWipingData(false);
     }
   };
 
@@ -2102,8 +2149,9 @@ export default function EmployerDashboard() {
                             </div>
 
                             {/* Danger Zone */}
-                            <div className="rounded-2xl border-2 border-dashed border-red-100 bg-red-50/30 p-6">
-                              <p className="text-[10px] font-black uppercase tracking-widest text-red-400 mb-4">Danger Zone</p>
+                            <div className="rounded-2xl border-2 border-dashed border-red-100 bg-red-50/30 p-6 space-y-8">
+                              <p className="text-[10px] font-black uppercase tracking-widest text-red-400 mb-0">Danger Zone</p>
+                              
                               <div className="flex items-start justify-between gap-6">
                                 <div className="flex items-start gap-4">
                                   <div className="p-2.5 rounded-xl bg-red-100 text-red-400 shrink-0 mt-0.5">
@@ -2118,7 +2166,25 @@ export default function EmployerDashboard() {
                                   onClick={() => setIsWipeConfirmOpen(true)}
                                   className="px-5 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest text-red-400 border border-red-200 hover:bg-red-100 transition-all cursor-pointer shrink-0"
                                 >
-                                  Delete Data
+                                  Wipe Jobs
+                                </button>
+                              </div>
+
+                              <div className="flex items-start justify-between gap-6 pt-6 border-t border-red-100/50">
+                                <div className="flex items-start gap-4">
+                                  <div className="p-2.5 rounded-xl bg-red-100 text-red-400 shrink-0 mt-0.5">
+                                    <AlertCircle className="w-4 h-4" />
+                                  </div>
+                                  <div>
+                                    <p className="font-black text-sm" style={{ color: "#334155" }}>Terminate Account</p>
+                                    <p className="text-xs font-medium mt-0.5" style={{ color: "#64748B" }}>Permanently delete your profile and all associated company data. Irreversible.</p>
+                                  </div>
+                                </div>
+                                <button
+                                  onClick={() => setIsDeleteAccountConfirmOpen(true)}
+                                  className="px-5 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest text-white bg-red-500 hover:bg-red-600 shadow-lg shadow-red-500/20 transition-all cursor-pointer shrink-0"
+                                >
+                                  Terminate
                                 </button>
                               </div>
                             </div>
@@ -2173,9 +2239,54 @@ export default function EmployerDashboard() {
 
                     </motion.div>
                   </AnimatePresence>
-                </div>
-              </div>
-            )}
+            {/* Account Termination Modal */}
+            <AnimatePresence>
+              {isDeleteAccountConfirmOpen && (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="fixed inset-0 z-[100] flex items-center justify-center p-6"
+                  style={{ background: "rgba(15,23,42,0.6)", backdropFilter: "blur(12px)" }}
+                  onClick={() => setIsDeleteAccountConfirmOpen(false)}
+                >
+                  <motion.div
+                    initial={{ scale: 0.95, opacity: 0, y: 20 }}
+                    animate={{ scale: 1, opacity: 1, y: 0 }}
+                    exit={{ scale: 0.95, opacity: 0, y: 20 }}
+                    className="bg-white rounded-[40px] p-10 shadow-2xl max-w-md w-full border border-red-100"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <div className="flex flex-col items-center text-center space-y-6">
+                      <div className="w-20 h-20 rounded-[32px] bg-red-50 flex items-center justify-center text-red-500">
+                        <Trash2 className="w-10 h-10" />
+                      </div>
+                      <div className="space-y-2">
+                        <h3 className="text-2xl font-black" style={{ color: "#334155" }}>Terminate Account?</h3>
+                        <p className="text-sm font-medium leading-relaxed" style={{ color: "#64748B" }}>
+                          This will permanently purge your professional identity, company profile, and all associated recruitment data. This action is <span className="text-red-500 font-bold uppercase tracking-tighter">irreversible</span>.
+                        </p>
+                      </div>
+                      <div className="flex flex-col w-full gap-3 pt-4">
+                        <button
+                          onClick={handleDeleteAccount}
+                          disabled={isDeletingAccount}
+                          className="w-full py-4 bg-red-500 hover:bg-red-600 text-white font-black text-xs uppercase tracking-widest rounded-2xl shadow-xl shadow-red-500/20 transition-all active:scale-95 disabled:opacity-50 cursor-pointer"
+                        >
+                          {isDeletingAccount ? "Purging Systems..." : "Confirm Termination"}
+                        </button>
+                        <button
+                          onClick={() => setIsDeleteAccountConfirmOpen(false)}
+                          className="w-full py-4 border border-[#E2E8F0] text-[#64748B] font-black text-xs uppercase tracking-widest rounded-2xl hover:bg-slate-50 transition-all cursor-pointer"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  </motion.div>
+                </motion.div>
+              )}
+            </AnimatePresence>
 
             {/* Wipe Confirmation Modal */}
             <AnimatePresence>
@@ -2210,22 +2321,28 @@ export default function EmployerDashboard() {
                     </p>
                     <div className="flex gap-3">
                       <button
-                        onClick={() => setIsWipeConfirmOpen(false)}
-                        className="flex-1 px-6 py-3.5 bg-[#F1F5F9] hover:bg-[#E2E8F0] text-[#334155] font-black text-[10px] uppercase tracking-widest rounded-2xl transition-all cursor-pointer"
+                        onClick={handleWipeData}
+                        disabled={isWipingData}
+                        className="flex-1 py-3 bg-red-500 hover:bg-red-600 text-white font-black text-[10px] uppercase tracking-widest rounded-xl transition-all disabled:opacity-50 cursor-pointer"
                       >
-                        Cancel
+                        {isWipingData ? "Wiping..." : "Yes, Delete Data"}
                       </button>
                       <button
                         onClick={() => setIsWipeConfirmOpen(false)}
-                        className="flex-1 px-6 py-3.5 bg-red-500 hover:bg-red-600 text-white font-black text-[10px] uppercase tracking-widest rounded-2xl shadow-lg transition-all active:scale-95 cursor-pointer"
+                        className="flex-1 py-3 bg-white border border-[#E2E8F0] text-[#64748B] font-black text-[10px] uppercase tracking-widest rounded-xl hover:bg-slate-50 transition-all cursor-pointer"
                       >
-                        Yes, Delete All
+                        Cancel
                       </button>
                     </div>
                   </motion.div>
                 </motion.div>
               )}
-            </AnimatePresence>            {activeTab === "messages" && (
+            </AnimatePresence>
+          </div>
+        </div>
+      )}
+
+            {activeTab === "messages" && (
               <div className="space-y-8">
                  <div
                     className="border border-white rounded-2xl md:rounded-[40px] p-4 sm:p-8 lg:p-12 shadow-2xl relative"

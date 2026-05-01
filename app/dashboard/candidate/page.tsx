@@ -234,7 +234,9 @@ export default function CandidateDashboard() {
   // Direct Messaging Strategy
   const [messageSubTab, setMessageSubTab] = useState<"inbox" | "sent" | "compose">("inbox");
   const [sentMessages, setSentMessages] = useState<DirectMessage[]>([]);
-  const [isLoadingSent, setIsLoadingSent] = useState(false);
+  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false);
   const [employers, setEmployers] = useState<Employer[]>([]);
   const [selectedRecipientId, setSelectedRecipientId] = useState<string>("");
   const [composeSubject, setComposeSubject] = useState("");
@@ -563,6 +565,26 @@ export default function CandidateDashboard() {
       console.error("Direct message error:", error);
     } finally {
       setIsSendingDirect(false);
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    try {
+      setIsDeletingAccount(true);
+      const token = localStorage.getItem("token");
+      const res = await fetch("/api/auth/delete-account", {
+        method: "POST",
+        headers: { "Authorization": `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (data.success) {
+        localStorage.clear();
+        window.location.href = "/";
+      }
+    } catch (error) {
+      console.error("Account deletion failed:", error);
+    } finally {
+      setIsDeletingAccount(false);
     }
   };
 
@@ -2200,7 +2222,7 @@ export default function CandidateDashboard() {
                               <p className="text-sm font-medium text-slate-800">Deactivate Account</p>
                               <p className="text-xs text-slate-400 mt-0.5">Permanently delete your profile and all associated data.</p>
                             </div>
-                            <button onClick={() => setIsLogoutModalOpen(true)} className="px-4 py-2 rounded-lg text-xs font-semibold text-red-500 bg-red-50 hover:bg-red-100 border border-red-100 transition-all cursor-pointer shrink-0 self-start sm:self-auto">Deactivate</button>
+                            <button onClick={() => setIsDeleteConfirmOpen(true)} className="px-4 py-2 rounded-lg text-xs font-semibold text-red-500 bg-red-50 hover:bg-red-100 border border-red-100 transition-all cursor-pointer shrink-0 self-start sm:self-auto">Deactivate</button>
                           </div>
                         </div>
                       )}
@@ -2762,6 +2784,43 @@ export default function CandidateDashboard() {
           { id: "messages", label: "INBOX", icon: Mail },
         ]}
       />
+      <Modal
+        isOpen={isDeleteConfirmOpen}
+        onClose={() => setIsDeleteConfirmOpen(false)}
+        title="Permanently Purge Account?"
+        type="default"
+      >
+        <div className="space-y-6">
+          <div className="flex items-start gap-4 p-4 rounded-2xl bg-red-50 border border-red-100">
+            <div className="p-2 rounded-xl bg-red-100 text-red-500">
+              <Trash2 className="w-5 h-5" />
+            </div>
+            <div>
+              <p className="text-sm font-bold text-red-600">This action is irreversible</p>
+              <p className="text-xs text-red-500/80 mt-1 leading-relaxed">
+                By confirming, all your video resumes, application history, skill lab scores, and professional profile data will be permanently wiped from our secure servers.
+              </p>
+            </div>
+          </div>
+          
+          <div className="flex flex-col gap-3">
+            <button
+              onClick={handleDeleteAccount}
+              disabled={isDeletingAccount}
+              className="w-full py-4 rounded-2xl bg-red-600 hover:bg-red-700 text-white font-black text-xs uppercase tracking-widest transition-all shadow-xl shadow-red-600/10 active:scale-95 disabled:opacity-50 cursor-pointer"
+            >
+              {isDeletingAccount ? "Purging Data..." : "Confirm Permanent Deletion"}
+            </button>
+            <button
+              onClick={() => setIsDeleteConfirmOpen(false)}
+              className="w-full py-4 rounded-2xl border border-slate-200 text-slate-400 font-black text-xs uppercase tracking-widest hover:bg-slate-50 transition-all cursor-pointer"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      </Modal>
+
       <div className="h-32 md:hidden" />
     </div>
   );
