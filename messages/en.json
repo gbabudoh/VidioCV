@@ -111,8 +111,7 @@
   "Legal": {
     "cookie": {
       "title": "Cookie Preference",
-      "description": "We use cookies to synchronize your recruitment experience and optimize our Neural Match AI. Read our {privacyLink} for full details.",
-      "privacyLink": "Privacy Policy",
+      "description": "We use cookies to synchronize your recruitment experience and optimize our Neural Match AI. Read our <privacyLink>Privacy Policy</privacyLink> for full details.",
       "decline": "Decline",
       "accept": "Accept All",
       "gdprBadge": "GDPR Ready"

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { 
   Beaker, 
   Trophy, 
@@ -17,8 +17,13 @@ import {
   Lock,
   ArrowRight,
   Target,
-  LucideIcon
+  LucideIcon,
+  TrendingUp
 } from "lucide-react";
+import LogicAssessment from "@/components/assessments/LogicAssessment";
+import DesignAssessment from "@/components/assessments/DesignAssessment";
+import CommunicationAssessment from "@/components/assessments/CommunicationAssessment";
+// Auth will be handled via global state or props in future iterations
 
 interface Assessment {
   id: string;
@@ -31,9 +36,34 @@ interface Assessment {
   score?: number;
   icon: LucideIcon;
 }
+  
+interface TelemetryData {
+  challengeId: string;
+  startTime: number;
+  endTime?: number;
+  interactions: number;
+  retries: number;
+}
+
+interface AssessmentResults {
+  [key: string]: {
+    correct: boolean;
+    [key: string]: string | number | boolean | null | number[] | string[];
+  };
+}
 
 export default function SkillLabsContent() {
-  const [assessments] = useState<Assessment[]>([
+  const [assessments, setAssessments] = useState<Assessment[]>([
+    {
+      id: "logic-01",
+      title: "Neural Logic & Behavioral Sync",
+      category: "Strategy",
+      duration: "5 mins",
+      difficulty: "Intermediate",
+      points: 1000,
+      status: "available",
+      icon: Target
+    },
     {
       id: "tech-01",
       title: "System Architecture & Scalability",
@@ -56,16 +86,6 @@ export default function SkillLabsContent() {
       icon: Layout
     },
     {
-      id: "strat-01",
-      title: "Strategic Business Case Analysis",
-      category: "Strategy",
-      duration: "20 mins",
-      difficulty: "Intermediate",
-      points: 600,
-      status: "available",
-      icon: Target
-    },
-    {
       id: "comm-01",
       title: "Professional Communication & Soft Skills",
       category: "Communication",
@@ -77,56 +97,144 @@ export default function SkillLabsContent() {
     }
   ]);
 
+  const [activeAssessment, setActiveAssessment] = useState<string | null>(null);
+  const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
+
+  const handleStartAssessment = async (labId: string) => {
+    if (labId !== "logic-01" && labId !== "design-01" && labId !== "comm-01") {
+      alert("This assessment is coming soon. Please try the Neural Logic, Design, or Communication sync!");
+      return;
+    }
+
+    try {
+      let type = "LOGIC";
+      if (labId === "design-01") type = "DESIGN";
+      if (labId === "comm-01") type = "COMM";
+      
+      const res = await fetch("/api/assessments", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type })
+      });
+      const data = await res.json();
+      if (data.id) {
+        setCurrentSessionId(data.id);
+        setActiveAssessment(labId);
+      }
+    } catch (err) {
+      console.error("Failed to start assessment:", err);
+    }
+  };
+
+  const handleCompleteAssessment = async (results: AssessmentResults, telemetry: TelemetryData[]) => {
+    if (!currentSessionId) return;
+
+    try {
+      const res = await fetch(`/api/assessments/${currentSessionId}/submit`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ results, telemetry })
+      });
+      const data = await res.json();
+      if (data.status === "completed") {
+        // Update local state
+        setAssessments(prev => prev.map(a => 
+          a.id === activeAssessment ? { ...a, status: "verified", score: data.score } : a
+        ));
+        setActiveAssessment(null);
+        setCurrentSessionId(null);
+      }
+    } catch (err) {
+      console.error("Failed to submit assessment:", err);
+    }
+  };
+
   return (
     <div className="max-w-7xl mx-auto space-y-10 pb-20">
       {/* Header Section */}
-      <div className="relative p-10 rounded-[48px] bg-slate-900 text-white overflow-hidden group">
-        <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: "radial-gradient(circle, white 1px, transparent 1px)", backgroundSize: "32px 32px" }} />
-        <div className="absolute top-0 right-0 p-12 opacity-10 group-hover:scale-110 transition-transform duration-1000">
-          <Beaker className="w-48 h-48" />
+      <div className="relative p-10 rounded-[48px] bg-white border border-slate-200 text-slate-900 overflow-hidden group shadow-sm">
+        <div className="absolute inset-0 opacity-[0.6]" style={{ backgroundImage: "linear-gradient(135deg, #F8FAFC 0%, #FFFFFF 100%)" }} />
+        <div className="absolute top-0 right-0 p-12 opacity-[0.03] group-hover:scale-110 transition-transform duration-1000">
+          <Beaker className="w-48 h-48 text-slate-900" />
         </div>
         
         <div className="relative z-10 space-y-6 max-w-2xl">
           <div className="flex items-center gap-3">
-            <div className="px-3 py-1 rounded-full bg-[#F7B980]/20 text-[#F7B980] border border-[#F7B980]/30 text-[10px] font-black uppercase tracking-widest">
+            <div className="px-3 py-1 rounded-full bg-[#F7B980]/20 text-[#F7B980] border border-[#F7B980]/30 text-[10px] font-black uppercase tracking-widest cursor-pointer hover:bg-[#F7B980]/30 transition-colors">
               Beta Access
             </div>
             <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-            <span className="text-xs font-bold text-white/40 uppercase tracking-widest">Verified Talent Mesh Active</span>
+            <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Verified Talent Mesh Active</span>
           </div>
           
-          <h1 className="text-4xl md:text-5xl font-black tracking-tight leading-tight">
+          <h1 className="text-4xl md:text-5xl font-black tracking-tight leading-tight text-slate-900">
             VidioCV <span className="text-[#F7B980]">Skill Labs</span>
           </h1>
-          <p className="text-lg text-white/60 font-medium leading-relaxed">
+          <p className="text-lg text-slate-600 font-medium leading-relaxed">
             Objective verification for elite performers. Complete high-fidelity challenges to earn verified badges and highlight your competence to top-tier employers.
           </p>
           
-          <div className="flex flex-wrap items-center gap-8 pt-4">
+          <div className="flex flex-wrap items-center gap-8 pt-6 border-t border-slate-100/50">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center">
+              <div className="w-10 h-10 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center">
                 <Trophy className="w-5 h-5 text-[#F7B980]" />
               </div>
               <div>
-                <p className="text-xl font-black">1,450</p>
-                <p className="text-[10px] font-bold uppercase tracking-widest text-white/30">Total Lab Points</p>
+                <p className="text-xl font-black text-slate-800 leading-tight">1,450</p>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Total Lab Points</p>
               </div>
             </div>
-            <div className="w-px h-10 bg-white/10" />
+            <div className="w-px h-10 bg-slate-100" />
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center">
-                <ShieldCheck className="w-5 h-5 text-emerald-400" />
+              <div className="w-10 h-10 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center">
+                <ShieldCheck className="w-5 h-5 text-emerald-500" />
               </div>
               <div>
-                <p className="text-xl font-black">1 / 4</p>
-                <p className="text-[10px] font-bold uppercase tracking-widest text-white/30">Verified Badges</p>
+                <p className="text-xl font-black text-slate-800 leading-tight">1 / 4</p>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Verified Badges</p>
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Main Grid */}
+      {/* Active Assessment Modal Overlay */}
+      <AnimatePresence>
+        {activeAssessment && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] bg-slate-900/90 backdrop-blur-sm flex items-center justify-center p-4"
+          >
+            <div className="w-full max-w-4xl relative">
+              <button 
+                onClick={() => setActiveAssessment(null)}
+                className="absolute -top-12 right-0 text-white hover:text-[#F7B980] transition-colors flex items-center gap-2 font-bold uppercase tracking-widest text-xs cursor-pointer"
+              >
+                Exit Lab <ChevronRight className="w-4 h-4 cursor-pointer" />
+              </button>
+              {activeAssessment === "logic-01" ? (
+                <LogicAssessment 
+                  candidateName="Candidate" 
+                  onComplete={handleCompleteAssessment} 
+                />
+              ) : activeAssessment === "design-01" ? (
+                <DesignAssessment 
+                  candidateName="Candidate" 
+                  onComplete={handleCompleteAssessment} 
+                />
+              ) : (
+                <CommunicationAssessment 
+                  candidateName="Candidate" 
+                  onComplete={handleCompleteAssessment} 
+                />
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
         
         {/* Left: Assessment Inventory */}
@@ -152,10 +260,10 @@ export default function SkillLabsContent() {
                 }`}
               >
                 {/* Icon */}
-                <div className={`w-16 h-16 rounded-2xl flex items-center justify-center shrink-0 transition-transform group-hover:scale-110 duration-500 ${
+                <div className={`w-16 h-16 rounded-2xl flex items-center justify-center shrink-0 transition-transform group-hover:scale-110 duration-500 cursor-pointer ${
                   lab.status === 'verified' ? 'bg-emerald-50 text-emerald-500' : 'bg-slate-100 text-slate-500'
                 }`}>
-                  <lab.icon className="w-8 h-8" />
+                  <lab.icon className="w-8 h-8 cursor-pointer" />
                 </div>
 
                 {/* Content */}
@@ -187,12 +295,18 @@ export default function SkillLabsContent() {
                       <CheckCircle2 className="w-5 h-5" />
                     </div>
                   ) : lab.status === 'in-progress' ? (
-                    <button className="px-6 py-3 rounded-2xl bg-[#F7B980] text-black text-xs font-black uppercase tracking-widest hover:bg-[#F0A060] transition-all shadow-lg shadow-[#F7B980]/20 flex items-center gap-2">
-                      Resume <ArrowRight className="w-3.5 h-3.5" />
+                    <button 
+                      onClick={() => handleStartAssessment(lab.id)}
+                      className="px-6 py-3 rounded-2xl bg-[#F7B980] text-black text-xs font-black uppercase tracking-widest hover:bg-[#F0A060] transition-all shadow-lg shadow-[#F7B980]/20 flex items-center gap-2 cursor-pointer"
+                    >
+                      Resume <ArrowRight className="w-3.5 h-3.5 cursor-pointer" />
                     </button>
                   ) : (
-                    <button className="p-3 rounded-2xl bg-slate-100 text-slate-400 group-hover:bg-slate-800 group-hover:text-white transition-all">
-                      <ChevronRight className="w-5 h-5" />
+                    <button 
+                      onClick={() => handleStartAssessment(lab.id)}
+                      className="p-3 rounded-2xl bg-slate-100 text-slate-400 group-hover:bg-slate-800 group-hover:text-white transition-all cursor-pointer"
+                    >
+                      <ChevronRight className="w-5 h-5 cursor-pointer" />
                     </button>
                   )}
                 </div>
@@ -265,5 +379,4 @@ export default function SkillLabsContent() {
   );
 }
 
-// Reuse TrendingUp from lucide-react if possible, otherwise import it.
-import { TrendingUp } from "lucide-react";
+// End of SkillLabsContent component

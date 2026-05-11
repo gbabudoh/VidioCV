@@ -34,6 +34,7 @@ model User {
   subscriptions       Subscription[]
   transactions        Transaction[]
   integrations        Integration[]
+  assessments         Assessment[]
 
   @@map("users")
 }
@@ -442,4 +443,23 @@ model Integration {
   @@unique([userId, type])
   @@index([userId], map: "idx_integrations_user")
   @@map("integrations")
+}
+
+model Assessment {
+  id              String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  candidateId     String   @map("candidate_id") @db.Uuid
+  candidate       User     @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  type            String   // e.g., "LOGIC", "CODE", "STRATEGY"
+  score           Int?
+  maxScore        Int?     @map("max_score")
+  status          String   @default("pending") // "pending", "completed", "failed"
+  telemetry       Json?    // Stores detailed behavioral data (time per question, etc.)
+  aiInsights      String?  @map("ai_insights")
+  archetype       String?  // e.g., "Meticulous Architect", "High-Velocity Fixer"
+  results         Json?    // Detailed question/answer data
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  completedAt     DateTime? @map("completed_at") @db.Timestamptz(6)
+
+  @@index([candidateId], map: "idx_assessments_candidate")
+  @@map("assessments")
 }

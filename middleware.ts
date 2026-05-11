@@ -8,7 +8,7 @@ const defaultLocale = 'en';
 const intlMiddleware = createMiddleware({
   locales,
   defaultLocale,
-  localePrefix: 'always' // Always show locale in URL for SEO consistency
+  localePrefix: 'as-needed' // Changed from 'always' to support English at root
 });
 
 export function middleware(request: NextRequest) {
@@ -30,9 +30,13 @@ export function middleware(request: NextRequest) {
 
   // Helper to check path regardless of locale
   const isPath = (target: string) => {
+    // Handle root path for default locale (no prefix)
+    if (target === '' && (pathname === '/' || pathname === '')) return true;
     return locales.some(locale => pathname === `/${locale}${target}` || pathname === `/${locale}${target}/`);
   };
   const startsWithPath = (target: string) => {
+    // Handle paths without prefix (default locale)
+    if (pathname.startsWith(target)) return true;
     return locales.some(locale => pathname.startsWith(`/${locale}${target}`));
   };
 

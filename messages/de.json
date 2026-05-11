@@ -102,6 +102,15 @@
       "rights": "Alle Rechte vorbehalten."
     }
   },
+  "Legal": {
+    "cookie": {
+      "title": "Cookie-Einstellungen",
+      "description": "Wir verwendet Cookies, um Ihr Recruiting-Erlebnis zu synchronisieren und unsere Neural Match KI zu optimieren. Lesen Sie unsere <privacyLink>Datenschutzerklärung</privacyLink> für weitere Details.",
+      "decline": "Ablehnen",
+      "accept": "Alle akzeptieren",
+      "gdprBadge": "DSGVO-konform"
+    }
+  },
   "Auth": {
     "login": {
       "title": "Willkommen zurück",

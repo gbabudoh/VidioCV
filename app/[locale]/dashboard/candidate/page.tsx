@@ -1,5 +1,3 @@
-/* eslint-disable */
-// @ts-nocheck
 "use client";
 
 import React, { useState, useEffect } from "react";
@@ -9,9 +7,11 @@ import {
   Building2, UserCircle, Shield, Trash2,
   Mail, Lock, Plus, X, ChevronRight, Link as LinkIcon,
   Calendar as CalendarIcon, Archive, ArrowLeft, Calendar,
-  Monitor, Smartphone, Sparkles, Globe, Brain, Beaker, ArrowRight
+  Monitor, Smartphone, Sparkles, Globe, Brain, Beaker, ArrowRight, Home
 } from "lucide-react";
 import MobileBottomNav from "@/app/components/common/MobileBottomNav";
+import InstallAppButton from "@/app/components/common/InstallAppButton";
+import NotificationSetup from "@/app/components/NotificationSetup";
 
 // Helper components
 import Select, { OptionProps, SingleValueProps, SingleValue } from "react-select";
@@ -147,6 +147,7 @@ export default function CandidateDashboard() {
   const [activeTab, setActiveTab] = useState<Tab>("profile");
   const [activeVideoUrl, setActiveVideoUrl] = useState<string | null>(null);
   const [showVideoCreator, setShowVideoCreator] = useState(false);
+  const [userId, setUserId] = useState<string | null>(null);
   const [settingsSection, setSettingsSection] = useState<"general" | "career" | "security" | "privacy" | "notifications">("general");
 
   interface UserPreferences {
@@ -234,6 +235,7 @@ export default function CandidateDashboard() {
   // Direct Messaging Strategy
   const [messageSubTab, setMessageSubTab] = useState<"inbox" | "sent" | "compose">("inbox");
   const [sentMessages, setSentMessages] = useState<DirectMessage[]>([]);
+  const [isLoadingSent, setIsLoadingSent] = useState(false);
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
@@ -439,6 +441,7 @@ export default function CandidateDashboard() {
           }
           if (data.user) {
             setUserName(data.user.name);
+            setUserId(data.user.id);
             if (data.user.profile?.fullName) setUserName(data.user.profile.fullName);
           }
           if (data.cvProfile?.title) {
@@ -588,54 +591,74 @@ export default function CandidateDashboard() {
     }
   };
 
-  const handleManageMessage = async (action: "archive" | "delete") => {
-    if (!selectedMessage) return;
-
+  const handleDeleteVideoCV = async () => {
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch("/api/messages/manage", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          messageId: selectedMessage.id,
-          action
-        })
+      const response = await fetch("/api/profile/video/delete", {
+        method: "DELETE",
+        headers: { "Authorization": `Bearer ${token}` }
       });
-      const data = await res.json();
+      const data = await response.json();
       if (data.success) {
+        setActiveVideoUrl("");
+        setSuccessMessage({
+          title: "VidioCV Removed",
+          message: "Your professional video resume has been permanently deleted from our servers."
+        });
+      }
+    } catch (error) {
+      console.error("Failed to delete VideoCV:", error);
+    }
+  };
+
+  const handleManageMessage = async (action: "archive" | "delete") => {
+    if (!selectedMessage) return;
+    try {
+      setIsUpdatingStatus(true);
+      const token = localStorage.getItem("token");
+      const response = await fetch(`/api/messages/direct/${selectedMessage.id}`, {
+        method: action === "archive" ? "PATCH" : "DELETE",
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "Content-Type": "application/json"
+        },
+        body: action === "archive" ? JSON.stringify({ status: "archived" }) : undefined
+      });
+
+      if (response.ok) {
         setSelectedMessage(null);
         setSuccessMessage({
-          title: action === "delete" ? "Draft Vanished" : "Inbox Organized",
+          title: action === "delete" ? "Message Deleted" : "Message Archived",
           message: action === "delete" ? "The correspondence has been permanently deleted." : "Message has been safely archived away from your main feed."
         });
         
-        // Refresh messages
-        const response = await fetch("/api/messages/received", {
+        // Refresh messages list
+        const res = await fetch("/api/messages/direct?type=received", {
           headers: { "Authorization": `Bearer ${token}` }
         });
-        const d = await response.json();
-        if (d.success && d.messages) {
+        const d = await res.json();
+        if (d.success) {
           const formattedMessages = d.messages.map((req: MessageRequest) => ({
             id: req.id,
-            company: req.requesterCompany || "Unknown Company",
-            sender: req.requesterName || "Recruiter",
+            company: req.requesterCompany || "Direct Message",
+            sender: req.requesterName || "Employer",
             email: req.requesterEmail,
-            subject: `New Inquiry from ${req.requesterCompany || "Employer"}`,
-            preview: req.message.substring(0, 50) + "...",
+            subject: req.type === "direct" ? "Direct Communication" : `New Inquiry from ${req.requesterCompany || "Employer"}`,
+            preview: req.message.substring(0, 60) + "...",
             body: req.message,
             time: new Date(req.createdAt).toLocaleDateString(),
-            unread: req.status === "pending",
-            replied: req.status === "replied",
+            unread: req.status === "unread",
+            replied: !!req.replyMessage,
             replyMessage: req.replyMessage || undefined,
+            type: req.type
           }));
           setMessages(formattedMessages);
         }
       }
-    } catch (err) {
-      console.error("Failed to manage message:", err);
+    } catch (error) {
+      console.error("Failed to manage message:", error);
+    } finally {
+      setIsUpdatingStatus(false);
     }
   };
 
@@ -787,9 +810,15 @@ export default function CandidateDashboard() {
     }
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    try {
+      await fetch("/api/auth/logout", { method: "POST" });
+    } catch (error) {
+      console.error("Logout API failed:", error);
+    }
     localStorage.removeItem("token");
     localStorage.removeItem("userRole");
+    document.cookie = "auth_token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;";
     router.push("/");
   };
 
@@ -797,18 +826,18 @@ export default function CandidateDashboard() {
     <div 
       className="min-h-screen font-sans relative overflow-hidden"
       style={{
-        background: "linear-gradient(135deg, #E2E8F0 0%, #F9F9F9 45%, #F9F5F1 100%)",
+        backgroundImage: "linear-gradient(135deg, #E2E8F0 0%, #F9F9F9 45%, #F9F5F1 100%)",
       }}
     >
       {/* Ambient orbs */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden">
         <div
           className="absolute top-[-10%] right-[-5%] w-[60%] h-[60%] rounded-full blur-[140px]"
-          style={{ background: "rgba(247,185,128,0.15)" }}
+          style={{ backgroundColor: "rgba(247,185,128,0.15)" }}
         />
         <div
           className="absolute bottom-[-10%] left-[-5%] w-[60%] h-[60%] rounded-full blur-[130px]"
-          style={{ background: "rgba(172,186,196,0.18)" }}
+          style={{ backgroundColor: "rgba(172,186,196,0.18)" }}
         />
       </div>
 
@@ -824,89 +853,90 @@ export default function CandidateDashboard() {
       />
 
       {/* Header */}
-      <nav 
+      <nav
         className="sticky top-0 z-50 backdrop-blur-2xl transition-all duration-300"
-        style={{ 
-          background: "rgba(253,252,250,0.92)", 
+        style={{
+          backgroundColor: "rgba(253,252,250,0.92)",
           borderBottom: "1px solid #E0E4E3",
           boxShadow: "0 2px 16px rgba(87,89,91,0.04)"
         }}
       >
-        <div className="max-w-7xl mx-auto px-6 py-2.5 flex justify-between items-center relative gap-4">
-          <div className="flex items-center gap-6">
-            <div 
-              onClick={() => setActiveTab("profile")} 
-              className="flex items-center gap-2 cursor-pointer group shrink-0"
-            >
-               <NextImage 
-                 src="/logo.png" 
-                 alt="VidioCV Logo" 
-                 width={100}
-                 height={32}
-                 className="object-contain md:w-[120px] md:h-[38px]"
-                 priority
-               />
-            </div>
-            
-            {/* Back Context for Mobile */}
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 h-14 flex items-center gap-2 sm:gap-3">
+          {/* Left: Logo */}
+          <div
+            onClick={() => setActiveTab("profile")}
+            className="flex items-center cursor-pointer group shrink-0"
+          >
+            <NextImage
+              src="/logo.png"
+              alt="VidioCV Logo"
+              width={90}
+              height={29}
+              className="object-contain w-[82px] sm:w-[100px] md:w-[110px]"
+              priority
+            />
+          </div>
+
+          {/* Center: Hub label (md+) or Back button (mobile only, non-profile) */}
+          <div className="flex-1 flex items-center justify-center min-w-0">
             {activeTab !== "profile" && (
-              <div className="md:hidden flex items-center">
-                 <button 
-                   onClick={() => setActiveTab("profile")}
-                   className="flex items-center gap-2 text-[#64748B] font-bold text-xs uppercase tracking-widest"
-                 >
-                   <ArrowLeft className="w-4 h-4" />
-                   Back
-                 </button>
-              </div>
-            )}
-          </div>
-
-          <div className="hidden lg:flex absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
-              <span 
-                className="px-4 py-1.5 text-[10px] font-bold uppercase tracking-[0.2em] rounded-full border shadow-sm"
-                style={{ 
-                  background: "rgba(255,255,255,0.8)", 
-                  borderColor: "#E0E4E3", 
-                  color: "#64748B" 
-                }}
+              <button
+                onClick={() => setActiveTab("profile")}
+                className="md:hidden flex items-center gap-1.5 text-[#64748B] font-bold text-xs uppercase tracking-widest cursor-pointer"
               >
-                  Candidate Hub
-              </span>
-          </div>
-
-          <div className="flex items-center gap-2 md:gap-3">
-            <button 
-              onClick={() => setActiveTab("notifications")} 
-              className="p-2 md:p-2.5 rounded-xl transition-all hover:bg-[#E2E8F0] group cursor-pointer"
-              style={{ color: "#64748B" }}
-            >
-              <Bell className="w-5 h-5 group-hover:text-[#334155] transition-colors" />
-            </button>
-            <button 
-              onClick={() => setActiveTab("settings")} 
-              className="p-2 md:p-2.5 rounded-xl transition-all hover:bg-[#E2E8F0] group cursor-pointer"
-              style={{ color: "#64748B" }}
-            >
-              <Settings className="w-5 h-5 group-hover:text-[#334155] transition-colors" />
-            </button>
-            <div className="hidden md:block h-6 w-px bg-[#E0E4E3] mx-1" />
-            <div className="flex items-center gap-3">
-              <Link
-                href="/"
-                className="hidden lg:flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold text-slate-500 hover:text-slate-800 hover:bg-slate-50 transition-all cursor-pointer"
-              >
-                Go to Homepage
-                <ArrowRight className="w-3 h-3" />
-              </Link>
-              <button 
-                onClick={() => setIsLogoutModalOpen(true)}
-                className="flex items-center gap-2 px-3 md:px-4 py-2 rounded-xl transition-all font-semibold text-xs md:text-sm cursor-pointer bg-white border border-[#E0E4E3] text-red-500 hover:bg-red-50 hover:border-red-500/20 shadow-sm active:scale-95"
-              >
-                <LogOut className="w-4 h-4" /> 
-                <span className="hidden sm:inline">Logout</span>
+                <ArrowLeft className="w-4 h-4 shrink-0" />
+                <span>Back</span>
               </button>
+            )}
+            <span
+              className="hidden md:inline-block px-4 py-1.5 text-[10px] font-bold uppercase tracking-[0.2em] rounded-full border shadow-sm"
+              style={{
+                backgroundColor: "rgba(255,255,255,0.8)",
+                borderColor: "#E0E4E3",
+                color: "#64748B"
+              }}
+            >
+              Candidate Hub
+            </span>
+          </div>
+
+          {/* Right: Actions */}
+          <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
+            <Link
+              href="/"
+              className="flex items-center gap-1.5 px-2 sm:px-3 py-1.5 rounded-xl text-[10px] font-bold uppercase tracking-[0.15em] text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-all whitespace-nowrap"
+              title="Go to Homepage"
+            >
+              <Home className="w-4 h-4 shrink-0" />
+              <span className="hidden sm:inline">Go to Homepage</span>
+              <ArrowRight className="hidden sm:inline w-3 h-3 shrink-0" />
+            </Link>
+            <div className="h-5 w-px bg-[#E0E4E3] mx-0.5" />
+            <button
+              onClick={() => setActiveTab("notifications")}
+              className="p-2 rounded-xl hover:bg-[#E2E8F0] text-[#64748B] hover:text-[#334155] transition-all cursor-pointer"
+            >
+              <Bell className="w-5 h-5" />
+            </button>
+            <button
+              onClick={() => setActiveTab("settings")}
+              className={`p-2 rounded-xl transition-all cursor-pointer ${
+                activeTab === "settings"
+                  ? "text-[#F7B980] bg-[#F7B980]/10"
+                  : "text-[#64748B] hover:bg-[#E2E8F0] hover:text-[#334155]"
+              }`}
+            >
+              <Settings className="w-5 h-5" />
+            </button>
+            <div className="hidden sm:block">
+              <InstallAppButton />
             </div>
+            <button
+              onClick={() => setIsLogoutModalOpen(true)}
+              className="p-2 rounded-xl text-red-500 hover:bg-red-50 hover:text-red-600 transition-all cursor-pointer active:scale-95"
+            >
+              <LogOut className="w-4 h-4" />
+            </button>
           </div>
         </div>
       </nav>
@@ -991,14 +1021,14 @@ export default function CandidateDashboard() {
 
         {activeTab !== "settings" && (
           <>
-            <div className="hidden md:flex gap-2 mb-10 p-1.5 rounded-2xl max-w-fit overflow-x-auto border border-white shadow-lg" style={{ background: "rgba(255, 255, 255, 0.6)", backdropFilter: "blur(10px)" }}>
+            <div className="hidden md:flex gap-2 mb-10 p-1.5 rounded-2xl max-w-fit overflow-x-auto border border-white shadow-lg" style={{ backgroundColor: "rgba(255, 255, 255, 0.6)", backdropFilter: "blur(10px)" }}>
               {(["profile", "jobs", "applications", "coach", "labs", "interviews", "messages", "submissions", "settings"] as Tab[]).map((tab) => (
                 <button
                   key={tab}
                   onClick={() => setActiveTab(tab)}
                   className="px-8 py-3 font-bold text-xs uppercase tracking-widest rounded-xl transition-all duration-500 cursor-pointer whitespace-nowrap"
                   style={activeTab === tab ? {
-                    background: "#334155",
+                    backgroundColor: "#334155",
                     color: "#FFFFFF",
                     boxShadow: "0 8px 20px rgba(87,89,91,0.2)"
                   } : {
@@ -1695,7 +1725,7 @@ export default function CandidateDashboard() {
                 <div 
                   className="border border-white/50 rounded-[40px] p-5 md:p-8 lg:p-12 shadow-2xl relative overflow-hidden transition-all duration-500"
                   style={{ 
-                    background: "rgba(255, 255, 255, 0.85)", 
+                    backgroundColor: "rgba(255, 255, 255, 0.85)", 
                     backdropFilter: "blur(24px)",
                     boxShadow: "0 32px 80px rgba(87,89,91,0.07)"
                   }}
@@ -2017,7 +2047,7 @@ export default function CandidateDashboard() {
               <div
                 className="border border-white rounded-2xl lg:rounded-[40px] p-5 sm:p-8 lg:p-12 shadow-2xl relative overflow-hidden"
                 style={{
-                  background: "rgba(255, 255, 255, 0.7)",
+                  backgroundColor: "rgba(255, 255, 255, 0.7)",
                   backdropFilter: "blur(24px)",
                   boxShadow: "0 24px 64px rgba(87,89,91,0.06)"
                 }}
@@ -2025,7 +2055,7 @@ export default function CandidateDashboard() {
                 <h3 className="text-xl sm:text-2xl lg:text-3xl font-bold mb-6 lg:mb-10" style={{ color: "#334155" }}>Alerts & Activity</h3>
                 <div className="space-y-4">
                   <div className="bg-white/40 border border-[#E0E4E3] rounded-2xl lg:rounded-[32px] p-4 sm:p-6 lg:p-8 flex items-start gap-4 lg:gap-6 transition-all hover:bg-white cursor-pointer">
-                    <div className="w-10 h-10 sm:w-12 sm:h-12 lg:w-14 lg:h-14 rounded-xl lg:rounded-2xl flex items-center justify-center shrink-0 shadow-md" style={{ background: "#E2E8F0" }}>
+                    <div className="w-10 h-10 sm:w-12 sm:h-12 lg:w-14 lg:h-14 rounded-xl lg:rounded-2xl flex items-center justify-center shrink-0 shadow-md" style={{ backgroundColor: "#E2E8F0" }}>
                       <Bell className="w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6 text-[#F7B980]" />
                     </div>
                     <div className="flex-1 min-w-0">
@@ -2196,6 +2226,12 @@ export default function CandidateDashboard() {
                               </div>
                             ))}
                           </div>
+
+                          {userId && (
+                            <div className="mt-8">
+                              <NotificationSetup userId={userId} />
+                            </div>
+                          )}
                         </div>
                       )}
 
@@ -2215,7 +2251,20 @@ export default function CandidateDashboard() {
                               <p className="text-sm font-medium text-slate-800">Delete VidioCV</p>
                               <p className="text-xs text-slate-400 mt-0.5">Permanently remove your video resume from your profile.</p>
                             </div>
-                            <button className="px-4 py-2 rounded-lg text-xs font-semibold text-red-500 bg-red-50 hover:bg-red-100 border border-red-100 transition-all cursor-pointer shrink-0 self-start sm:self-auto">Delete</button>
+                            <button 
+                              onClick={() => {
+                                setModalConfig({
+                                  isOpen: true,
+                                  title: "Delete VidioCV?",
+                                  message: "This will permanently remove your video resume. You will need to record a new one to apply for jobs.",
+                                  type: "confirm",
+                                  onConfirm: handleDeleteVideoCV
+                                });
+                              }}
+                              className="px-4 py-2 rounded-lg text-xs font-semibold text-red-500 bg-red-50 hover:bg-red-100 border border-red-100 transition-all cursor-pointer shrink-0 self-start sm:self-auto"
+                            >
+                              Delete
+                            </button>
                           </div>
                           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-4 py-3.5 bg-white border border-red-100 rounded-xl">
                             <div>
@@ -2377,7 +2426,7 @@ export default function CandidateDashboard() {
                </p>
             </div>
 
-            <div className="p-6 rounded-3xl flex items-start gap-5 border border-[#E2E8F0]" style={{ background: "rgba(242, 244, 244, 0.3)" }}>
+            <div className="p-6 rounded-3xl flex items-start gap-5 border border-[#E2E8F0]" style={{ backgroundColor: "rgba(242, 244, 244, 0.3)" }}>
                <div className="p-3 rounded-2xl bg-white shadow-sm">
                  <Shield className="w-6 h-6 text-[#10B981]" />
                </div>
@@ -2422,7 +2471,7 @@ export default function CandidateDashboard() {
               <div className="flex gap-3 items-center">
                 <div 
                   className="w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm shadow-sm"
-                  style={{ background: "linear-gradient(135deg, #F7B980, #F0A060)", color: "white" }}
+                  style={{ backgroundImage: "linear-gradient(135deg, #F7B980, #F0A060)", color: "white" }}
                 >
                   {selectedMessage.company.charAt(0)}
                 </div>
@@ -2463,7 +2512,7 @@ export default function CandidateDashboard() {
               </div>
             ) : (
               <>
-                <div className="p-6 rounded-[24px] border border-[#E2E8F0] relative overflow-hidden group shadow-inner" style={{ background: "rgba(249, 249, 249, 0.4)" }}>
+                <div className="p-6 rounded-[24px] border border-[#E2E8F0] relative overflow-hidden group shadow-inner" style={{ backgroundColor: "rgba(249, 249, 249, 0.4)" }}>
                   <div className="text-sm font-medium whitespace-pre-wrap relative z-10 leading-relaxed" style={{ color: "#334155" }}>
                     {selectedMessage.body}
                   </div>
@@ -2490,25 +2539,28 @@ export default function CandidateDashboard() {
                   <div className="flex-1 flex gap-2">
                     <button
                       onClick={() => handleManageMessage("archive")}
+                      disabled={isUpdatingStatus}
                       title="Archive Correspondence"
-                      className="flex-1 p-3 rounded-2xl transition-all border-2 border-[#E2E8F0] hover:bg-white hover:border-[#64748B]/20 hover:text-[#334155] flex justify-center items-center cursor-pointer"
+                      className="flex-1 p-3 rounded-2xl transition-all border-2 border-[#E2E8F0] hover:bg-white hover:border-[#64748B]/20 hover:text-[#334155] flex justify-center items-center cursor-pointer disabled:opacity-50"
                     >
-                      <Archive className="w-5 h-5 text-[#64748B]" />
+                      <Archive className={`w-5 h-5 text-[#64748B] ${isUpdatingStatus ? "animate-pulse" : ""}`} />
                     </button>
                     <button
                       onClick={() => handleManageMessage("delete")}
+                      disabled={isUpdatingStatus}
                       title="Delete Permanently"
-                      className="flex-1 p-3 rounded-2xl transition-all border-2 border-[#E2E8F0] hover:bg-white hover:border-red-500/10 hover:text-red-500 flex justify-center items-center cursor-pointer"
+                      className="flex-1 p-3 rounded-2xl transition-all border-2 border-[#E2E8F0] hover:bg-white hover:border-red-500/10 hover:text-red-500 flex justify-center items-center cursor-pointer disabled:opacity-50"
                     >
-                      <Trash2 className="w-5 h-5 opacity-40 text-red-500" />
+                      <Trash2 className={`w-5 h-5 text-red-500 ${isUpdatingStatus ? "animate-pulse" : "opacity-40"}`} />
                     </button>
                   </div>
                   <button
                     onClick={() => setSelectedMessage(null)}
-                    className="flex-1 py-3.5 rounded-2xl font-bold text-[9px] tracking-[0.2em] uppercase transition-all border-2 border-[#E2E8F0] hover:bg-white hover:border-[#F7B980]/20 hover:text-[#F7B980] cursor-pointer"
+                    disabled={isUpdatingStatus}
+                    className="flex-1 py-3.5 rounded-2xl font-bold text-[9px] tracking-[0.2em] uppercase transition-all border-2 border-[#E2E8F0] hover:bg-white hover:border-[#F7B980]/20 hover:text-[#F7B980] cursor-pointer disabled:opacity-50"
                     style={{ color: "#64748B" }}
                   >
-                    Close
+                    {isUpdatingStatus ? "Processing..." : "Close"}
                   </button>
                 </div>
               </>
@@ -2532,7 +2584,7 @@ export default function CandidateDashboard() {
               <div className="flex gap-3 items-center">
                 <div
                   className="w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm shadow-sm"
-                  style={{ background: "linear-gradient(135deg, #94A3B8, #64748B)", color: "white" }}
+                  style={{ backgroundImage: "linear-gradient(135deg, #94A3B8, #64748B)", color: "white" }}
                 >
                   {selectedSentMessage.receiver.name.charAt(0).toUpperCase()}
                 </div>
@@ -2553,7 +2605,7 @@ export default function CandidateDashboard() {
               <p className="text-xs font-semibold text-slate-500 uppercase tracking-widest">{selectedSentMessage.subject}</p>
             )}
 
-            <div className="p-6 rounded-[24px] border border-[#E2E8F0] relative overflow-hidden shadow-inner" style={{ background: "rgba(249, 249, 249, 0.4)" }}>
+            <div className="p-6 rounded-[24px] border border-[#E2E8F0] relative overflow-hidden shadow-inner" style={{ backgroundColor: "rgba(249, 249, 249, 0.4)" }}>
               <div className="text-sm font-medium whitespace-pre-wrap relative z-10 leading-relaxed" style={{ color: "#334155" }}>
                 {selectedSentMessage.body}
               </div>
@@ -2578,7 +2630,7 @@ export default function CandidateDashboard() {
             <div className="flex items-center gap-3 pb-4 border-b border-[#E2E8F0]">
               <div
                 className="w-11 h-11 rounded-xl flex items-center justify-center font-bold text-sm shadow-sm shrink-0"
-                style={{ background: "linear-gradient(135deg, #F7B980, #F0A060)", color: "white" }}
+                style={{ backgroundImage: "linear-gradient(135deg, #F7B980, #F0A060)", color: "white" }}
               >
                 {selectedInterview.company.charAt(0).toUpperCase()}
               </div>
@@ -2643,7 +2695,7 @@ export default function CandidateDashboard() {
             <div className="flex items-center gap-3 pb-4 border-b border-[#E2E8F0]">
               <div
                 className="w-11 h-11 rounded-xl flex items-center justify-center font-bold text-sm shadow-sm shrink-0"
-                style={{ background: "linear-gradient(135deg, #F7B980, #F0A060)", color: "white" }}
+                style={{ backgroundImage: "linear-gradient(135deg, #F7B980, #F0A060)", color: "white" }}
               >
                 {selectedSubmission.company.charAt(0).toUpperCase()}
               </div>
@@ -2746,7 +2798,7 @@ export default function CandidateDashboard() {
                        <div className="absolute left-[7px] top-2 bottom-2 w-[2px] bg-[#E2E8F0]" />
                        {selectedApplication.timeline.map((item, i) => (
                          <div key={i} className="relative">
-                           <div className="absolute -left-[29px] top-1.5 w-3 h-3 rounded-full border-[3px] border-white shadow-md" style={{ background: i === selectedApplication.timeline.length - 1 ? "#F7B980" : "#CBD5E1" }} />
+                           <div className="absolute -left-[29px] top-1.5 w-3 h-3 rounded-full border-[3px] border-white shadow-md" style={{ backgroundColor: i === selectedApplication.timeline.length - 1 ? "#F7B980" : "#CBD5E1" }} />
                            <p className="text-[9px] font-black uppercase tracking-widest opacity-40 mb-1">{item.date}</p>
                            <p className="text-xs font-bold leading-tight" style={{ color: "#334155" }}>{item.event}</p>
                          </div>

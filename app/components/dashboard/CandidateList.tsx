@@ -1,6 +1,6 @@
 "use client";
 
-import { MessageSquare, Calendar, Video } from "lucide-react";
+import { MessageSquare, Calendar, Video, Sparkles } from "lucide-react";
 
 interface Experience {
   id: string;
@@ -36,6 +36,7 @@ interface CandidateListProps {
   onViewVideo?: (candidate: Candidate) => void;
   onMessage?: (candidate: Candidate) => void;
   onSchedule?: (candidate: Candidate) => void;
+  onIntelligence?: (candidate: Candidate) => void;
   isAnonymized?: boolean;
 }
 
@@ -64,12 +65,14 @@ function CandidateCard({
   onSelectCandidate,
   onViewVideo,
   onMessage,
+  onIntelligence,
   isAnonymized,
 }: {
   candidate: Candidate & { matchScore?: number };
   onSelectCandidate?: (c: Candidate) => void;
   onViewVideo?: (c: Candidate) => void;
   onMessage?: (c: Candidate) => void;
+  onIntelligence?: (c: Candidate) => void;
   isAnonymized?: boolean;
 }) {
   return (
@@ -122,6 +125,13 @@ function CandidateCard({
           <Video className="w-4 h-4" />
           Watch CV
         </button>
+        <button
+          onClick={(e) => { e.stopPropagation(); onIntelligence?.(candidate); }}
+          className="flex items-center gap-1.5 text-xs font-medium text-amber-500 hover:text-amber-600 transition-colors cursor-pointer"
+        >
+          <Sparkles className="w-4 h-4" />
+          Intelligence
+        </button>
         <div className="flex-1" />
         <button
           onClick={(e) => { e.stopPropagation(); onMessage?.(candidate); }}
@@ -142,6 +152,7 @@ function CandidateRow({
   onViewVideo,
   onMessage,
   onSchedule,
+  onIntelligence,
   isAnonymized,
 }: {
   candidate: Candidate & { matchScore?: number };
@@ -149,6 +160,7 @@ function CandidateRow({
   onViewVideo?: (c: Candidate) => void;
   onMessage?: (c: Candidate) => void;
   onSchedule?: (c: Candidate) => void;
+  onIntelligence?: (c: Candidate) => void;
   isAnonymized?: boolean;
 }) {
   return (
@@ -214,6 +226,13 @@ function CandidateRow({
           Schedule
         </button>
         <button
+          onClick={(e) => { e.stopPropagation(); onIntelligence?.(candidate); }}
+          className="flex items-center gap-1.5 text-[11px] font-medium text-amber-500 hover:text-amber-600 transition-colors px-2 py-1.5 cursor-pointer"
+        >
+          <Sparkles className="w-3.5 h-3.5" />
+          Intel
+        </button>
+        <button
           onClick={(e) => { e.stopPropagation(); onMessage?.(candidate); }}
           className="px-3 py-1.5 bg-slate-800 hover:bg-slate-900 text-white rounded-lg text-[11px] font-medium transition-all flex items-center gap-1.5 active:scale-95 cursor-pointer"
         >
@@ -233,6 +252,7 @@ export default function CandidateList({
   onViewVideo,
   onMessage,
   onSchedule,
+  onIntelligence,
   isAnonymized,
 }: CandidateListProps) {
   if (viewMode === 'list') {
@@ -246,6 +266,7 @@ export default function CandidateList({
             onViewVideo={onViewVideo}
             onMessage={onMessage}
             onSchedule={onSchedule}
+            onIntelligence={onIntelligence}
             isAnonymized={isAnonymized}
           />
         ))}
@@ -262,6 +283,7 @@ export default function CandidateList({
           onSelectCandidate={onSelectCandidate}
           onViewVideo={onViewVideo}
           onMessage={onMessage}
+          onIntelligence={onIntelligence}
           isAnonymized={isAnonymized}
         />
       ))}

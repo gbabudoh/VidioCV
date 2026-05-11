@@ -102,6 +102,15 @@
       "rights": "Todos los derechos reservados."
     }
   },
+  "Legal": {
+    "cookie": {
+      "title": "Preferencias de Cookies",
+      "description": "Utilizamos cookies para sincronizar su experiencia de reclutamiento y optimizar nuestra IA Neural Match. Lea nuestra <privacyLink>política de privacidad</privacyLink> para más detalles.",
+      "decline": "Rechazar",
+      "accept": "Aceptar todo",
+      "gdprBadge": "Listo para GDPR"
+    }
+  },
   "Auth": {
     "login": {
       "title": "Bienvenido de nuevo",

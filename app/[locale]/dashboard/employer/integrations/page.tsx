@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ElementType } from "react";
+import { useState, type ComponentType } from "react";
 import { motion } from "framer-motion";
 import { 
   Sparkles, 
@@ -23,7 +23,7 @@ interface IntegrationItem {
   type: string;
   status: string;
   connected: boolean;
-  icon: ElementType;
+  icon: ComponentType<{ className?: string }>;
   color: string;
   bg: string;
 }
@@ -189,7 +189,10 @@ export default function IntegrationsPage() {
           >
             <div className="flex justify-between items-start mb-8">
                <div className={`w-16 h-16 ${item.bg} rounded-[24px] flex items-center justify-center group-hover:scale-110 transition-transform`}>
-                  <item.icon className={`w-8 h-8 ${item.color}`} />
+                  {(() => {
+                    const Icon = item.icon;
+                    return <Icon className={`w-8 h-8 ${item.color}`} />;
+                  })()}
                </div>
                <div className="flex items-center gap-2 px-3 py-1 bg-slate-50 text-slate-400 rounded-full">
                   <span className="text-[10px] font-black uppercase">{item.status}</span>
@@ -235,7 +238,10 @@ export default function IntegrationsPage() {
             <div className="flex items-center justify-between mb-12">
                <div className="flex items-center gap-4">
                   <div className={`w-12 h-12 ${selectedIntegration.bg} rounded-2xl flex items-center justify-center`}>
-                    <selectedIntegration.icon className={`w-6 h-6 ${selectedIntegration.color}`} />
+                    {(() => {
+                      const Icon = selectedIntegration.icon;
+                      return <Icon className={`w-6 h-6 ${selectedIntegration.color}`} />;
+                    })()}
                   </div>
                   <div>
                     <h3 className="text-2xl font-black text-slate-800">Connect to {selectedIntegration.name}</h3>

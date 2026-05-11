@@ -4,18 +4,18 @@ import { useState, useEffect } from "react";
 import NextImage from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
-  Plus, Settings, LogOut, Bell, Filter, Video, Users, Calendar as CalendarIcon, 
+  Plus, Settings, LogOut, Bell, Filter, Video, Users, Calendar as CalendarIcon,
   MapPin, Building2, Briefcase, Search, Mail, Lock, Shield, Sparkles,
-  Trash2, ArrowLeft, ArrowRight, Archive, LayoutDashboard, AlertCircle, LayoutGrid, List, X, Network
+  Trash2, ArrowLeft, ArrowRight, Archive, LayoutDashboard, AlertCircle, LayoutGrid, List, X, Network, Home
 } from "lucide-react";
 import MobileBottomNav from "@/app/components/common/MobileBottomNav";
-import Link from "next/link";
+import { Link, useRouter } from "@/i18n/navigation";
 import CandidateList from "@/app/components/dashboard/CandidateList";
 import InterviewCalendar from "@/app/components/dashboard/InterviewCalendar";
 import Modal from "@/app/components/common/Modal";
 import VideoPlayer from "@/app/components/video-tools/VideoPlayer";
 import Toggle from "@/app/components/common/Toggle";
-import { useRouter } from "next/navigation";
+// Removed next/navigation useRouter to use locale-aware version from i18n/navigation
 import { useSessionSync } from "@/app/lib/hooks/useSessionSync";
 import IntegrationsContent from "@/app/components/dashboard/IntegrationsContent";
 
@@ -135,6 +135,21 @@ interface RawInboxSignal {
   } | null;
 }
 
+interface AssessmentData {
+  id: string;
+  candidateId: string;
+  type: string;
+  score: number | null;
+  maxScore: number | null;
+  status: string;
+  telemetry: Record<string, unknown> | null;
+  aiInsights: string | null;
+  archetype: string | null;
+  results: Record<string, unknown> | null;
+  createdAt: string | Date;
+  completedAt: string | Date | null;
+}
+
 
 export default function EmployerDashboard() {
   const router = useRouter();
@@ -188,6 +203,9 @@ export default function EmployerDashboard() {
   const [selectedCandidateSkills, setSelectedCandidateSkills] = useState<Candidate | null>(null);
   const [selectedCandidateMessage, setSelectedCandidateMessage] = useState<Candidate | null>(null);
   const [selectedCandidateSchedule, setSelectedCandidateSchedule] = useState<Candidate | null>(null);
+  const [selectedCandidateIntelligence, setSelectedCandidateIntelligence] = useState<Candidate | null>(null);
+  const [intelligenceData, setIntelligenceData] = useState<AssessmentData | null>(null);
+  const [isLoadingIntelligence, setIsLoadingIntelligence] = useState(false);
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
@@ -562,7 +580,8 @@ export default function EmployerDashboard() {
         body: JSON.stringify({
           name: employerName,
           country: employerCountry,
-          companyType: employerType
+          companyType: employerType,
+          bio: employerBio
         })
       });
 
@@ -900,26 +919,44 @@ export default function EmployerDashboard() {
     }
   };
 
+  const handleOpenIntelligence = async (candidate: Candidate) => {
+    setSelectedCandidateIntelligence(candidate);
+    setIsLoadingIntelligence(true);
+    setIntelligenceData(null);
+    try {
+      // We pass candidate.userId which is the Prisma User ID
+      const res = await fetch(`/api/assessments?candidateId=${candidate.userId}`);
+      const data = await res.json();
+      if (Array.isArray(data) && data.length > 0) {
+        setIntelligenceData(data[0]); // Show latest assessment
+      }
+    } catch (err) {
+      console.error("Failed to fetch intelligence:", err);
+    } finally {
+      setIsLoadingIntelligence(false);
+    }
+  };
+
   return (
     <div 
       className="min-h-screen overflow-hidden relative font-sans"
       style={{
-        background: "linear-gradient(135deg, #E2E8F0 0%, #F9F9F9 45%, #F9F5F1 100%)",
+        backgroundImage: "linear-gradient(135deg, #E2E8F0 0%, #F9F9F9 45%, #F9F5F1 100%)",
       }}
     >
       {/* Ambient glow orbs */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden">
         <div 
           className="absolute top-[-20%] left-[-10%] w-[60%] h-[60%] rounded-full blur-[160px]" 
-          style={{ background: "rgba(247,185,128,0.18)" }}
+          style={{ backgroundColor: "rgba(247,185,128,0.18)" }}
         />
         <div 
           className="absolute top-[15%] right-[-15%] w-[50%] h-[50%] rounded-full blur-[140px]" 
-          style={{ background: "rgba(172,186,196,0.22)" }}
+          style={{ backgroundColor: "rgba(172,186,196,0.22)" }}
         />
         <div 
           className="absolute bottom-[-10%] left-[30%] w-[45%] h-[45%] rounded-full blur-[120px]" 
-          style={{ background: "rgba(191,201,209,0.18)" }}
+          style={{ backgroundColor: "rgba(191,201,209,0.18)" }}
         />
       </div>
 
@@ -935,58 +972,81 @@ export default function EmployerDashboard() {
       />
 
       {/* Header */}
-      <nav className="sticky top-0 z-50 bg-white/70 backdrop-blur-2xl border-b border-white shadow-sm">
-        <div className="max-w-7xl mx-auto px-6 py-2 flex justify-between items-center relative gap-4">
-          <div className="flex items-center gap-6">
-            <div onClick={() => setActiveTab("overview")} className="flex items-center gap-3 cursor-pointer group shrink-0">
-              <NextImage 
-                src="/logo.png" 
-                alt="VidioCV Logo" 
-                width={120}
-                height={38}
-                className="object-contain group-hover:scale-105 transition-all md:w-[140px] md:h-[44px]"
-                priority
-              />
-            </div>
-            <Link 
-              href="/" 
-              className="flex items-center gap-2 px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-[0.2em] text-[#64748B] hover:text-[#334155] hover:bg-[#E2E8F0]/50 transition-all group cursor-pointer"
-            >
-              Go to homepage <ArrowRight className="w-3 h-3 group-hover:translate-x-1 transition-transform" />
-            </Link>
+      <nav
+        className="sticky top-0 z-50 backdrop-blur-2xl"
+        style={{
+          background: "rgba(255,255,255,0.92)",
+          borderBottom: "1px solid #E2E8F0",
+          boxShadow: "0 2px 16px rgba(87,89,91,0.05)"
+        }}
+      >
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 h-14 flex items-center gap-2 sm:gap-3">
+          {/* Left: Logo */}
+          <div
+            onClick={() => setActiveTab("overview")}
+            className="flex items-center cursor-pointer group shrink-0"
+          >
+            <NextImage
+              src="/logo.png"
+              alt="VidioCV Logo"
+              width={90}
+              height={29}
+              className="object-contain w-[82px] sm:w-[100px] md:w-[110px]"
+              priority
+            />
           </div>
-          
-          {/* Mobile Back Button Context */}
-          {activeTab !== "overview" && (
-            <div className="md:hidden flex items-center">
-               <button 
-                 onClick={() => setActiveTab("overview")}
-                 className="flex items-center gap-2 text-[#64748B] font-bold text-xs uppercase tracking-widest cursor-pointer"
-               >
-                 <ArrowLeft className="w-4 h-4" />
-                 Back
-               </button>
-            </div>
-          )}
 
-          <div className="hidden md:flex absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
-             <span className="px-6 py-2 text-[10px] font-black uppercase tracking-[0.2em] bg-white border border-[#E2E8F0] rounded-2xl shadow-xl" style={{ color: "#334155" }}>
-                 Employer Hub
-             </span>
+          {/* Center: Hub label (md+) or Back button (mobile only, non-overview) */}
+          <div className="flex-1 flex items-center justify-center min-w-0">
+            {activeTab !== "overview" && (
+              <button
+                onClick={() => setActiveTab("overview")}
+                className="md:hidden flex items-center gap-1.5 text-[#64748B] font-bold text-xs uppercase tracking-widest cursor-pointer"
+              >
+                <ArrowLeft className="w-4 h-4 shrink-0" />
+                <span>Back</span>
+              </button>
+            )}
+            <span className="hidden md:inline-block px-4 py-1.5 text-[10px] font-black uppercase tracking-[0.2em] bg-white border border-[#E2E8F0] rounded-full shadow-sm" style={{ color: "#334155" }}>
+              Employer Hub
+            </span>
           </div>
-          
-          <div className="flex items-center gap-2 md:gap-4 shrink-0">
-            <button className="p-2 md:p-3 bg-white hover:bg-[#E2E8F0] text-[#64748B] hover:text-[#334155] rounded-xl md:rounded-2xl border border-[#E2E8F0] shadow-sm transition-all cursor-pointer">
+
+          {/* Right: Actions */}
+          <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
+            <Link
+              href="/"
+              className="flex items-center gap-1.5 px-2 sm:px-3 py-1.5 rounded-xl text-[10px] font-bold uppercase tracking-[0.15em] text-[#64748B] hover:text-[#334155] hover:bg-[#E2E8F0]/60 transition-all whitespace-nowrap"
+              title="Go to Homepage"
+            >
+              <Home className="w-4 h-4 shrink-0" />
+              <span className="hidden sm:inline">Go to Homepage</span>
+              <ArrowRight className="hidden sm:inline w-3 h-3 shrink-0" />
+            </Link>
+            <div className="h-5 w-px bg-[#E2E8F0] mx-0.5" />
+            <button
+              className="p-2 rounded-xl hover:bg-[#E2E8F0] text-[#64748B] hover:text-[#334155] transition-all cursor-pointer"
+            >
               <Bell className="w-5 h-5" />
             </button>
-            <button onClick={() => {
-              setPreviousTab(activeTab);
-              setActiveTab("settings");
-            }} className={`p-2 md:p-3 rounded-xl md:rounded-2xl border transition-all cursor-pointer ${activeTab === "settings" ? "bg-white border-[#F7B980] text-[#F7B980] shadow-lg shadow-[#F7B980]/10" : "bg-white hover:bg-[#E2E8F0] border-[#E2E8F0] text-[#64748B] hover:text-[#334155] shadow-sm"}`}>
+            <button
+              onClick={() => {
+                setPreviousTab(activeTab);
+                setActiveTab("settings");
+              }}
+              className={`p-2 rounded-xl transition-all cursor-pointer ${
+                activeTab === "settings"
+                  ? "text-[#F7B980] bg-[#F7B980]/10"
+                  : "text-[#64748B] hover:bg-[#E2E8F0] hover:text-[#334155]"
+              }`}
+            >
               <Settings className="w-5 h-5" />
             </button>
-            <button onClick={() => setIsLogoutModalOpen(true)} className="flex items-center gap-3 p-2 md:p-3 md:px-6 bg-white hover:bg-red-50 text-red-400 hover:text-red-500 rounded-xl md:rounded-2xl border border-[#E2E8F0] shadow-sm transition-all cursor-pointer font-bold text-[10px] md:text-xs uppercase tracking-widest">
-              <LogOut className="w-4 h-4" /> <span className="hidden sm:inline">Sign Out</span>
+            <button
+              onClick={() => setIsLogoutModalOpen(true)}
+              className="p-2 rounded-xl text-red-400 hover:bg-red-50 hover:text-red-500 transition-all cursor-pointer"
+            >
+              <LogOut className="w-4 h-4" />
             </button>
           </div>
         </div>
@@ -1001,7 +1061,7 @@ export default function EmployerDashboard() {
             animate={{ opacity: 1, y: 0 }}
             className="flex flex-col md:flex-row md:items-center justify-between gap-8 mb-12 p-8 lg:p-12 border border-white rounded-[48px] shadow-2xl relative overflow-hidden"
             style={{ 
-              background: "rgba(255, 255, 255, 0.8)", 
+              backgroundColor: "rgba(255, 255, 255, 0.8)", 
               backdropFilter: "blur(40px)",
               boxShadow: "0 32px 80px rgba(87,89,91,0.12)"
             }}
@@ -1034,7 +1094,7 @@ export default function EmployerDashboard() {
           <div 
             className="border border-white rounded-[40px] p-10 lg:p-12 shadow-2xl relative overflow-hidden flex flex-col md:flex-row items-center md:items-start justify-between gap-10 mb-12"
             style={{ 
-              background: "rgba(255, 255, 255, 0.7)", 
+              backgroundColor: "rgba(255, 255, 255, 0.7)", 
               backdropFilter: "blur(24px)",
               boxShadow: "0 24px 64px rgba(87,89,91,0.06)"
             }}
@@ -1127,7 +1187,7 @@ export default function EmployerDashboard() {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.05 }}
                   className="border border-white rounded-[40px] p-8 lg:p-10 shadow-2xl relative overflow-hidden"
-                  style={{ background: "rgba(255,255,255,0.7)", backdropFilter: "blur(24px)", boxShadow: "0 24px 64px rgba(87,89,91,0.06)" }}
+                  style={{ backgroundColor: "rgba(255,255,255,0.7)", backdropFilter: "blur(24px)", boxShadow: "0 24px 64px rgba(87,89,91,0.06)" }}
                 >
                   <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                     <div>
@@ -1219,10 +1279,10 @@ export default function EmployerDashboard() {
                       transition={{ delay: 0.1 * (idx + 1) }}
                       onClick={() => setActiveTab(stat.tab)}
                       className="group border border-white rounded-[32px] p-8 shadow-xl relative overflow-hidden transition-all hover:-translate-y-1 cursor-pointer"
-                      style={{ background: "rgba(255,255,255,0.7)", backdropFilter: "blur(24px)", boxShadow: "0 16px 48px rgba(87,89,91,0.06)" }}
+                      style={{ backgroundColor: "rgba(255,255,255,0.7)", backdropFilter: "blur(24px)", boxShadow: "0 16px 48px rgba(87,89,91,0.06)" }}
                     >
                       <div className="flex items-center gap-5">
-                        <div className="w-14 h-14 rounded-[20px] flex items-center justify-center shadow-lg border border-[#E2E8F0] transition-transform group-hover:scale-110 shrink-0" style={{ background: "white", color: stat.color }}>
+                        <div className="w-14 h-14 rounded-[20px] flex items-center justify-center shadow-lg border border-[#E2E8F0] transition-transform group-hover:scale-110 shrink-0" style={{ backgroundColor: "white", color: stat.color }}>
                           {stat.icon}
                         </div>
                         <div className="min-w-0">
@@ -1244,7 +1304,7 @@ export default function EmployerDashboard() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.4 }}
                     className="border border-white rounded-[32px] p-8 shadow-xl"
-                    style={{ background: "rgba(255,255,255,0.7)", backdropFilter: "blur(24px)", boxShadow: "0 16px 48px rgba(87,89,91,0.06)" }}
+                    style={{ backgroundColor: "rgba(255,255,255,0.7)", backdropFilter: "blur(24px)", boxShadow: "0 16px 48px rgba(87,89,91,0.06)" }}
                   >
                     <div className="flex items-center justify-between mb-6">
                       <div className="flex items-center gap-3">
@@ -1304,7 +1364,7 @@ export default function EmployerDashboard() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.5 }}
                     className="border border-white rounded-[32px] p-8 shadow-xl"
-                    style={{ background: "rgba(255,255,255,0.7)", backdropFilter: "blur(24px)", boxShadow: "0 16px 48px rgba(87,89,91,0.06)" }}
+                    style={{ backgroundColor: "rgba(255,255,255,0.7)", backdropFilter: "blur(24px)", boxShadow: "0 16px 48px rgba(87,89,91,0.06)" }}
                   >
                     <div className="flex items-center justify-between mb-6">
                       <div className="flex items-center gap-3">
@@ -1363,7 +1423,7 @@ export default function EmployerDashboard() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.6 }}
                     className="border border-amber-100 rounded-[32px] p-8 shadow-xl cursor-pointer group"
-                    style={{ background: "rgba(255,247,237,0.7)", backdropFilter: "blur(24px)", boxShadow: "0 16px 48px rgba(247,185,128,0.08)" }}
+                    style={{ backgroundColor: "rgba(255,247,237,0.7)", backdropFilter: "blur(24px)", boxShadow: "0 16px 48px rgba(247,185,128,0.08)" }}
                     onClick={() => setActiveTab("candidates")}
                   >
                     <div className="flex items-center justify-between gap-6">
@@ -1392,7 +1452,7 @@ export default function EmployerDashboard() {
               <div 
                 className="border border-white rounded-[40px] p-10 lg:p-12 shadow-2xl relative overflow-hidden"
                 style={{ 
-                  background: "rgba(255, 255, 255, 0.7)", 
+                  backgroundColor: "rgba(255, 255, 255, 0.7)", 
                   backdropFilter: "blur(24px)",
                   boxShadow: "0 24px 64px rgba(87,89,91,0.06)"
                 }}
@@ -1478,6 +1538,7 @@ export default function EmployerDashboard() {
                                 onViewVideo={(c) => setSelectedCandidateVideo(c)}
                                 onMessage={(c) => setSelectedCandidateMessage(c)}
                                 onSchedule={(c) => setSelectedCandidateSchedule(c)}
+                                onIntelligence={handleOpenIntelligence}
                                 isAnonymized={isBiasShieldActive}
                               />
                             </div>
@@ -1575,7 +1636,7 @@ export default function EmployerDashboard() {
               <div
                 className="border border-white rounded-[40px] p-10 lg:p-12 shadow-2xl relative overflow-hidden"
                 style={{
-                  background: "rgba(255, 255, 255, 0.7)",
+                  backgroundColor: "rgba(255, 255, 255, 0.7)",
                   backdropFilter: "blur(24px)",
                   boxShadow: "0 24px 64px rgba(87,89,91,0.06)"
                 }}
@@ -1705,7 +1766,7 @@ export default function EmployerDashboard() {
                                       className="h-full rounded-full transition-all"
                                       style={{
                                         width: `${Math.min(Math.round((job.applicants / job.views) * 100), 100)}%`,
-                                        background: "#F7B980"
+                                        backgroundColor: "#F7B980"
                                       }}
                                     />
                                   </div>
@@ -1739,7 +1800,7 @@ export default function EmployerDashboard() {
               <div 
                 className="border border-white rounded-[40px] p-10 lg:p-12 shadow-2xl relative overflow-hidden"
                 style={{ 
-                  background: "rgba(255, 255, 255, 0.7)", 
+                  backgroundColor: "rgba(255, 255, 255, 0.7)",
                   backdropFilter: "blur(24px)",
                   boxShadow: "0 24px 64px rgba(87,89,91,0.06)"
                 }}
@@ -1853,7 +1914,7 @@ export default function EmployerDashboard() {
               <div
                 className="border border-white rounded-[48px] p-2 shadow-2xl relative overflow-hidden flex flex-col lg:flex-row min-h-[800px]"
                 style={{ 
-                  background: "rgba(255, 255, 255, 0.8)", 
+                  backgroundColor: "rgba(255, 255, 255, 0.8)", 
                   backdropFilter: "blur(40px)",
                   boxShadow: "0 32px 80px rgba(87,89,91,0.12)"
                 }}
@@ -2247,7 +2308,7 @@ export default function EmployerDashboard() {
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
                   className="fixed inset-0 z-[100] flex items-center justify-center p-6"
-                  style={{ background: "rgba(15,23,42,0.6)", backdropFilter: "blur(12px)" }}
+                  style={{ backgroundColor: "rgba(15,23,42,0.6)", backdropFilter: "blur(12px)" }}
                   onClick={() => setIsDeleteAccountConfirmOpen(false)}
                 >
                   <motion.div
@@ -2296,7 +2357,7 @@ export default function EmployerDashboard() {
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
                   className="fixed inset-0 z-50 flex items-center justify-center p-6"
-                  style={{ background: "rgba(15,23,42,0.5)", backdropFilter: "blur(8px)" }}
+                  style={{ backgroundColor: "rgba(15,23,42,0.5)", backdropFilter: "blur(8px)" }}
                   onClick={() => setIsWipeConfirmOpen(false)}
                 >
                   <motion.div
@@ -2347,7 +2408,7 @@ export default function EmployerDashboard() {
                  <div
                     className="border border-white rounded-2xl md:rounded-[40px] p-4 sm:p-8 lg:p-12 shadow-2xl relative"
                     style={{
-                      background: "rgba(255, 255, 255, 0.7)",
+                      backgroundColor: "rgba(255, 255, 255, 0.7)",
                       backdropFilter: "blur(24px)",
                       boxShadow: "0 24px 64px rgba(87,89,91,0.06)"
                     }}
@@ -2390,15 +2451,15 @@ export default function EmployerDashboard() {
                                 onClick={() => setSelectedThread(thread)}
                                 className="p-4 sm:p-6 md:p-8 rounded-2xl md:rounded-[32px] border transition-all cursor-pointer group flex items-center gap-3 sm:gap-6"
                                 style={thread.status === "pending" ? {
-                                  background: "#FFFFFF",
+                                  backgroundColor: "#FFFFFF",
                                   borderColor: "#F7B980",
                                   boxShadow: "0 12px 32px rgba(247,185,128,0.08)"
                                 } : {
-                                  background: "rgba(255,255,255,0.4)",
+                                  backgroundColor: "rgba(255,255,255,0.4)",
                                   borderColor: "#E2E8F0"
                                 }}
                               >
-                                <div className="w-10 h-10 sm:w-14 sm:h-14 rounded-xl sm:rounded-2xl flex items-center justify-center font-black text-base sm:text-xl shrink-0 shadow-inner" style={{ background: "#E2E8F0", color: "#F7B980" }}>
+                                <div className="w-10 h-10 sm:w-14 sm:h-14 rounded-xl sm:rounded-2xl flex items-center justify-center font-black text-base sm:text-xl shrink-0 shadow-inner" style={{ backgroundColor: "#E2E8F0", color: "#F7B980" }}>
                                   {thread.candidateName.charAt(0)}
                                 </div>
                                 <div className="flex-1 min-w-0">
@@ -2580,7 +2641,7 @@ export default function EmployerDashboard() {
                     >
                       <div className="flex justify-between items-center border-b border-[#E2E8F0] pb-8 mb-8">
                         <div className="flex gap-5 items-center">
-                          <div className="w-14 h-14 rounded-2xl flex items-center justify-center font-black text-xl shadow-lg" style={{ background: "linear-gradient(135deg, #F7B980, #F0A060)", color: "white" }}>
+                          <div className="w-14 h-14 rounded-2xl flex items-center justify-center font-black text-xl shadow-lg" style={{ backgroundImage: "linear-gradient(135deg, #F7B980, #F0A060)", color: "white" }}>
                             {selectedThread.candidateName ? selectedThread.candidateName.charAt(0) : "?"}
                           </div>
                           <div>
@@ -2991,12 +3052,109 @@ export default function EmployerDashboard() {
         </div>
       </Modal>
 
+      {/* Intelligence Modal */}
+      <Modal 
+        isOpen={!!selectedCandidateIntelligence} 
+        onClose={() => {
+          setSelectedCandidateIntelligence(null);
+          setIntelligenceData(null);
+        }} 
+        type="default" 
+        title={`Talent Intelligence: ${selectedCandidateIntelligence?.name}`}
+        closeActionLabel=" Close Analysis "
+      >
+        <div className="space-y-8 p-2 max-h-[70vh] overflow-y-auto custom-scrollbar pr-4">
+          {isLoadingIntelligence ? (
+            <div className="flex flex-col items-center justify-center py-20">
+               <div className="w-12 h-12 border-4 border-[#E2E8F0] border-t-amber-500 rounded-full animate-spin mb-4" />
+               <p className="text-[#64748B] font-bold text-sm tracking-wide">Syncing Neural Insights...</p>
+            </div>
+          ) : intelligenceData ? (
+            <div className="space-y-10">
+              {/* Archetype Card */}
+              <div className="p-8 rounded-[40px] bg-slate-900 text-white relative overflow-hidden shadow-2xl">
+                 <div className="relative z-10">
+                    <div className="flex items-center gap-3 mb-4">
+                       <Sparkles className="w-5 h-5 text-amber-400" />
+                       <p className="text-[10px] font-black uppercase tracking-[0.4em] text-white/40">Verified Archetype</p>
+                    </div>
+                    <h4 className="text-3xl font-black mb-2">{intelligenceData.archetype || "Analyzing..."}</h4>
+                    <p className="text-sm text-white/60 font-medium leading-relaxed max-w-md">
+                      Neural patterns suggest a candidate who prioritizes {intelligenceData.archetype === 'High-Velocity Fixer' ? 'rapid iteration and execution speed' : 'structural integrity and meticulous planning'}.
+                    </p>
+                 </div>
+                 <div className="absolute top-0 right-0 p-12 opacity-10">
+                    <Network className="w-32 h-32" />
+                 </div>
+                 <div className="absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-amber-400 to-transparent opacity-30" />
+              </div>
+
+              {/* Stats Grid */}
+              <div className="grid grid-cols-2 gap-4">
+                 <div className="p-6 rounded-3xl bg-amber-50 border border-amber-100">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-amber-600 mb-2">Efficiency Score</p>
+                    <p className="text-4xl font-black text-slate-800">{intelligenceData.score}%</p>
+                 </div>
+                 <div className="p-6 rounded-3xl bg-slate-50 border border-slate-200">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Complexity Depth</p>
+                    <p className="text-4xl font-black text-slate-800">8.4<span className="text-sm opacity-40">/10</span></p>
+                 </div>
+              </div>
+
+              {/* Heuristic Insights */}
+              <div className="space-y-6">
+                 <h5 className="text-sm font-black uppercase tracking-[0.2em] text-slate-400 pl-2">Behavioral Telemetry</h5>
+                 <div className="space-y-4">
+                    {intelligenceData.aiInsights && Array.isArray(JSON.parse(intelligenceData.aiInsights || "[]")) ? (
+                      JSON.parse(intelligenceData.aiInsights).map((insight: string, idx: number) => (
+                        <div key={idx} className="flex items-start gap-4 p-5 bg-white border border-slate-100 rounded-2xl shadow-sm">
+                           <div className="p-2 rounded-xl bg-emerald-50 text-emerald-500 mt-0.5">
+                              <Shield className="w-4 h-4" />
+                           </div>
+                           <p className="text-sm font-medium text-slate-600 leading-relaxed">{insight}</p>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="p-6 text-center border-2 border-dashed border-slate-100 rounded-3xl">
+                        <p className="text-xs font-bold text-slate-400">Processing detailed behavioral signals...</p>
+                      </div>
+                    )}
+                 </div>
+              </div>
+
+              {/* Warning/Alert if applicable */}
+              <div className="p-6 rounded-[32px] border-2 border-dashed border-amber-200 bg-amber-50/30 flex items-center gap-4">
+                 <div className="p-2.5 rounded-xl bg-amber-100 text-amber-500">
+                    <AlertCircle className="w-5 h-5" />
+                 </div>
+                 <p className="text-[11px] font-bold text-amber-700 leading-relaxed">
+                   Neural Match indicates a high culture-fit probability with current Engineering team dynamics.
+                 </p>
+              </div>
+            </div>
+          ) : (
+            <div className="text-center py-20">
+               <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-6">
+                  <Sparkles className="w-10 h-10 text-slate-300" />
+               </div>
+               <h4 className="text-xl font-black text-slate-800 mb-2">No Intelligence Profile Yet</h4>
+               <p className="text-sm text-slate-400 font-medium max-w-xs mx-auto">
+                 This candidate hasn&apos;t completed their neural logic synchronization yet. You can nudge them via message.
+               </p>
+            </div>
+          )}
+        </div>
+      </Modal>
+      
       <Modal 
         isOpen={isLogoutModalOpen} 
         onClose={() => setIsLogoutModalOpen(false)} 
-        type="default" 
-        title="Exit Workspace"
-        primaryAction={{ label: "Sign Out", onClick: handleLogout }}
+        type="warning" 
+        title="Security Protocol: Termination"
+        primaryAction={{ 
+          label: "End Session", 
+          onClick: handleLogout 
+        }}
       >
         <div className="text-center py-4">
           <p className="text-lg font-bold" style={{ color: "#334155" }}>Ready to conclude your session?</p>
@@ -3057,7 +3215,7 @@ export default function EmployerDashboard() {
             <div className="flex items-center gap-3 pb-4 border-b border-[#E2E8F0]">
               <div
                 className="w-11 h-11 rounded-xl flex items-center justify-center font-bold text-sm shadow-sm shrink-0"
-                style={{ background: "linear-gradient(135deg, #F7B980, #F0A060)", color: "white" }}
+                style={{ backgroundImage: "linear-gradient(135deg, #F7B980, #F0A060)", color: "white" }}
               >
                 {selectedApplication.candidateName.charAt(0).toUpperCase()}
               </div>

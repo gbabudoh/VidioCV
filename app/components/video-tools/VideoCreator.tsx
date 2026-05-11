@@ -145,6 +145,20 @@ export default function VideoCreator({
   const [activeFilter, setActiveFilter] = useState("none");
   const [showControlPanel, setShowControlPanel] = useState(false);
   const [activeControlTab, setActiveControlTab] = useState<"brightness" | "volume" | "filters" | "settings">("brightness");
+  
+  // AI Coach States
+  const [coachAlerts, setCoachAlerts] = useState<{ id: string; message: string; type: "warning" | "success" | "info" }[]>([]);
+  const [lightingScore, setLightingScore] = useState(0);
+  const pacingHistoryRef = useRef<number[]>([]);
+  const [keywords] = useState<string[]>(["Experience", "Skills", "Passion", "Goals"]);
+  const [showCoach, setShowCoach] = useState(true);
+  const isRecordingRef = useRef(false);
+  const isPausedRef = useRef(false);
+
+  useEffect(() => {
+    isRecordingRef.current = isRecording;
+    isPausedRef.current = isPaused;
+  }, [isRecording, isPaused]);
 
   const FILTERS: { id: string; label: string; css: string }[] = [
     { id: "none",       label: "None",        css: "" },
@@ -235,7 +249,25 @@ export default function VideoCreator({
       const tick = () => {
         analyser.getByteFrequencyData(data);
         const avg = data.reduce((a, b) => a + b, 0) / data.length;
-        setAudioLevel(Math.min(100, (avg / 128) * 100));
+        const level = Math.min(100, (avg / 128) * 100);
+        setAudioLevel(level);
+
+        // AI Coach: Pacing & Energy Analysis
+        if (isRecordingRef.current && !isPausedRef.current) {
+          const next = [...pacingHistoryRef.current.slice(-50), level];
+          pacingHistoryRef.current = next;
+          
+          // Check for energy
+          const avgLevel = next.reduce((a, b) => a + b, 0) / next.length;
+          if (avgLevel < 5 && next.length > 30) {
+            addCoachAlert("audio", "You're a bit quiet. Speak up!", "warning");
+          } else if (avgLevel > 40) {
+            addCoachAlert("audio", "Great energy! Keep it up.", "success");
+          } else {
+            removeCoachAlert("audio");
+          }
+        }
+
         vuRafRef.current = requestAnimationFrame(tick);
       };
       vuRafRef.current = requestAnimationFrame(tick);
@@ -310,7 +342,6 @@ export default function VideoCreator({
   }, [activePreset, studioReady]);
 
   // Branding Overlay Function - Burned into the video
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const drawBranding = React.useCallback((ctx: CanvasRenderingContext2D, width: number, _height: number, mirrored: boolean) => {
      const padding = 20;
      const logoWidth = 140;
@@ -423,8 +454,41 @@ export default function VideoCreator({
       }
     }
     drawBranding(ctx, canvas.width, canvas.height, isMirrored);
+
+    // AI Coach: Lighting Analysis
+    if (isRecording && !isPaused) {
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const data = imageData.data;
+      let totalBrightness = 0;
+      for (let i = 0; i < data.length; i += 40) { // Sample every 10 pixels for performance
+        totalBrightness += (data[i] + data[i+1] + data[i+2]) / 3;
+      }
+      const avgBrightness = totalBrightness / (data.length / 40);
+      setLightingScore(Math.round((avgBrightness / 255) * 100));
+
+      // Trigger Lighting Alerts
+      if (avgBrightness < 40) {
+        addCoachAlert("lighting", "It's a bit dark! Try adding more light.", "warning");
+      } else if (avgBrightness > 220) {
+        addCoachAlert("lighting", "Too much light! You might be washed out.", "warning");
+      } else {
+        removeCoachAlert("lighting");
+      }
+    }
+
     ctx.restore();
-  }, [isMirrored, drawBranding]);
+  }, [isMirrored, drawBranding, isRecording, isPaused]);
+
+  const addCoachAlert = (id: string, message: string, type: "warning" | "success" | "info") => {
+    setCoachAlerts(prev => {
+      if (prev.find(a => a.id === id && a.message === message)) return prev;
+      return [...prev.filter(a => a.id !== id), { id, message, type }];
+    });
+  };
+
+  const removeCoachAlert = (id: string) => {
+    setCoachAlerts(prev => prev.filter(a => a.id !== id));
+  };
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -683,8 +747,8 @@ export default function VideoCreator({
   }
 
   return (
-    <div className="w-full max-w-4xl mx-auto space-y-6">
-      <div className="relative bg-black rounded-none md:rounded-[32px] overflow-hidden aspect-video border-y-4 md:border-4 border-white shadow-2xl group">
+    <div className="w-full max-w-4xl mx-auto space-y-4 md:space-y-6">
+      <div className="relative bg-black rounded-none md:rounded-[32px] overflow-hidden aspect-[9/16] md:aspect-video border-y-4 md:border-4 border-white shadow-2xl group">
         <video
           ref={videoRef}
           autoPlay muted playsInline
@@ -749,24 +813,74 @@ export default function VideoCreator({
           </div>
         )}
 
-        {isRecording && !recordedBlob && (
-          <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 z-40 w-full px-4 pointer-events-none">
+        {/* AI Coach Overlay */}
+        {showCoach && isRecording && (
+          <div className="absolute top-20 right-4 w-64 space-y-2 z-50 pointer-events-none">
+            {coachAlerts.map((alert) => (
+              <div 
+                key={alert.id}
+                className={`flex items-center gap-3 p-3 rounded-2xl backdrop-blur-xl border shadow-2xl transition-all animate-in slide-in-from-right-8 ${
+                  alert.type === "warning" ? "bg-amber-500/20 border-amber-500/30 text-amber-200" :
+                  alert.type === "success" ? "bg-green-500/20 border-green-500/30 text-green-200" :
+                  "bg-blue-500/20 border-blue-500/30 text-blue-200"
+                }`}
+              >
+                <div className={`w-2 h-2 rounded-full shrink-0 ${
+                  alert.type === "warning" ? "bg-amber-400" :
+                  alert.type === "success" ? "bg-green-400" :
+                  "bg-blue-400"
+                }`} />
+                <p className="text-[10px] font-black uppercase tracking-tight leading-tight">{alert.message}</p>
+              </div>
+            ))}
 
+            {/* AI Coach Metrics */}
+            <div className="bg-black/60 backdrop-blur-xl rounded-2xl border border-white/10 p-3 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-[9px] font-black text-white/50 uppercase tracking-widest">Lighting Quality</span>
+                <span className={`text-[10px] font-bold ${lightingScore > 70 || lightingScore < 30 ? "text-amber-400" : "text-green-400"}`}>{lightingScore}%</span>
+              </div>
+              <div className="w-full h-1 bg-white/10 rounded-full overflow-hidden">
+                <div className={`h-full transition-all duration-500 ${lightingScore > 70 || lightingScore < 30 ? "bg-amber-400" : "bg-green-400"}`} style={{ width: `${lightingScore}%` }} />
+              </div>
+              
+              <div className="flex items-center justify-between pt-1">
+                <span className="text-[9px] font-black text-white/50 uppercase tracking-widest">Keyword Focus</span>
+              </div>
+              <div className="flex flex-wrap gap-1">
+                {keywords.map((kw) => (
+                  <span key={kw} className="flex items-center gap-1.5 px-2 py-1 bg-white/5 rounded-lg text-[8px] font-black uppercase tracking-wider text-white/50 border border-white/5">
+                    <div className="w-1 h-1 rounded-full bg-white/20" />
+                    {kw}
+                  </span>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {isRecording && !recordedBlob && (
+          <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 z-40 w-full px-4 pointer-events-none">            
             {/* Expandable control panel */}
             {showControlPanel && (
-              <div className="pointer-events-auto w-full max-w-sm bg-black/90 backdrop-blur-2xl rounded-2xl border border-white/10 shadow-2xl overflow-hidden">
+              <div className="pointer-events-auto w-full max-w-sm bg-black/90 backdrop-blur-2xl rounded-t-[32px] md:rounded-2xl border-x border-t md:border border-white/10 shadow-2xl overflow-hidden fixed md:absolute bottom-0 md:bottom-20 left-0 md:left-1/2 md:-translate-x-1/2 z-[60]">
+                {/* Mobile Grabber */}
+                <div className="w-12 h-1 bg-white/20 rounded-full mx-auto mt-3 mb-1 md:hidden" />
+                
                 {/* Tabs */}
-                <div className="flex border-b border-white/10">
-                  {([
-                    { id: "brightness", icon: <Sun className="w-3.5 h-3.5" />, label: "Brightness" },
-                    { id: "volume",     icon: <Volume2 className="w-3.5 h-3.5" />, label: "Volume" },
-                    { id: "filters",    icon: <Sliders className="w-3.5 h-3.5" />, label: "Filters" },
-                    { id: "settings",   icon: <Settings className="w-3.5 h-3.5" />, label: "Settings" },
-                  ] as const).map(tab => (
+                <div className="flex border-b border-white/5 bg-white/5">
+                  {(
+                    [
+                      { id: "brightness", icon: <Sun className="h-4 w-4" />, label: "Light" },
+                      { id: "volume", icon: <Volume2 className="h-4 w-4" />, label: "Audio" },
+                      { id: "filters", icon: <Sliders className="h-4 w-4" />, label: "FX" },
+                      { id: "settings", icon: <Settings className="h-4 w-4" />, label: "Setup" },
+                    ] as { id: "brightness" | "volume" | "filters" | "settings"; icon: React.ReactNode; label: string }[]
+                  ).map((tab) => (
                     <button
                       key={tab.id}
                       onClick={() => setActiveControlTab(tab.id)}
-                      className={`flex-1 flex flex-col items-center gap-0.5 py-2 text-[9px] font-black uppercase tracking-wider transition-colors cursor-pointer ${activeControlTab === tab.id ? "text-[#F7B980] border-b-2 border-[#F7B980]" : "text-white/40 hover:text-white/70"}`}
+                      className={`flex-1 flex flex-col items-center gap-1 py-3 md:py-2 text-[10px] md:text-[9px] font-black uppercase tracking-wider transition-colors cursor-pointer ${activeControlTab === tab.id ? "text-[#F7B980] border-b-2 border-[#F7B980]" : "text-white/40 hover:text-white/70"}`}
                     >
                       {tab.icon}
                       {tab.label}
@@ -828,6 +942,14 @@ export default function VideoCreator({
                         className={`w-full py-2 rounded-xl text-xs font-black uppercase tracking-wider cursor-pointer transition-all ${isMuted ? "bg-red-500/20 text-red-400 border border-red-500/30" : "bg-white/5 text-white/60 border border-white/10 hover:bg-white/10"}`}>
                         {isMuted ? "Unmute Microphone" : "Mute Microphone"}
                       </button>
+                      <div className="flex items-center justify-between p-3 bg-white/5 rounded-xl border border-white/10 mt-2">
+                        <div className="flex items-center gap-2 text-white text-xs font-bold">
+                          <Wifi className="w-3.5 h-3.5 text-[#F7B980]" /> AI Recording Coach
+                        </div>
+                        <button onClick={() => setShowCoach(!showCoach)} className={`w-9 h-5 rounded-full relative transition-colors cursor-pointer ${showCoach ? "bg-[#F7B980]" : "bg-white/10"}`}>
+                          <div className={`absolute top-1 w-3 h-3 bg-white rounded-full transition-all ${showCoach ? "left-5" : "left-1"}`} />
+                        </button>
+                      </div>
                     </div>
                   )}
 
@@ -887,7 +1009,7 @@ export default function VideoCreator({
             )}
 
             {/* Main toolbar */}
-            <div className="pointer-events-auto flex items-center gap-2 bg-black/85 backdrop-blur-xl px-4 py-2.5 rounded-2xl shadow-2xl border border-white/10">
+            <div className="pointer-events-auto flex items-center gap-2 bg-black/85 backdrop-blur-xl px-4 py-2.5 rounded-2xl shadow-2xl border border-white/10 mx-2 md:mx-0">
               {/* Mic mute */}
               <button onClick={toggleMute} title={isMuted ? "Unmute" : "Mute mic"}
                 className={`p-2 md:p-2.5 rounded-xl transition-all cursor-pointer ${isMuted ? "bg-red-500 text-white" : "bg-white/10 text-white hover:bg-white/20"}`}>

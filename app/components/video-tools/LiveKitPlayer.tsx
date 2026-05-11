@@ -144,20 +144,20 @@ export default function LiveKitPlayer({
         )}
       </div>
 
-      {/* Play / Pause overlay button */}
+      {/* Play / Pause overlay button — bottom-left corner */}
       {src && !isEmbed && (
         <div
           onClick={togglePlay}
-          className={`absolute inset-0 flex items-center justify-center cursor-pointer transition-opacity duration-300 ${isPlaying ? "opacity-0 group-hover:opacity-100" : "opacity-100"}`}
+          className={`hidden sm:flex absolute bottom-3 left-3 sm:bottom-4 sm:left-4 cursor-pointer transition-opacity duration-300 z-10 ${isPlaying ? "opacity-0 group-hover:opacity-100" : "opacity-100"}`}
         >
-          <div className="w-12 h-12 rounded-full bg-black/50 backdrop-blur-sm border border-white/20 flex items-center justify-center shadow-lg transition-transform group-hover:scale-110">
+          <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-black/50 backdrop-blur-sm border border-white/20 flex items-center justify-center shadow-lg transition-transform group-hover:scale-110">
             {isPlaying ? (
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="white">
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="white" className="sm:w-3 sm:h-3">
                 <rect x="5" y="3" width="4" height="18" rx="1" />
                 <rect x="15" y="3" width="4" height="18" rx="1" />
               </svg>
             ) : (
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="white" style={{ marginLeft: "2px" }}>
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="white" style={{ marginLeft: "2px" }} className="sm:w-3 sm:h-3">
                 <polygon points="5,3 19,12 5,21" />
               </svg>
             )}
