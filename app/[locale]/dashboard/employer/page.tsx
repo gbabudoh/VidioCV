@@ -18,6 +18,7 @@ import Toggle from "@/app/components/common/Toggle";
 // Removed next/navigation useRouter to use locale-aware version from i18n/navigation
 import { useSessionSync } from "@/app/lib/hooks/useSessionSync";
 import IntegrationsContent from "@/app/components/dashboard/IntegrationsContent";
+import EmployerPaywall from "@/app/components/dashboard/EmployerPaywall";
 
 type Tab = "overview" | "candidates" | "jobs" | "interviews" | "messages" | "submitted" | "settings" | "integrations";
 
@@ -189,6 +190,26 @@ export default function EmployerDashboard() {
     remoteFriendly: true,
     relocationSupport: true
   });
+
+  // Subscription & Trial States
+  const [isSubscribed] = useState(false);
+  const [trialStartedAt] = useState<Date | null>(new Date("2026-05-01")); // Mock: Started May 1st (Already expired by May 11th)
+
+  const isTrialExpired = () => {
+    if (isSubscribed) return false;
+    if (!trialStartedAt) return false;
+    const now = new Date();
+    const trialEnd = new Date(trialStartedAt);
+    trialEnd.setDate(trialEnd.getDate() + 14);
+    return now > trialEnd;
+  };
+
+  const handleSubscribe = () => {
+    // This would normally trigger Stripe Checkout
+    console.log("Redirecting to Stripe Checkout for $9.99/mo plan...");
+    // Mocking success for demo purposes
+    // setIsSubscribed(true);
+  };
 
   // Employer Profile States
   const [employerName, setEmployerName] = useState("");
@@ -3301,6 +3322,10 @@ export default function EmployerDashboard() {
       </Modal>
 
       <div className="h-32 md:hidden" />
+      {/* Paywall Overlay */}
+      {isTrialExpired() && (
+        <EmployerPaywall onSubscribe={handleSubscribe} />
+      )}
     </div>
   );
 }

@@ -30,12 +30,10 @@ export function middleware(request: NextRequest) {
 
   // Helper to check path regardless of locale
   const isPath = (target: string) => {
-    // Handle root path for default locale (no prefix)
-    if (target === '' && (pathname === '/' || pathname === '')) return true;
+    if (pathname === target || pathname === `${target}/`) return true;
     return locales.some(locale => pathname === `/${locale}${target}` || pathname === `/${locale}${target}/`);
   };
   const startsWithPath = (target: string) => {
-    // Handle paths without prefix (default locale)
     if (pathname.startsWith(target)) return true;
     return locales.some(locale => pathname.startsWith(`/${locale}${target}`));
   };
@@ -52,22 +50,22 @@ export function middleware(request: NextRequest) {
 
       if (isAdmin) {
         if (isPath('/admin/login')) {
-          return NextResponse.redirect(new URL(`/${defaultLocale}/admin`, request.url));
+          return NextResponse.redirect(new URL(`/admin`, request.url));
         }
         if (!startsWithPath('/admin')) {
-          return NextResponse.redirect(new URL(`/${defaultLocale}/admin`, request.url));
+          return NextResponse.redirect(new URL(`/admin`, request.url));
         }
       }
 
       if (isEmployer) {
         if (!startsWithPath('/dashboard/employer') && !isPath('')) {
-          return NextResponse.redirect(new URL(`/${defaultLocale}/dashboard/employer`, request.url));
+          return NextResponse.redirect(new URL(`/dashboard/employer`, request.url));
         }
       }
 
       if (isCandidate) {
         if (!startsWithPath('/dashboard/candidate') && !isPath('')) {
-          return NextResponse.redirect(new URL(`/${defaultLocale}/dashboard/candidate`, request.url));
+          return NextResponse.redirect(new URL(`/dashboard/candidate`, request.url));
         }
       }
     } catch {
@@ -76,7 +74,7 @@ export function middleware(request: NextRequest) {
     }
   } else {
     if (startsWithPath('/admin') && !isPath('/admin/login')) {
-      return NextResponse.redirect(new URL(`/${defaultLocale}/admin/login`, request.url));
+      return NextResponse.redirect(new URL(`/admin/login`, request.url));
     }
   }
 

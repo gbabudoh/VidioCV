@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Settings, LogOut, Bell, Search, MapPin, Briefcase, Video,
-  Building2, UserCircle, Shield, Trash2,
+  Building2, UserCircle, Shield, Trash2, ShieldCheck,
   Mail, Lock, Plus, X, ChevronRight, Link as LinkIcon,
   Calendar as CalendarIcon, Archive, ArrowLeft, Calendar,
   Monitor, Smartphone, Sparkles, Globe, Brain, Beaker, ArrowRight, Home
@@ -28,6 +28,7 @@ import NextImage from "next/image";
 import { useSessionSync } from "@/app/lib/hooks/useSessionSync";
 import AICoachContent from "@/app/components/dashboard/AICoachContent";
 import SkillLabsContent from "@/app/components/dashboard/SkillLabsContent";
+import IdentityVerification from "@/app/components/dashboard/IdentityVerification";
 
 type Tab = "profile" | "jobs" | "applications" | "interviews" | "messages" | "submissions" | "notifications" | "settings" | "coach" | "labs";
 
@@ -148,7 +149,26 @@ export default function CandidateDashboard() {
   const [activeVideoUrl, setActiveVideoUrl] = useState<string | null>(null);
   const [showVideoCreator, setShowVideoCreator] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
-  const [settingsSection, setSettingsSection] = useState<"general" | "career" | "security" | "privacy" | "notifications">("general");
+  const [settingsSection, setSettingsSection] = useState<"general" | "career" | "security" | "privacy" | "notifications" | "trust">("general");
+  const [identityStatus, setIdentityStatus] = useState<"UNVERIFIED" | "PENDING" | "VERIFIED" | "REJECTED">("UNVERIFIED");
+
+  const handleIdentityUpload = async (file: File) => {
+    const formData = new FormData();
+    formData.append("file", file);
+
+    try {
+      const res = await fetch("/api/identity/upload", {
+        method: "POST",
+        body: formData
+      });
+      const data = await res.json();
+      if (data.success) {
+        setIdentityStatus("PENDING");
+      }
+    } catch (err) {
+      console.error("Upload failed:", err);
+    }
+  };
 
   interface UserPreferences {
     emailAlerts: boolean;
@@ -2088,11 +2108,12 @@ export default function CandidateDashboard() {
                       { id: "career",        label: "Career",    icon: Briefcase  },
                       { id: "security",      label: "Security",  icon: Shield     },
                       { id: "privacy",       label: "Privacy",   icon: Lock       },
+                      { id: "trust",         label: "Trust & Safety", icon: ShieldCheck },
                       { id: "notifications", label: "Alerts",    icon: Bell       },
                     ].map((item) => (
                       <button
                         key={item.id}
-                        onClick={() => setSettingsSection(item.id as "general" | "career" | "security" | "privacy" | "notifications")}
+                        onClick={() => setSettingsSection(item.id as "general" | "career" | "security" | "privacy" | "notifications" | "trust")}
                         className={`flex-1 flex items-center justify-center gap-1.5 py-2 px-1 rounded-xl transition-all cursor-pointer text-[10px] sm:text-xs font-medium ${
                           settingsSection === item.id
                             ? "bg-slate-100 text-slate-800"
@@ -2328,6 +2349,13 @@ export default function CandidateDashboard() {
                             </div>
                           </div>
                         </div>
+                      )}
+
+                      {settingsSection === "trust" && (
+                        <IdentityVerification 
+                          currentStatus={identityStatus} 
+                          onUpload={handleIdentityUpload} 
+                        />
                       )}
                     </motion.div>
                   </AnimatePresence>

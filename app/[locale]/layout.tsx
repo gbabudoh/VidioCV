@@ -7,6 +7,8 @@ import CookieBanner from "@/components/CookieBanner";
 import { NextIntlClientProvider } from 'next-intl';
 import { getMessages, getTranslations } from 'next-intl/server';
 import { notFound } from 'next/navigation';
+import { getMarketingConfig } from "@/app/lib/marketing-config";
+import MarketingScripts from "@/app/components/marketing/MarketingScripts";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -21,10 +23,12 @@ const geistMono = Geist_Mono({
 export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
   const { locale } = await params;
   const t = await getTranslations({ locale, namespace: 'Index' });
+  const config = await getMarketingConfig();
  
   return {
-    title: t('title'),
-    description: t('description'),
+    title: config?.seoTitle || t('title'),
+    description: config?.seoDescription || t('description'),
+    keywords: config?.seoKeywords,
     icons: {
       icon: "/favicon.png",
     },
@@ -59,6 +63,7 @@ export default async function RootLayout({
           }
           src={`${process.env.NEXT_PUBLIC_PLAUSIBLE_URL || "https://plausible.feendesk.com"}/js/script.js`}
         />
+        <MarketingScripts />
       </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}

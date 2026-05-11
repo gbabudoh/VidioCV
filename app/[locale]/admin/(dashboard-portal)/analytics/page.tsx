@@ -18,14 +18,82 @@ import {
   Activity
 } from "lucide-react";
 
+interface AnalyticsStats {
+  candidates: {
+    total: number;
+    verified: number;
+    growth: number;
+  };
+  employers: {
+    total: number;
+    active: number;
+  };
+  jobs: {
+    total: number;
+  };
+  telemetry: {
+    matchRate: number;
+    churn: number;
+  };
+}
+
 export default function AnalyticsPage() {
   const [timeRange] = useState("Last 30 Days");
+  const [stats, setStats] = useState<AnalyticsStats | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  React.useEffect(() => {
+    const fetchAnalytics = async () => {
+      try {
+        const res = await fetch("/api/admin/analytics");
+        const data = await res.json();
+        if (data.success) setStats(data.stats);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchAnalytics();
+  }, []);
 
   const metrics = [
-    { label: "Active Candidates", value: "2,842", change: "+14.2%", positive: true, icon: Users, color: "text-blue-500", bg: "bg-blue-50" },
-    { label: "Employer Engagement", value: "86%", change: "+5.1%", positive: true, icon: Target, color: "text-emerald-500", bg: "bg-emerald-50" },
-    { label: "Neural Match Rate", value: "92.4%", change: "+2.8%", positive: true, icon: Zap, color: "text-amber-500", bg: "bg-amber-50" },
-    { label: "Platform Churn", value: "1.2%", change: "-0.4%", positive: true, icon: Activity, color: "text-rose-500", bg: "bg-rose-50" },
+    { 
+      label: "Active Candidates", 
+      value: stats?.candidates.total.toLocaleString() || "0", 
+      change: `${(stats?.candidates.growth || 0) > 0 ? '+' : ''}${stats?.candidates.growth || 0}%`, 
+      positive: (stats?.candidates.growth || 0) >= 0, 
+      icon: Users, 
+      color: "text-blue-500", 
+      bg: "bg-blue-50" 
+    },
+    { 
+      label: "Trusted Talent", 
+      value: stats?.candidates.verified.toLocaleString() || "0", 
+      change: "Verified", 
+      positive: true, 
+      icon: Target, 
+      color: "text-emerald-500", 
+      bg: "bg-emerald-50" 
+    },
+    { 
+      label: "Total Job Listings", 
+      value: stats?.jobs.total.toLocaleString() || "0", 
+      change: "Live", 
+      positive: true, 
+      icon: Zap, 
+      color: "text-amber-500", 
+      bg: "bg-amber-50" 
+    },
+    { 
+      label: "Active Trial Emp.", 
+      value: stats?.employers.active.toLocaleString() || "0", 
+      change: "SaaS", 
+      positive: true, 
+      icon: Activity, 
+      color: "text-rose-500", 
+      bg: "bg-rose-50" 
+    },
   ];
 
   return (
@@ -73,7 +141,7 @@ export default function AnalyticsPage() {
               </div>
             </div>
             <p className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400 mb-1">{metric.label}</p>
-            <h3 className="text-2xl font-black text-slate-800">{metric.value}</h3>
+            <h3 className="text-2xl font-black text-slate-800">{isLoading ? "..." : metric.value}</h3>
           </motion.div>
         ))}
       </div>

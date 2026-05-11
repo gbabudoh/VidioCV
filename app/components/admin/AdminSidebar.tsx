@@ -12,7 +12,8 @@ import {
   Settings, 
   LogOut,
   Sparkles,
-  ShieldAlert
+  ShieldAlert,
+  TrendingUp
 } from "lucide-react";
 
 import { TokenPayload } from "@/app/lib/auth";
@@ -26,11 +27,12 @@ export default function AdminSidebar({ adminUser }: { adminUser?: TokenPayload |
     { name: "Employers", href: "/admin/users/employers", icon: Building2 },
     { name: "Hero CMS", href: "/admin/cms", icon: LayoutTemplate },
     { name: "Analytics", href: "/admin/analytics", icon: BarChart3 },
+    { name: "Growth & SEO", href: "/admin/marketing", icon: TrendingUp },
     { name: "Integrations", href: "/admin/integrations", icon: Sparkles },
-    { name: "Audit Logs", href: "/admin/compliance", icon: ShieldCheck },
     ...(adminUser?.role === "super_admin" ? [
       { name: "Management", href: "/admin/management", icon: ShieldAlert }
     ] : []),
+    { name: "Compliance", href: "/admin/compliance", icon: ShieldCheck },
     { name: "Settings", href: "/admin/settings", icon: Settings },
   ];
 

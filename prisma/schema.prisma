@@ -35,6 +35,11 @@ model User {
   transactions        Transaction[]
   integrations        Integration[]
   assessments         Assessment[]
+  identityStatus      String?      @default("UNVERIFIED") @map("identity_status")
+  identityDocumentKey String?      @map("identity_document_key")
+  identityMatchScore  Float?       @map("identity_match_score")
+  identityVerifiedAt  DateTime?    @map("identity_verified_at") @db.Timestamptz(6)
+  trialStartedAt      DateTime?    @default(now()) @map("trial_started_at") @db.Timestamptz(6)
 
   @@map("users")
 }
